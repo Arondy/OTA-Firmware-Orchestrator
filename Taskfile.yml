@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+dotenv: [".env"]
+silent: true
+
+tasks:
+  run:
+    desc: Run services
+    cmds:
+      - docker compose up -d
+
+  stop:
+    desc: Stop services
+    cmds:
+      - docker compose stop
+
+  psql:
+    desc: Open psql
+    cmds:
+      - docker compose exec -it postgres psql -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}}
