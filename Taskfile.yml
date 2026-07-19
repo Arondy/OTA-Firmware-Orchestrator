@@ -16,6 +16,21 @@ tasks:
     cmds:
       - docker compose stop
 
+  migrate:
+    desc: Apply migrations
+    cmds:
+      - docker compose --profile migrate run --rm migrate {{.CLI_ARGS}}
+
+  migrate-up:
+    desc: Run all migrations up
+    cmds:
+      - task migrate -- up
+
+  migrate-down:
+    desc: Rollback one migration
+    cmds:
+      - task migrate -- down 1
+
   psql:
     desc: Open psql
     cmds:
