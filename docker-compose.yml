@@ -17,5 +17,18 @@ services:
       timeout: 10s
       retries: 5
 
+  migrate:
+    image: migrate/migrate:v4.19.1
+    profiles: [ "migrate" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    entrypoint:
+      - migrate
+      - -path=/migrations
+      - -database=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+
 volumes:
   pgdata:
