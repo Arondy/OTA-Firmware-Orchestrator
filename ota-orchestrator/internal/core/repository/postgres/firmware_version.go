@@ -2,11 +2,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type FirmwareVersionRepo struct {
@@ -110,7 +113,11 @@ func (r *FirmwareVersionRepo) CreateFirmwareVersion(ctx context.Context, firmwar
 		&createdFirmwareVersion.BinaryUrl,
 		&createdFirmwareVersion.CreatedAt,
 	)
-	if err != nil {
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		return domain.FirmwareVersion{}, domain.ErrFirmwareVersionAlreadyExists
+	} else if err != nil {
 		return domain.FirmwareVersion{}, fmt.Errorf("failed to create firmware version: %w", err)
 	}
 

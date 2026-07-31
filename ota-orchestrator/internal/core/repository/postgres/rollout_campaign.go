@@ -155,7 +155,10 @@ func (r *RolloutCampaignRepo) CreateRolloutCampaign(ctx context.Context, campaig
 			&createdStage.Status,
 			&createdStage.EnteredAt,
 		)
-		if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return domain.RolloutCampaign{}, domain.ErrRolloutStageAlreadyExists
+		} else if err != nil {
 			return domain.RolloutCampaign{}, fmt.Errorf("failed to create rollout stage during campaign creation: %w", err)
 		}
 
