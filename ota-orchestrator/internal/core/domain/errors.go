@@ -9,3 +9,5 @@ var ErrRolloutCampaignNotFound = errors.New("rollout campaign not found")
 var ErrFirmwareVersionAlreadyExists = errors.New("this firmware version for this model already exists")
 var ErrCampaignAlreadyRunning = errors.New("another campaign for this model is already running")
 var ErrRolloutStageAlreadyExists = errors.New("rollout stage for this rollout campaign with such index already exists")
+
+var ErrRolloutCampaignWrongStatus = errors.New("wrong status")

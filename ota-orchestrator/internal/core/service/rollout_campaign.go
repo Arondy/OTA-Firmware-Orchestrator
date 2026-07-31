@@ -54,7 +54,7 @@ func (s *RolloutCampaignService) StartRolloutCampaign(ctx context.Context, id uu
 	}
 
 	if campaign.Status != domain.RolloutCampaignsStatusDraft {
-		return domain.RolloutCampaign{}, fmt.Errorf("can't start %s campaign", campaign.Status)
+		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't start %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
 	return s.campaignRepo.StartRolloutCampaign(ctx, id)
@@ -67,7 +67,7 @@ func (s *RolloutCampaignService) PauseRolloutCampaign(ctx context.Context, id uu
 	}
 
 	if campaign.Status != domain.RolloutCampaignsStatusRunning {
-		return domain.RolloutCampaign{}, fmt.Errorf("can't pause %s campaign", campaign.Status)
+		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't pause %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
 	return s.campaignRepo.PauseRolloutCampaign(ctx, id)
@@ -80,7 +80,7 @@ func (s *RolloutCampaignService) ResumeRolloutCampaign(ctx context.Context, id u
 	}
 
 	if campaign.Status != domain.RolloutCampaignsStatusPaused {
-		return domain.RolloutCampaign{}, fmt.Errorf("can't resume %s campaign", campaign.Status)
+		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't resume %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
 	return s.campaignRepo.ResumeRolloutCampaign(ctx, id)
