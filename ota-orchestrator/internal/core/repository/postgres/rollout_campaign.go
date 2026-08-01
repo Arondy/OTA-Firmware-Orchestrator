@@ -139,9 +139,9 @@ func (r *RolloutCampaignRepo) CreateRolloutCampaign(ctx context.Context, campaig
 	RETURNING id, campaign_id, order_index, target_percent, min_sample_size, success_threshold, status, entered_at
 	`
 
-	createdCampaign.RolloutStages = make([]domain.RolloutStage, 0, len(campaign.RolloutStages))
+	createdCampaign.RolloutStages = make([]domain.RolloutStage, len(campaign.RolloutStages))
 
-	for _, stage := range campaign.RolloutStages {
+	for i, stage := range campaign.RolloutStages {
 		row := tx.QueryRow(reqCtx, stagesQuery, createdCampaign.ID, stage.OrderIndex, stage.TargetPercent, stage.MinSampleSize, stage.SuccessThreshold)
 
 		var createdStage domain.RolloutStage
@@ -162,7 +162,7 @@ func (r *RolloutCampaignRepo) CreateRolloutCampaign(ctx context.Context, campaig
 			return domain.RolloutCampaign{}, fmt.Errorf("failed to create rollout stage during campaign creation: %w", err)
 		}
 
-		createdCampaign.RolloutStages = append(createdCampaign.RolloutStages, createdStage)
+		createdCampaign.RolloutStages[i] = createdStage
 	}
 
 	err = tx.Commit(reqCtx)
