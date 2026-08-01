@@ -45,9 +45,11 @@ CREATE TABLE rollout_stages (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
     campaign_id UUID NOT NULL REFERENCES rollout_campaigns (id),
     order_index INT NOT NULL,
-    target_percent INT NOT NULL CHECK (target_percent BETWEEN 0 AND 100),
+    target_percent INT NOT NULL CHECK (target_percent BETWEEN 1 AND 100),
     min_sample_size INT NOT NULL,
-    success_threshold REAL NOT NULL CHECK (success_threshold BETWEEN 0 AND 1),
+    success_threshold REAL NOT NULL CHECK (
+        success_threshold > 0 AND success_threshold <= 1
+    ),
     status ROLLOUT_STAGES_STATUS NOT NULL DEFAULT 'pending',
     entered_at TIMESTAMPTZ,
     UNIQUE (campaign_id, order_index)
