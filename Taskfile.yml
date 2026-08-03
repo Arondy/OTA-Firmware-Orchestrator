@@ -10,6 +10,7 @@ tasks:
     desc: Run services
     cmds:
       - docker compose up -d
+      - cd ota-orchestrator && go run ./cmd/ota-orchestrator/main.go
 
   stop:
     desc: Stop services
