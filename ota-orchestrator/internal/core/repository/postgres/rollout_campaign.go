@@ -206,7 +206,7 @@ func (r *RolloutCampaignRepo) StartRolloutCampaign(ctx context.Context, id uuid.
 	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 		return domain.RolloutCampaign{}, domain.ErrCampaignAlreadyRunning
 	} else if err == pgx.ErrNoRows {
-		return domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound
+		return domain.RolloutCampaign{}, r.checkCampaignConflictError(reqCtx, id)
 	} else if err != nil {
 		return domain.RolloutCampaign{}, fmt.Errorf("failed to start rollout campaign: %w", err)
 	}
@@ -270,7 +270,7 @@ func (r *RolloutCampaignRepo) PauseRolloutCampaign(ctx context.Context, id uuid.
 	)
 
 	if err == pgx.ErrNoRows {
-		return domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound
+		return domain.RolloutCampaign{}, r.checkCampaignConflictError(reqCtx, id)
 	} else if err != nil {
 		return domain.RolloutCampaign{}, fmt.Errorf("failed to pause rollout campaign: %w", err)
 	}
@@ -311,7 +311,7 @@ func (r *RolloutCampaignRepo) ResumeRolloutCampaign(ctx context.Context, id uuid
 	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 		return domain.RolloutCampaign{}, domain.ErrCampaignAlreadyRunning
 	} else if err == pgx.ErrNoRows {
-		return domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound
+		return domain.RolloutCampaign{}, r.checkCampaignConflictError(reqCtx, id)
 	} else if err != nil {
 		return domain.RolloutCampaign{}, fmt.Errorf("failed to resume rollout campaign: %w", err)
 	}
@@ -367,4 +367,26 @@ func (r *RolloutCampaignRepo) listRolloutStagesByCampaignID(ctx context.Context,
 	}
 
 	return stages, nil
+}
+
+// Без этого при параллельных запросах к одной кампании все кроме
+// первого получат Not Found, из-за проверки статуса внутри query
+func (r *RolloutCampaignRepo) checkCampaignConflictError(ctx context.Context, id uuid.UUID) error {
+	var exists bool
+	query := `
+		SELECT EXISTS (
+			SELECT * FROM rollout_campaigns
+			WHERE id = $1
+		)
+		`
+	row := r.pool.QueryRow(ctx, query, id)
+	err := row.Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check campaign existence: %w", err)
+	}
+	if exists {
+		return domain.ErrRolloutCampaignWrongStatus
+	}
+
+	return domain.ErrRolloutCampaignNotFound
 }
