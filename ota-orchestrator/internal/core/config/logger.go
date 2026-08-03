@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -17,8 +18,9 @@ const (
 	TRACEBACK_FILE = "traceback.log"
 )
 
-var openFiles = make([]*lumberjack.Logger, 0, 2)
-var Logger *zap.SugaredLogger = newLogger()
+var logger *zap.SugaredLogger = newLogger()
+var logsFileWriter *lumberjack.Logger
+var traceFileWriter *lumberjack.Logger
 
 func setupEncoderConfig(useColors bool) zapcore.EncoderConfig {
 	cfg := zapcore.EncoderConfig{
@@ -52,45 +54,57 @@ func setupEncoderConfig(useColors bool) zapcore.EncoderConfig {
 }
 
 func newLogger() *zap.SugaredLogger {
-	_ = os.Truncate(LOGS_FILE, 0)
-	_ = os.Truncate(TRACEBACK_FILE, 0)
-
-	logsLogger := &lumberjack.Logger{
+	logsFileWriter = &lumberjack.Logger{
 		Filename:   LOGS_FILE,
 		MaxSize:    50,
 		MaxBackups: 1,
 		MaxAge:     28,
 		Compress:   true,
 	}
-	mainWriter := zapcore.AddSync(logsLogger)
 
-	traceLogger := &lumberjack.Logger{
+	traceFileWriter = &lumberjack.Logger{
 		Filename:   TRACEBACK_FILE,
 		MaxSize:    50,
 		MaxBackups: 1,
 		MaxAge:     28,
 		Compress:   true,
 	}
-	traceWriter := zapcore.AddSync(traceLogger)
-
-	if len(openFiles) == 0 {
-		openFiles = append(openFiles, logsLogger, traceLogger)
-	}
 
 	cores := []zapcore.Core{
 		zapcore.NewCore(zapcore.NewConsoleEncoder(setupEncoderConfig(true)), zapcore.AddSync(os.Stdout), zap.DebugLevel),
-		zapcore.NewCore(zapcore.NewConsoleEncoder(setupEncoderConfig(false)), mainWriter, zap.InfoLevel),
-		zapcore.NewCore(zapcore.NewConsoleEncoder(setupEncoderConfig(false)), traceWriter, zap.WarnLevel),
+		zapcore.NewCore(zapcore.NewJSONEncoder(setupEncoderConfig(false)),  zapcore.AddSync(logsFileWriter), zap.InfoLevel),
+		zapcore.NewCore(zapcore.NewJSONEncoder(setupEncoderConfig(false)), zapcore.AddSync(traceFileWriter), zap.WarnLevel),
 	}
 
 	return zap.New(
 		zapcore.NewTee(cores...),
-		zap.AddStacktrace(zap.WarnLevel),
+		zap.AddStacktrace(zap.ErrorLevel),
 	).Sugar()
 }
 
+func GetLogger() *zap.SugaredLogger {
+	return logger
+}
+
 func CloseLoggerFiles() {
-	for _, file := range openFiles {
-		_ = file.Close()
+    if logsFileWriter != nil {
+        _ = logsFileWriter.Close()
+    }
+    if traceFileWriter != nil {
+        _ = traceFileWriter.Close()
+    }
+}
+
+type loggerKey struct{}
+
+func LoggerToContext(ctx context.Context, logger *zap.SugaredLogger) context.Context {
+	return context.WithValue(ctx, loggerKey{}, logger)
+}
+
+func LoggerFromContext(ctx context.Context) *zap.SugaredLogger {
+	ctxLogger, ok := ctx.Value(loggerKey{}).(*zap.SugaredLogger)
+	if !ok {
+		return logger
 	}
+	return ctxLogger
 }
