@@ -1,0 +1,609 @@
+openapi: 3.0.3
+info:
+  title: OTA Firmware Orchestrator API
+  description: HTTP API of the OTA Firmware Orchestrator. Manages devices, firmware versions and staged rollout campaigns.
+  version: 0.1.0
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+tags:
+  - name: Health
+  - name: Devices
+  - name: Firmware
+  - name: Rollout Campaigns
+paths:
+  /healthz:
+    get:
+      tags:
+        - Health
+      summary: Check service health
+      operationId: checkHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    example: OK
+  /api/v1/devices:
+    get:
+      tags:
+        - Devices
+      summary: List all devices
+      operationId: listDevices
+      responses:
+        "200":
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListDevicesResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Devices
+      summary: Create a device
+      operationId: createDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeviceRequest"
+      responses:
+        "201":
+          description: Device created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/devices/{id}/decommission:
+    post:
+      tags:
+        - Devices
+      summary: Decommission a device
+      operationId: decommissionDevice
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Device decommissioned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/firmware:
+    get:
+      tags:
+        - Firmware
+      summary: List all firmware versions
+      operationId: listFirmwareVersions
+      responses:
+        "200":
+          description: List of firmware versions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListFirmwareVersionsResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Firmware
+      summary: Create a firmware version
+      operationId: createFirmwareVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFirmwareVersionRequest"
+      responses:
+        "201":
+          description: Firmware version created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FirmwareVersionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns:
+    get:
+      tags:
+        - Rollout Campaigns
+      summary: List all rollout campaigns
+      operationId: listRolloutCampaigns
+      responses:
+        "200":
+          description: List of rollout campaigns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListRolloutCampaignsResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Rollout Campaigns
+      summary: Create a rollout campaign
+      operationId: createRolloutCampaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRolloutCampaignRequest"
+      responses:
+        "201":
+          description: Rollout campaign created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutCampaignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns/{id}:
+    get:
+      tags:
+        - Rollout Campaigns
+      summary: Get a rollout campaign by id
+      operationId: getRolloutCampaign
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rollout campaign details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutCampaignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns/{id}/start:
+    post:
+      tags:
+        - Rollout Campaigns
+      summary: Start a rollout campaign
+      operationId: startRolloutCampaign
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rollout campaign started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutCampaignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns/{id}/pause:
+    post:
+      tags:
+        - Rollout Campaigns
+      summary: Pause a rollout campaign
+      operationId: pauseRolloutCampaign
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rollout campaign paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutCampaignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns/{id}/resume:
+    post:
+      tags:
+        - Rollout Campaigns
+      summary: Resume a rollout campaign
+      operationId: resumeRolloutCampaign
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rollout campaign resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutCampaignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Resource UUID
+      schema:
+        type: string
+        format: uuid
+      example: 3f6d2d8e-4b1c-4a5f-9a7b-8e7d1c2a3b4c
+  responses:
+    BadRequest:
+      description: Invalid or non-valid request data
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            "400":
+              value:
+                error: invalid JSON
+    PayloadTooLarge:
+      description: Request body exceeds the size limit (1 MiB)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            "413":
+              value:
+                error: request body exceeds limit in 1048576 bytes
+    NotFound:
+      description: Resource with the given id does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            "404":
+              value:
+                error: device not found
+    Conflict:
+      description: Request conflicts with the current resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            "409":
+              value:
+                error: another campaign for this model is already running
+    InternalServerError:
+      description: Unexpected internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            "500":
+              value:
+                error: internal server error
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: device not found
+    ValidationErrorResponse:
+      type: object
+      required:
+        - error
+        - fields
+      properties:
+        error:
+          type: string
+          example: request didn't pass validation
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            current_version: Field must be a valid semver string
+    DeviceStatus:
+      type: string
+      enum:
+        - active
+        - decommissioned
+    DeviceResponse:
+      type: object
+      required:
+        - id
+        - device_model
+        - current_version
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_model:
+          type: string
+          minLength: 2
+          maxLength: 64
+        current_version:
+          type: string
+          maxLength: 64
+        status:
+          $ref: "#/components/schemas/DeviceStatus"
+        last_seen:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    CreateDeviceRequest:
+      type: object
+      required:
+        - device_model
+        - current_version
+      properties:
+        device_model:
+          type: string
+          minLength: 2
+          maxLength: 64
+        current_version:
+          type: string
+          maxLength: 64
+          pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    ListDevicesResponse:
+      type: object
+      required:
+        - devices
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceResponse"
+    FirmwareVersionResponse:
+      type: object
+      required:
+        - id
+        - device_model
+        - fw_version
+        - fw_checksum
+        - binary_url
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_model:
+          type: string
+          minLength: 2
+          maxLength: 64
+        fw_version:
+          type: string
+          maxLength: 64
+        fw_checksum:
+          type: string
+          pattern: "^[0-9a-fA-F]{64}$"
+        binary_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+    CreateFirmwareVersionRequest:
+      type: object
+      required:
+        - device_model
+        - fw_version
+        - fw_checksum
+        - binary_url
+      properties:
+        device_model:
+          type: string
+          minLength: 2
+          maxLength: 64
+        fw_version:
+          type: string
+          maxLength: 64
+          pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+        fw_checksum:
+          type: string
+          minLength: 64
+          maxLength: 64
+          pattern: "^[0-9a-fA-F]+$"
+        binary_url:
+          type: string
+          format: uri
+    ListFirmwareVersionsResponse:
+      type: object
+      required:
+        - firmware_versions
+      properties:
+        firmware_versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FirmwareVersionResponse"
+    RolloutCampaignsStatus:
+      type: string
+      enum:
+        - draft
+        - running
+        - paused
+        - completed
+        - rolled_back
+    RolloutStagesStatus:
+      type: string
+      enum:
+        - pending
+        - active
+        - passed
+        - failed
+    RolloutStageRequest:
+      type: object
+      required:
+        - order_index
+        - target_percent
+        - min_sample_size
+        - success_threshold
+      properties:
+        order_index:
+          type: integer
+          format: int32
+          minimum: 0
+        target_percent:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        min_sample_size:
+          type: integer
+          format: int32
+          minimum: 1
+        success_threshold:
+          type: number
+          format: float
+          exclusiveMinimum: true
+          maximum: 1
+    RolloutStageResponse:
+      type: object
+      required:
+        - id
+        - campaign_id
+        - order_index
+        - target_percent
+        - min_sample_size
+        - success_threshold
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        campaign_id:
+          type: string
+          format: uuid
+        order_index:
+          type: integer
+          format: int32
+          minimum: 0
+        target_percent:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        min_sample_size:
+          type: integer
+          format: int32
+          minimum: 1
+        success_threshold:
+          type: number
+          format: float
+          exclusiveMinimum: true
+          maximum: 1
+        status:
+          $ref: "#/components/schemas/RolloutStagesStatus"
+        entered_at:
+          type: string
+          format: date-time
+    RolloutCampaignListItemResponse:
+      type: object
+      required:
+        - id
+        - firmware_version_id
+        - device_model
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        firmware_version_id:
+          type: string
+          format: uuid
+        device_model:
+          type: string
+        status:
+          $ref: "#/components/schemas/RolloutCampaignsStatus"
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+    RolloutCampaignResponse:
+      allOf:
+        - $ref: "#/components/schemas/RolloutCampaignListItemResponse"
+        - type: object
+          required:
+            - rollout_stages
+          properties:
+            rollout_stages:
+              type: array
+              items:
+                $ref: "#/components/schemas/RolloutStageResponse"
+    CreateRolloutCampaignRequest:
+      type: object
+      required:
+        - firmware_version_id
+        - rollout_stages
+      properties:
+        firmware_version_id:
+          type: string
+          format: uuid
+        rollout_stages:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/RolloutStageRequest"
+    ListRolloutCampaignsResponse:
+      type: object
+      required:
+        - rollout_campaigns
+      properties:
+        rollout_campaigns:
+          type: array
+          items:
+            $ref: "#/components/schemas/RolloutCampaignListItemResponse"
