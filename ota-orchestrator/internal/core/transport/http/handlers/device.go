@@ -7,6 +7,7 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/dto"
 	"github.com/google/uuid"
 )
@@ -15,6 +16,7 @@ type DeviceService interface {
 	ListDevices(ctx context.Context) ([]domain.Device, error)
 	CreateDevice(ctx context.Context, device domain.Device) (domain.Device, error)
 	DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error)
+	CheckinDevice(ctx context.Context, device domain.Device) (service.CheckinResult, error)
 }
 
 type DeviceHandler struct {
@@ -94,5 +96,42 @@ func (h *DeviceHandler) DecommissionDevice(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := dto.DeviceFromDomain(device)
+	WriteJSON(w, logger, http.StatusOK, response)
+}
+
+func (h *DeviceHandler) CheckinDevice(w http.ResponseWriter, r *http.Request) {
+	logger := config.LoggerFromContext(r.Context())
+
+	id, ok := ParseUUIDFromPath(w, r, logger)
+	if !ok {
+		return
+	}
+
+	logger = logger.With("id", id)
+
+	checkinReq := dto.CheckinDeviceRequest{}
+
+	if !DecodeJSONBody(w, r, logger, &checkinReq) {
+		return
+	}
+
+	if !ValidateRequest(w, logger, checkinReq) {
+		return
+	}
+
+	device := checkinReq.ToDomainWithID(id)
+
+	checkinResult, err := h.svc.CheckinDevice(r.Context(), device)
+	if errors.Is(err, domain.ErrDeviceNotFound) {
+		logger.Warnw("nonexistent id was received", "error", err)
+		WriteError(w, logger, http.StatusNotFound, domain.ErrDeviceNotFound.Error())
+		return
+	} else if err != nil {
+		logger.Errorw("failed to checkin device", "error", err)
+		WriteInternalServerError(w, logger)
+		return
+	}
+
+	response := dto.CheckinResponseFromDomain(checkinResult)
 	WriteJSON(w, logger, http.StatusOK, response)
 }
