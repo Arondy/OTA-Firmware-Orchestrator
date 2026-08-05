@@ -10,6 +10,7 @@ type DeviceAPI interface {
 	ListDevices(w http.ResponseWriter, r *http.Request)
 	CreateDevice(w http.ResponseWriter, r *http.Request)
 	DecommissionDevice(w http.ResponseWriter, r *http.Request)
+	CheckinDevice(w http.ResponseWriter, r *http.Request)
 }
 
 type FirmwareVersionAPI interface {
