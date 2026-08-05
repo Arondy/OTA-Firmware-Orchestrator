@@ -24,7 +24,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	firmwareVersionRepo := postgres.NewFirmwareVersionRepo(db)
 	rolloutCampaignRepo := postgres.NewRolloutCampaignRepo(db)
 
-	deviceSvc := service.NewDeviceService(deviceRepo)
+	deviceSvc := service.NewDeviceService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo)
 	firmwareVersionSvc := service.NewFirmwareVersionService(firmwareVersionRepo)
 	rolloutCampaignSvc := service.NewRolloutCampaignService(rolloutCampaignRepo, firmwareVersionRepo)
 
