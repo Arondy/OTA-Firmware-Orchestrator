@@ -325,6 +325,67 @@ func (r *RolloutCampaignRepo) ResumeRolloutCampaign(ctx context.Context, id uuid
 	return campaign, nil
 }
 
+func (r *RolloutCampaignRepo) FindRunningRolloutCampaign(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
+	defer cancel()
+
+	query := `
+	SELECT id, firmware_version_id, device_model, status, created_at, started_at, completed_at
+	FROM rollout_campaigns
+	WHERE device_model = $1 AND status = 'running'
+	`
+
+	row := r.pool.QueryRow(reqCtx, query, deviceModel)
+
+	var campaign domain.RolloutCampaign
+	err := row.Scan(
+		&campaign.ID,
+		&campaign.FirmwareVersionID,
+		&campaign.DeviceModel,
+		&campaign.Status,
+		&campaign.CreatedAt,
+		&campaign.StartedAt,
+		&campaign.CompletedAt,
+	)
+
+	if err == pgx.ErrNoRows {
+		return domain.RolloutCampaign{}, r.checkCampaignStatusError(reqCtx, deviceModel)
+	} else if err != nil {
+		return domain.RolloutCampaign{}, fmt.Errorf("failed to get running rollout campaign: %w", err)
+	}
+	return campaign, nil
+}
+
+func (r *RolloutCampaignRepo) FindActiveRolloutStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
+	defer cancel()
+
+	query := `
+	SELECT id, campaign_id, order_index, target_percent, min_sample_size, success_threshold, status, entered_at
+	FROM rollout_stages
+	WHERE campaign_id = $1 AND status = 'active'
+	`
+
+	row := r.pool.QueryRow(reqCtx, query, campaignID)
+
+	var stage domain.RolloutStage
+	err := row.Scan(
+		&stage.ID,
+		&stage.CampaignID,
+		&stage.OrderIndex,
+		&stage.TargetPercent,
+		&stage.MinSampleSize,
+		&stage.SuccessThreshold,
+		&stage.Status,
+		&stage.EnteredAt,
+	)
+	if err != nil {
+		return domain.RolloutStage{}, fmt.Errorf("failed to find active rollout stage: %w", err)
+	}
+
+	return stage, nil
+}
+
 func (r *RolloutCampaignRepo) listRolloutStagesByCampaignID(ctx context.Context, campaignID uuid.UUID) ([]domain.RolloutStage, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
@@ -374,12 +435,32 @@ func (r *RolloutCampaignRepo) listRolloutStagesByCampaignID(ctx context.Context,
 func (r *RolloutCampaignRepo) checkCampaignConflictError(ctx context.Context, id uuid.UUID) error {
 	var exists bool
 	query := `
-		SELECT EXISTS (
-			SELECT * FROM rollout_campaigns
-			WHERE id = $1
-		)
-		`
+	SELECT EXISTS (
+		SELECT * FROM rollout_campaigns
+		WHERE id = $1
+	)
+	`
 	row := r.pool.QueryRow(ctx, query, id)
+	err := row.Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check campaign existence: %w", err)
+	}
+	if exists {
+		return domain.ErrRolloutCampaignWrongStatus
+	}
+
+	return domain.ErrRolloutCampaignNotFound
+}
+
+func (r *RolloutCampaignRepo) checkCampaignStatusError(ctx context.Context, deviceModel string) error {
+	var exists bool
+	query := `
+	SELECT EXISTS (
+		SELECT * FROM rollout_campaigns
+		WHERE device_model = $1
+	)
+	`
+	row := r.pool.QueryRow(ctx, query, deviceModel)
 	err := row.Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check campaign existence: %w", err)

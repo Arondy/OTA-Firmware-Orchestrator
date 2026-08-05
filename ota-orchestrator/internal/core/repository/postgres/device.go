@@ -58,6 +58,36 @@ func (r *DeviceRepo) ListDevices(ctx context.Context) ([]domain.Device, error) {
 	return devices, nil
 }
 
+func (r *DeviceRepo) GetDevice(ctx context.Context, id uuid.UUID) (domain.Device, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
+	defer cancel()
+
+	query := `
+	SELECT id, device_model, current_version, status, last_seen, created_at FROM devices
+	WHERE id = $1
+	`
+
+	row := r.pool.QueryRow(reqCtx, query, id)
+
+	var device domain.Device
+	err := row.Scan(
+		&device.ID,
+		&device.DeviceModel,
+		&device.CurrentVersion,
+		&device.Status,
+		&device.LastSeen,
+		&device.CreatedAt,
+	)
+
+	if err == pgx.ErrNoRows {
+		return domain.Device{}, domain.ErrDeviceNotFound
+	} else if err != nil {
+		return domain.Device{}, fmt.Errorf("failed to find device: %w", err)
+	}
+
+	return device, nil
+}
+
 func (r *DeviceRepo) CreateDevice(ctx context.Context, device domain.Device) (domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
@@ -84,6 +114,36 @@ func (r *DeviceRepo) CreateDevice(ctx context.Context, device domain.Device) (do
 	}
 
 	return createdDevice, nil
+}
+
+func (r *DeviceRepo) UpdateDeviceCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
+	defer cancel()
+
+	query := `
+	UPDATE devices SET current_version = $1, last_seen = now()
+	WHERE id = $2
+	RETURNING id, device_model, current_version, status, last_seen, created_at
+	`
+
+	row := r.pool.QueryRow(reqCtx, query, version, id)
+
+	var device domain.Device
+	err := row.Scan(
+		&device.ID,
+		&device.DeviceModel,
+		&device.CurrentVersion,
+		&device.Status,
+		&device.LastSeen,
+		&device.CreatedAt,
+	)
+	if err == pgx.ErrNoRows {
+		return domain.Device{}, domain.ErrDeviceNotFound
+	} else if err != nil {
+		return domain.Device{}, fmt.Errorf("failed to create device: %w", err)
+	}
+
+	return device, nil
 }
 
 func (r *DeviceRepo) DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error) {
