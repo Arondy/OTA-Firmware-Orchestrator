@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service"
 	"github.com/google/uuid"
 )
 
@@ -41,4 +42,31 @@ func (r CreateDeviceRequest) ToDomain() domain.Device {
 
 type ListDevicesResponse struct {
 	Devices []DeviceResponse `json:"devices"`
+}
+
+type CheckinDeviceResponse struct {
+	UpdateAvailable bool       `json:"update_available"`
+	StageID         *uuid.UUID `json:"stage_id,omitempty"`
+	BinaryUrl       string     `json:"binary_url,omitempty"`
+	FWChecksum      string     `json:"fw_checksum,omitempty"`
+}
+
+func CheckinResponseFromDomain(c service.CheckinResult) CheckinDeviceResponse {
+	return CheckinDeviceResponse{
+		UpdateAvailable: c.UpdateAvailable,
+		StageID:         c.StageID,
+		BinaryUrl:       c.BinaryUrl,
+		FWChecksum:      c.FWChecksum,
+	}
+}
+
+type CheckinDeviceRequest struct {
+	CurrentVersion string `json:"current_version" validate:"required,max=64,semver"`
+}
+
+func (r CheckinDeviceRequest) ToDomainWithID(id uuid.UUID) domain.Device {
+	return domain.Device{
+		ID:             id,
+		CurrentVersion: r.CurrentVersion,
+	}
 }
