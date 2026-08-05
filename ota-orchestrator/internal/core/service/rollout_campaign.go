@@ -15,6 +15,9 @@ type RolloutCampaignRepo interface {
 	StartRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	PauseRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	ResumeRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	// для device
+	FindRunningRolloutCampaign(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
+	FindActiveRolloutStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
 }
 
 type RolloutCampaignService struct {
