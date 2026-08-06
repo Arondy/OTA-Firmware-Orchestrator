@@ -13,18 +13,18 @@ func NewRouter(health HealthAPI, device DeviceAPI, firmware FirmwareVersionAPI, 
 func registerRoutes(mux *http.ServeMux, health HealthAPI, device DeviceAPI, firmware FirmwareVersionAPI, campaign RolloutCampaignAPI) {
 	mux.HandleFunc("GET /healthz", health.CheckHealth)
 
-	mux.HandleFunc("GET /api/v1/devices", device.ListDevices)
-	mux.HandleFunc("POST /api/v1/devices", device.CreateDevice)
-	mux.HandleFunc("POST /api/v1/devices/{id}/decommission", device.DecommissionDevice)
-	mux.HandleFunc("POST /api/v1/devices/{id}/checkin", device.CheckinDevice)
+	mux.HandleFunc("GET /api/v1/devices", device.List)
+	mux.HandleFunc("POST /api/v1/devices", device.Create)
+	mux.HandleFunc("POST /api/v1/devices/{id}/decommission", device.Decommission)
+	mux.HandleFunc("POST /api/v1/devices/{id}/checkin", device.Checkin)
 
-	mux.HandleFunc("GET /api/v1/firmware", firmware.ListFirmwareVersions)
-	mux.HandleFunc("POST /api/v1/firmware", firmware.CreateFirmwareVersion)
+	mux.HandleFunc("GET /api/v1/firmware", firmware.List)
+	mux.HandleFunc("POST /api/v1/firmware", firmware.Create)
 
-	mux.HandleFunc("GET /api/v1/campaigns", campaign.ListRolloutCampaigns)
-	mux.HandleFunc("POST /api/v1/campaigns", campaign.CreateRolloutCampaign)
-	mux.HandleFunc("GET /api/v1/campaigns/{id}", campaign.GetRolloutCampaign)
-	mux.HandleFunc("POST /api/v1/campaigns/{id}/start", campaign.StartRolloutCampaign)
-	mux.HandleFunc("POST /api/v1/campaigns/{id}/pause", campaign.PauseRolloutCampaign)
-	mux.HandleFunc("POST /api/v1/campaigns/{id}/resume", campaign.ResumeRolloutCampaign)
+	mux.HandleFunc("GET /api/v1/campaigns", campaign.List)
+	mux.HandleFunc("POST /api/v1/campaigns", campaign.Create)
+	mux.HandleFunc("GET /api/v1/campaigns/{id}", campaign.Get)
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/start", campaign.Start)
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/pause", campaign.Pause)
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/resume", campaign.Resume)
 }

@@ -7,22 +7,22 @@ type HealthAPI interface {
 }
 
 type DeviceAPI interface {
-	ListDevices(w http.ResponseWriter, r *http.Request)
-	CreateDevice(w http.ResponseWriter, r *http.Request)
-	DecommissionDevice(w http.ResponseWriter, r *http.Request)
-	CheckinDevice(w http.ResponseWriter, r *http.Request)
+	List(w http.ResponseWriter, r *http.Request)
+	Create(w http.ResponseWriter, r *http.Request)
+	Decommission(w http.ResponseWriter, r *http.Request)
+	Checkin(w http.ResponseWriter, r *http.Request)
 }
 
 type FirmwareVersionAPI interface {
-	ListFirmwareVersions(w http.ResponseWriter, r *http.Request)
-	CreateFirmwareVersion(w http.ResponseWriter, r *http.Request)
+	List(w http.ResponseWriter, r *http.Request)
+	Create(w http.ResponseWriter, r *http.Request)
 }
 
 type RolloutCampaignAPI interface {
-	ListRolloutCampaigns(w http.ResponseWriter, r *http.Request)
-	GetRolloutCampaign(w http.ResponseWriter, r *http.Request)
-	CreateRolloutCampaign(w http.ResponseWriter, r *http.Request)
-	StartRolloutCampaign(w http.ResponseWriter, r *http.Request)
-	PauseRolloutCampaign(w http.ResponseWriter, r *http.Request)
-	ResumeRolloutCampaign(w http.ResponseWriter, r *http.Request)
+	List(w http.ResponseWriter, r *http.Request)
+	Get(w http.ResponseWriter, r *http.Request)
+	Create(w http.ResponseWriter, r *http.Request)
+	Start(w http.ResponseWriter, r *http.Request)
+	Pause(w http.ResponseWriter, r *http.Request)
+	Resume(w http.ResponseWriter, r *http.Request)
 }

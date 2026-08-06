@@ -11,8 +11,8 @@ import (
 )
 
 type FirmwareVersionService interface {
-	ListFirmwareVersions(ctx context.Context) ([]domain.FirmwareVersion, error)
-	CreateFirmwareVersion(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
+	List(ctx context.Context) ([]domain.FirmwareVersion, error)
+	Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
 }
 
 type FirmwareVersionHandler struct {
@@ -25,10 +25,10 @@ func NewFirmwareVersionHandler(svc FirmwareVersionService) *FirmwareVersionHandl
 	}
 }
 
-func (h *FirmwareVersionHandler) ListFirmwareVersions(w http.ResponseWriter, r *http.Request) {
+func (h *FirmwareVersionHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
-	firmwareVersions, err := h.svc.ListFirmwareVersions(r.Context())
+	firmwareVersions, err := h.svc.List(r.Context())
 	if err != nil {
 		logger.Errorw("failed to list firmware versions", "error", err)
 		WriteInternalServerError(w, logger)
@@ -46,7 +46,7 @@ func (h *FirmwareVersionHandler) ListFirmwareVersions(w http.ResponseWriter, r *
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *FirmwareVersionHandler) CreateFirmwareVersion(w http.ResponseWriter, r *http.Request) {
+func (h *FirmwareVersionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 	firmwareVersionReq := dto.CreateFirmwareVersionRequest{}
 
@@ -59,7 +59,7 @@ func (h *FirmwareVersionHandler) CreateFirmwareVersion(w http.ResponseWriter, r 
 	}
 
 	firmwareVersion := firmwareVersionReq.ToDomain()
-	createdFirmwareVersion, err := h.svc.CreateFirmwareVersion(r.Context(), firmwareVersion)
+	createdFirmwareVersion, err := h.svc.Create(r.Context(), firmwareVersion)
 	if errors.Is(err, domain.ErrFirmwareVersionAlreadyExists) {
 		logger.Warnw("such firmware version already exists", "error", err)
 		WriteError(w, logger, http.StatusConflict, domain.ErrFirmwareVersionAlreadyExists.Error())

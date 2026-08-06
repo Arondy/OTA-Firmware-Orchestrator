@@ -7,16 +7,16 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/device"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/dto"
 	"github.com/google/uuid"
 )
 
 type DeviceService interface {
-	ListDevices(ctx context.Context) ([]domain.Device, error)
-	CreateDevice(ctx context.Context, device domain.Device) (domain.Device, error)
-	DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error)
-	CheckinDevice(ctx context.Context, device domain.Device) (service.CheckinResult, error)
+	List(ctx context.Context) ([]domain.Device, error)
+	Create(ctx context.Context, device domain.Device) (domain.Device, error)
+	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
+	Checkin(ctx context.Context, device domain.Device) (device.CheckinResult, error)
 }
 
 type DeviceHandler struct {
@@ -29,10 +29,10 @@ func NewDeviceHandler(svc DeviceService) *DeviceHandler {
 	}
 }
 
-func (h *DeviceHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
+func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
-	devices, err := h.svc.ListDevices(r.Context())
+	devices, err := h.svc.List(r.Context())
 	if err != nil {
 		logger.Errorw("failed to list devices", "error", err)
 		WriteInternalServerError(w, logger)
@@ -50,7 +50,7 @@ func (h *DeviceHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *DeviceHandler) CreateDevice(w http.ResponseWriter, r *http.Request) {
+func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 	deviceReq := dto.CreateDeviceRequest{}
 
@@ -63,7 +63,7 @@ func (h *DeviceHandler) CreateDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	device := deviceReq.ToDomain()
-	createdDevice, err := h.svc.CreateDevice(r.Context(), device)
+	createdDevice, err := h.svc.Create(r.Context(), device)
 	if err != nil {
 		logger.Errorw("failed to create device", "error", err)
 		WriteInternalServerError(w, logger)
@@ -74,7 +74,7 @@ func (h *DeviceHandler) CreateDevice(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, logger, http.StatusCreated, response)
 }
 
-func (h *DeviceHandler) DecommissionDevice(w http.ResponseWriter, r *http.Request) {
+func (h *DeviceHandler) Decommission(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
 	id, ok := ParseUUIDFromPath(w, r, logger)
@@ -84,7 +84,7 @@ func (h *DeviceHandler) DecommissionDevice(w http.ResponseWriter, r *http.Reques
 
 	logger = logger.With("id", id)
 
-	device, err := h.svc.DecommissionDevice(r.Context(), id)
+	device, err := h.svc.Decommission(r.Context(), id)
 	if errors.Is(err, domain.ErrDeviceNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrDeviceNotFound.Error())
@@ -99,7 +99,7 @@ func (h *DeviceHandler) DecommissionDevice(w http.ResponseWriter, r *http.Reques
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *DeviceHandler) CheckinDevice(w http.ResponseWriter, r *http.Request) {
+func (h *DeviceHandler) Checkin(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
 	id, ok := ParseUUIDFromPath(w, r, logger)
@@ -121,7 +121,7 @@ func (h *DeviceHandler) CheckinDevice(w http.ResponseWriter, r *http.Request) {
 
 	device := checkinReq.ToDomainWithID(id)
 
-	checkinResult, err := h.svc.CheckinDevice(r.Context(), device)
+	checkinResult, err := h.svc.Checkin(r.Context(), device)
 	if errors.Is(err, domain.ErrDeviceNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrDeviceNotFound.Error())

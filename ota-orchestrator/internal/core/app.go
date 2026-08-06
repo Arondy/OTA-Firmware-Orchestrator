@@ -6,7 +6,9 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/repository/postgres"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/campaign"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/device"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/firmware"
 	core_http "github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/handlers"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/middleware"
@@ -24,9 +26,9 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	firmwareVersionRepo := postgres.NewFirmwareVersionRepo(db)
 	rolloutCampaignRepo := postgres.NewRolloutCampaignRepo(db)
 
-	deviceSvc := service.NewDeviceService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo)
-	firmwareVersionSvc := service.NewFirmwareVersionService(firmwareVersionRepo)
-	rolloutCampaignSvc := service.NewRolloutCampaignService(rolloutCampaignRepo, firmwareVersionRepo)
+	deviceSvc := device.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo)
+	firmwareVersionSvc := firmware.NewService(firmwareVersionRepo)
+	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo)
 
 	healthAPI := handlers.NewHealthHandler()
 	deviceAPI := handlers.NewDeviceHandler(deviceSvc)

@@ -1,4 +1,4 @@
-package service
+package campaign
 
 import (
 	"context"
@@ -15,9 +15,10 @@ type RolloutCampaignRepo interface {
 	StartRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	PauseRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	ResumeRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	// для device
-	FindRunningRolloutCampaign(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
-	FindActiveRolloutStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
+}
+
+type FirmwareVersionRepo interface {
+	GetFirmwareVersion(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
 }
 
 type RolloutCampaignService struct {
@@ -25,22 +26,22 @@ type RolloutCampaignService struct {
 	firmwareRepo FirmwareVersionRepo
 }
 
-func NewRolloutCampaignService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRepo) *RolloutCampaignService {
+func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRepo) *RolloutCampaignService {
 	return &RolloutCampaignService{
 		campaignRepo: campaignRepo,
 		firmwareRepo: firmwareRepo,
 	}
 }
 
-func (s *RolloutCampaignService) ListRolloutCampaigns(ctx context.Context) ([]domain.RolloutCampaign, error) {
+func (s *RolloutCampaignService) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
 	return s.campaignRepo.ListRolloutCampaigns(ctx)
 }
 
-func (s *RolloutCampaignService) GetRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (s *RolloutCampaignService) Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	return s.campaignRepo.GetRolloutCampaign(ctx, id)
 }
 
-func (s *RolloutCampaignService) CreateRolloutCampaign(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error) {
+func (s *RolloutCampaignService) Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error) {
 	fw, err := s.firmwareRepo.GetFirmwareVersion(ctx, campaign.FirmwareVersionID)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
@@ -50,7 +51,7 @@ func (s *RolloutCampaignService) CreateRolloutCampaign(ctx context.Context, camp
 	return s.campaignRepo.CreateRolloutCampaign(ctx, campaign)
 }
 
-func (s *RolloutCampaignService) StartRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (s *RolloutCampaignService) Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	campaign, err := s.campaignRepo.GetRolloutCampaign(ctx, id)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
@@ -63,7 +64,7 @@ func (s *RolloutCampaignService) StartRolloutCampaign(ctx context.Context, id uu
 	return s.campaignRepo.StartRolloutCampaign(ctx, id)
 }
 
-func (s *RolloutCampaignService) PauseRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (s *RolloutCampaignService) Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	campaign, err := s.campaignRepo.GetRolloutCampaign(ctx, id)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
@@ -76,7 +77,7 @@ func (s *RolloutCampaignService) PauseRolloutCampaign(ctx context.Context, id uu
 	return s.campaignRepo.PauseRolloutCampaign(ctx, id)
 }
 
-func (s *RolloutCampaignService) ResumeRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	campaign, err := s.campaignRepo.GetRolloutCampaign(ctx, id)
 	if err != nil {
 		return domain.RolloutCampaign{}, err

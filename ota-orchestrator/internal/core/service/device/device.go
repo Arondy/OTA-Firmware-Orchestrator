@@ -1,4 +1,4 @@
-package service
+package device
 
 import (
 	"context"
@@ -21,13 +21,22 @@ type DeviceRepo interface {
 	DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error)
 }
 
+type FirmwareVersionRepo interface {
+	GetFirmwareVersion(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
+}
+
+type RolloutCampaignRepo interface {
+	FindRunningRolloutCampaign(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
+	FindActiveRolloutStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
+}
+
 type DeviceService struct {
 	deviceRepo   DeviceRepo
 	firmwareRepo FirmwareVersionRepo
 	campaignRepo RolloutCampaignRepo
 }
 
-func NewDeviceService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo) *DeviceService {
+func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo) *DeviceService {
 	return &DeviceService{
 		deviceRepo:   deviceRepo,
 		firmwareRepo: firmwareRepo,
@@ -35,15 +44,15 @@ func NewDeviceService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, c
 	}
 }
 
-func (s *DeviceService) ListDevices(ctx context.Context) ([]domain.Device, error) {
+func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
 	return s.deviceRepo.ListDevices(ctx)
 }
 
-func (s *DeviceService) CreateDevice(ctx context.Context, device domain.Device) (domain.Device, error) {
+func (s *DeviceService) Create(ctx context.Context, device domain.Device) (domain.Device, error) {
 	return s.deviceRepo.CreateDevice(ctx, device)
 }
 
-func (s *DeviceService) DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error) {
+func (s *DeviceService) Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error) {
 	return s.deviceRepo.DecommissionDevice(ctx, id)
 }
 
@@ -54,7 +63,7 @@ type CheckinResult struct {
 	FWChecksum      string
 }
 
-func (s *DeviceService) CheckinDevice(ctx context.Context, checkinDevice domain.Device) (CheckinResult, error) {
+func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device) (CheckinResult, error) {
 	device, err := s.deviceRepo.GetDevice(ctx, checkinDevice.ID)
 	if err != nil {
 		return CheckinResult{}, err

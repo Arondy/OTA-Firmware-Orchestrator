@@ -12,12 +12,12 @@ import (
 )
 
 type RolloutCampaignService interface {
-	ListRolloutCampaigns(ctx context.Context) ([]domain.RolloutCampaign, error)
-	GetRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	CreateRolloutCampaign(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error)
-	StartRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	PauseRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	ResumeRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	List(ctx context.Context) ([]domain.RolloutCampaign, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error)
+	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 }
 
 type RolloutCampaignHandler struct {
@@ -30,10 +30,10 @@ func NewRolloutCampaignHandler(svc RolloutCampaignService) *RolloutCampaignHandl
 	}
 }
 
-func (h *RolloutCampaignHandler) ListRolloutCampaigns(w http.ResponseWriter, r *http.Request) {
+func (h *RolloutCampaignHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
-	rolloutCampaigns, err := h.svc.ListRolloutCampaigns(r.Context())
+	rolloutCampaigns, err := h.svc.List(r.Context())
 	if err != nil {
 		logger.Errorw("failed to list rollout campaigns", "error", err)
 		WriteInternalServerError(w, logger)
@@ -51,7 +51,7 @@ func (h *RolloutCampaignHandler) ListRolloutCampaigns(w http.ResponseWriter, r *
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *RolloutCampaignHandler) GetRolloutCampaign(w http.ResponseWriter, r *http.Request) {
+func (h *RolloutCampaignHandler) Get(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
 	id, ok := ParseUUIDFromPath(w, r, logger)
@@ -61,7 +61,7 @@ func (h *RolloutCampaignHandler) GetRolloutCampaign(w http.ResponseWriter, r *ht
 
 	logger = logger.With("id", id)
 
-	rolloutCampaign, err := h.svc.GetRolloutCampaign(r.Context(), id)
+	rolloutCampaign, err := h.svc.Get(r.Context(), id)
 	if errors.Is(err, domain.ErrRolloutCampaignNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrRolloutCampaignNotFound.Error())
@@ -76,7 +76,7 @@ func (h *RolloutCampaignHandler) GetRolloutCampaign(w http.ResponseWriter, r *ht
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *RolloutCampaignHandler) CreateRolloutCampaign(w http.ResponseWriter, r *http.Request) {
+func (h *RolloutCampaignHandler) Create(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 	rolloutCampaignReq := dto.CreateRolloutCampaignRequest{}
 
@@ -89,7 +89,7 @@ func (h *RolloutCampaignHandler) CreateRolloutCampaign(w http.ResponseWriter, r 
 	}
 
 	rolloutCampaign := rolloutCampaignReq.ToDomain()
-	createdRolloutCampaign, err := h.svc.CreateRolloutCampaign(r.Context(), rolloutCampaign)
+	createdRolloutCampaign, err := h.svc.Create(r.Context(), rolloutCampaign)
 	if errors.Is(err, domain.ErrRolloutStageAlreadyExists) {
 		logger.Warnw("incorrect order indexes for rollout stage", "error", err)
 		WriteError(w, logger, http.StatusBadRequest, domain.ErrRolloutStageAlreadyExists.Error())
@@ -108,7 +108,7 @@ func (h *RolloutCampaignHandler) CreateRolloutCampaign(w http.ResponseWriter, r 
 	WriteJSON(w, logger, http.StatusCreated, response)
 }
 
-func (h *RolloutCampaignHandler) StartRolloutCampaign(w http.ResponseWriter, r *http.Request) {
+func (h *RolloutCampaignHandler) Start(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
 	id, ok := ParseUUIDFromPath(w, r, logger)
@@ -118,7 +118,7 @@ func (h *RolloutCampaignHandler) StartRolloutCampaign(w http.ResponseWriter, r *
 
 	logger = logger.With("id", id)
 
-	campaign, err := h.svc.StartRolloutCampaign(r.Context(), id)
+	campaign, err := h.svc.Start(r.Context(), id)
 	if errors.Is(err, domain.ErrRolloutCampaignNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrRolloutCampaignNotFound.Error())
@@ -141,7 +141,7 @@ func (h *RolloutCampaignHandler) StartRolloutCampaign(w http.ResponseWriter, r *
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *RolloutCampaignHandler) PauseRolloutCampaign(w http.ResponseWriter, r *http.Request) {
+func (h *RolloutCampaignHandler) Pause(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
 	id, ok := ParseUUIDFromPath(w, r, logger)
@@ -151,7 +151,7 @@ func (h *RolloutCampaignHandler) PauseRolloutCampaign(w http.ResponseWriter, r *
 
 	logger = logger.With("id", id)
 
-	campaign, err := h.svc.PauseRolloutCampaign(r.Context(), id)
+	campaign, err := h.svc.Pause(r.Context(), id)
 	if errors.Is(err, domain.ErrRolloutCampaignNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrRolloutCampaignNotFound.Error())
@@ -170,7 +170,7 @@ func (h *RolloutCampaignHandler) PauseRolloutCampaign(w http.ResponseWriter, r *
 	WriteJSON(w, logger, http.StatusOK, response)
 }
 
-func (h *RolloutCampaignHandler) ResumeRolloutCampaign(w http.ResponseWriter, r *http.Request) {
+func (h *RolloutCampaignHandler) Resume(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
 	id, ok := ParseUUIDFromPath(w, r, logger)
@@ -180,7 +180,7 @@ func (h *RolloutCampaignHandler) ResumeRolloutCampaign(w http.ResponseWriter, r 
 
 	logger = logger.With("id", id)
 
-	campaign, err := h.svc.ResumeRolloutCampaign(r.Context(), id)
+	campaign, err := h.svc.Resume(r.Context(), id)
 	if errors.Is(err, domain.ErrRolloutCampaignNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrRolloutCampaignNotFound.Error())
