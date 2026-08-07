@@ -11,6 +11,7 @@ type DeviceAPI interface {
 	Create(w http.ResponseWriter, r *http.Request)
 	Decommission(w http.ResponseWriter, r *http.Request)
 	Checkin(w http.ResponseWriter, r *http.Request)
+	Report(w http.ResponseWriter, r *http.Request)
 }
 
 type FirmwareVersionAPI interface {

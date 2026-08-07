@@ -17,6 +17,7 @@ func registerRoutes(mux *http.ServeMux, health HealthAPI, device DeviceAPI, firm
 	mux.HandleFunc("POST /api/v1/devices", device.Create)
 	mux.HandleFunc("POST /api/v1/devices/{id}/decommission", device.Decommission)
 	mux.HandleFunc("POST /api/v1/devices/{id}/checkin", device.Checkin)
+	mux.HandleFunc("POST /api/v1/devices/{id}/report", device.Report)
 
 	mux.HandleFunc("GET /api/v1/firmware", firmware.List)
 	mux.HandleFunc("POST /api/v1/firmware", firmware.Create)
