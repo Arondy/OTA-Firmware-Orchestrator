@@ -52,3 +52,20 @@ func (s RolloutStagesStatus) IsValid() bool {
 	}
 	return false
 }
+
+type UpdateAttemptsResult string
+
+const (
+	UpdateAttemptsResultSuccess UpdateAttemptsResult = "success"
+	UpdateAttemptsResultFailure UpdateAttemptsResult = "failure"
+	UpdateAttemptsResultTimeout UpdateAttemptsResult = "timeout"
+)
+
+func (s UpdateAttemptsResult) IsValid() bool {
+	switch s {
+	case UpdateAttemptsResultSuccess, UpdateAttemptsResultFailure,
+		UpdateAttemptsResultTimeout:
+		return true
+	}
+	return false
+}

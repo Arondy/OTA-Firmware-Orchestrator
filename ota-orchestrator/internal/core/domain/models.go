@@ -45,3 +45,12 @@ type RolloutCampaign struct {
 	StartedAt         *time.Time
 	CompletedAt       *time.Time
 }
+
+type UpdateAttempt struct {
+	ID         uuid.UUID
+	DeviceID   uuid.UUID
+	CampaignID uuid.UUID
+	StageID    uuid.UUID
+	Result     UpdateAttemptsResult
+	ReportedAt time.Time
+}
