@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -25,6 +26,7 @@ func init() {
 	})
 	Validate.RegisterValidation("semver", validateSemver)
 	Validate.RegisterValidation("rollout_stages", validateRolloutStages)
+	Validate.RegisterValidation("update_attempt_result", validateUpdateAttemptResult)
 }
 
 func validateSemver(fl validator.FieldLevel) bool {
@@ -50,6 +52,12 @@ func validateRolloutStages(fl validator.FieldLevel) bool {
 		}
 	}
 	return true
+}
+
+func validateUpdateAttemptResult(fl validator.FieldLevel) bool {
+	resultString := fl.Field().String()
+	result := domain.UpdateAttemptsResult(resultString)
+	return result.IsValid()
 }
 
 func FormatValidation(valErrs validator.ValidationErrors) map[string]string {
@@ -79,6 +87,14 @@ func FormatValidation(valErrs validator.ValidationErrors) map[string]string {
 			messages[field] = "Field must be a valid semver string"
 		case "rollout_stages":
 			messages[field] = "Stages should form 0..n-1 row"
+		case "update_attempt_result":
+			results := domain.GetAllValidUpdateAttemptsResults()
+			quoted := make([]string, len(results))
+			for i, r := range results {
+				quoted[i] = fmt.Sprintf("'%s'", r)
+			}
+
+			messages[field] = fmt.Sprintf("Result must be one of %s", strings.Join(quoted, ", "))
 		default:
 			messages[field] = "Field is invalid"
 		}

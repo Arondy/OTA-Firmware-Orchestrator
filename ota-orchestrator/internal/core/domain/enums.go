@@ -69,3 +69,11 @@ func (s UpdateAttemptsResult) IsValid() bool {
 	}
 	return false
 }
+
+func GetAllValidUpdateAttemptsResults() []UpdateAttemptsResult {
+	return []UpdateAttemptsResult{
+		UpdateAttemptsResultSuccess,
+		UpdateAttemptsResultFailure,
+		UpdateAttemptsResultTimeout,
+	}
+}

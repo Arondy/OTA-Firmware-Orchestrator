@@ -70,3 +70,39 @@ func (r CheckinDeviceRequest) ToDomainWithID(id uuid.UUID) domain.Device {
 		CurrentVersion: r.CurrentVersion,
 	}
 }
+
+type ReportDeviceResponse struct {
+	ID         uuid.UUID                   `json:"id"`
+	DeviceID   uuid.UUID                   `json:"device_id"`
+	CampaignID uuid.UUID                   `json:"campaign_id"`
+	StageID    uuid.UUID                   `json:"stage_id"`
+	Result     domain.UpdateAttemptsResult `json:"result"`
+	ReportedAt time.Time                   `json:"reported_at"`
+}
+
+func ReportResponseFromDomain(r domain.UpdateAttempt) ReportDeviceResponse {
+	return ReportDeviceResponse{
+		ID:         r.ID,
+		DeviceID:   r.DeviceID,
+		CampaignID: r.CampaignID,
+		StageID:    r.StageID,
+		Result:     r.Result,
+		ReportedAt: r.ReportedAt,
+	}
+}
+
+type ReportDeviceRequest struct {
+	CampaignID   uuid.UUID                   `json:"campaign_id" validate:"required"`
+	StageID      uuid.UUID                   `json:"stage_id" validate:"required"`
+	Result       domain.UpdateAttemptsResult `json:"result" validate:"required,update_attempt_result"`
+	ErrorMessage string                      `json:"error_message,omitempty" validate:"max=1024"`
+}
+
+func (r ReportDeviceRequest) ToDomainWithDeviceID(deviceID uuid.UUID) domain.UpdateAttempt {
+	return domain.UpdateAttempt{
+		DeviceID:   deviceID,
+		CampaignID: r.CampaignID,
+		StageID:    r.StageID,
+		Result:     r.Result,
+	}
+}
