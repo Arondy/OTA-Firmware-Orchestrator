@@ -20,7 +20,7 @@ func NewFirmwareVersionRepo(db *DB) *FirmwareVersionRepo {
 	return &FirmwareVersionRepo{DB: db}
 }
 
-func (r *FirmwareVersionRepo) ListFirmwareVersions(ctx context.Context) ([]domain.FirmwareVersion, error) {
+func (r *FirmwareVersionRepo) List(ctx context.Context) ([]domain.FirmwareVersion, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -61,7 +61,7 @@ func (r *FirmwareVersionRepo) ListFirmwareVersions(ctx context.Context) ([]domai
 	return firmwareVersions, nil
 }
 
-func (r *FirmwareVersionRepo) GetFirmwareVersion(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error) {
+func (r *FirmwareVersionRepo) Get(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -92,7 +92,7 @@ func (r *FirmwareVersionRepo) GetFirmwareVersion(ctx context.Context, id uuid.UU
 	return firmwareVersion, nil
 }
 
-func (r *FirmwareVersionRepo) CreateFirmwareVersion(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error) {
+func (r *FirmwareVersionRepo) Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 

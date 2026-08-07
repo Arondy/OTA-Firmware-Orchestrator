@@ -20,7 +20,7 @@ func NewRolloutCampaignRepo(db *DB) *RolloutCampaignRepo {
 	return &RolloutCampaignRepo{DB: db}
 }
 
-func (r *RolloutCampaignRepo) ListRolloutCampaigns(ctx context.Context) ([]domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -63,7 +63,7 @@ func (r *RolloutCampaignRepo) ListRolloutCampaigns(ctx context.Context) ([]domai
 	return rolloutCampaigns, nil
 }
 
-func (r *RolloutCampaignRepo) GetRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -101,7 +101,7 @@ func (r *RolloutCampaignRepo) GetRolloutCampaign(ctx context.Context, id uuid.UU
 	return campaign, nil
 }
 
-func (r *RolloutCampaignRepo) CreateRolloutCampaign(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -173,7 +173,7 @@ func (r *RolloutCampaignRepo) CreateRolloutCampaign(ctx context.Context, campaig
 	return createdCampaign, nil
 }
 
-func (r *RolloutCampaignRepo) StartRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -246,7 +246,7 @@ func (r *RolloutCampaignRepo) StartRolloutCampaign(ctx context.Context, id uuid.
 	return campaign, nil
 }
 
-func (r *RolloutCampaignRepo) PauseRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -284,7 +284,7 @@ func (r *RolloutCampaignRepo) PauseRolloutCampaign(ctx context.Context, id uuid.
 	return campaign, nil
 }
 
-func (r *RolloutCampaignRepo) ResumeRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -325,7 +325,7 @@ func (r *RolloutCampaignRepo) ResumeRolloutCampaign(ctx context.Context, id uuid
 	return campaign, nil
 }
 
-func (r *RolloutCampaignRepo) FindRunningRolloutCampaign(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) FindRunning(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -356,7 +356,7 @@ func (r *RolloutCampaignRepo) FindRunningRolloutCampaign(ctx context.Context, de
 	return campaign, nil
 }
 
-func (r *RolloutCampaignRepo) FindActiveRolloutStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error) {
+func (r *RolloutCampaignRepo) FindActiveStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 

@@ -7,8 +7,8 @@ import (
 )
 
 type FirmwareVersionRepo interface {
-	ListFirmwareVersions(ctx context.Context) ([]domain.FirmwareVersion, error)
-	CreateFirmwareVersion(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
+	List(ctx context.Context) ([]domain.FirmwareVersion, error)
+	Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
 }
 
 type FirmwareVersionService struct {
@@ -22,9 +22,9 @@ func NewService(repo FirmwareVersionRepo) *FirmwareVersionService {
 }
 
 func (s *FirmwareVersionService) List(ctx context.Context) ([]domain.FirmwareVersion, error) {
-	return s.repo.ListFirmwareVersions(ctx)
+	return s.repo.List(ctx)
 }
 
 func (s *FirmwareVersionService) Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error) {
-	return s.repo.CreateFirmwareVersion(ctx, firmwareVersion)
+	return s.repo.Create(ctx, firmwareVersion)
 }

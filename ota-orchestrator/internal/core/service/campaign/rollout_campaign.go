@@ -9,16 +9,16 @@ import (
 )
 
 type RolloutCampaignRepo interface {
-	ListRolloutCampaigns(ctx context.Context) ([]domain.RolloutCampaign, error)
-	GetRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	CreateRolloutCampaign(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error)
-	StartRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	PauseRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	ResumeRolloutCampaign(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	List(ctx context.Context) ([]domain.RolloutCampaign, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error)
+	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 }
 
 type FirmwareVersionRepo interface {
-	GetFirmwareVersion(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
 }
 
 type RolloutCampaignService struct {
@@ -34,25 +34,25 @@ func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRe
 }
 
 func (s *RolloutCampaignService) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
-	return s.campaignRepo.ListRolloutCampaigns(ctx)
+	return s.campaignRepo.List(ctx)
 }
 
 func (s *RolloutCampaignService) Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
-	return s.campaignRepo.GetRolloutCampaign(ctx, id)
+	return s.campaignRepo.Get(ctx, id)
 }
 
 func (s *RolloutCampaignService) Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error) {
-	fw, err := s.firmwareRepo.GetFirmwareVersion(ctx, campaign.FirmwareVersionID)
+	fw, err := s.firmwareRepo.Get(ctx, campaign.FirmwareVersionID)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
 	}
 
 	campaign.DeviceModel = fw.DeviceModel
-	return s.campaignRepo.CreateRolloutCampaign(ctx, campaign)
+	return s.campaignRepo.Create(ctx, campaign)
 }
 
 func (s *RolloutCampaignService) Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
-	campaign, err := s.campaignRepo.GetRolloutCampaign(ctx, id)
+	campaign, err := s.campaignRepo.Get(ctx, id)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
 	}
@@ -61,11 +61,11 @@ func (s *RolloutCampaignService) Start(ctx context.Context, id uuid.UUID) (domai
 		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't start %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
-	return s.campaignRepo.StartRolloutCampaign(ctx, id)
+	return s.campaignRepo.Start(ctx, id)
 }
 
 func (s *RolloutCampaignService) Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
-	campaign, err := s.campaignRepo.GetRolloutCampaign(ctx, id)
+	campaign, err := s.campaignRepo.Get(ctx, id)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
 	}
@@ -74,11 +74,11 @@ func (s *RolloutCampaignService) Pause(ctx context.Context, id uuid.UUID) (domai
 		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't pause %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
-	return s.campaignRepo.PauseRolloutCampaign(ctx, id)
+	return s.campaignRepo.Pause(ctx, id)
 }
 
 func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
-	campaign, err := s.campaignRepo.GetRolloutCampaign(ctx, id)
+	campaign, err := s.campaignRepo.Get(ctx, id)
 	if err != nil {
 		return domain.RolloutCampaign{}, err
 	}
@@ -87,5 +87,5 @@ func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (doma
 		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't resume %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
-	return s.campaignRepo.ResumeRolloutCampaign(ctx, id)
+	return s.campaignRepo.Resume(ctx, id)
 }

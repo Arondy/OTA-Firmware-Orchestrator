@@ -14,20 +14,20 @@ import (
 )
 
 type DeviceRepo interface {
-	ListDevices(ctx context.Context) ([]domain.Device, error)
-	GetDevice(ctx context.Context, id uuid.UUID) (domain.Device, error)
-	CreateDevice(ctx context.Context, device domain.Device) (domain.Device, error)
-	UpdateDeviceCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error)
-	DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error)
+	List(ctx context.Context) ([]domain.Device, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.Device, error)
+	Create(ctx context.Context, device domain.Device) (domain.Device, error)
+	UpdateCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error)
+	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
 }
 
 type FirmwareVersionRepo interface {
-	GetFirmwareVersion(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
 }
 
 type RolloutCampaignRepo interface {
-	FindRunningRolloutCampaign(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
-	FindActiveRolloutStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
+	FindRunning(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
+	FindActiveStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
 }
 
 type DeviceService struct {
@@ -45,15 +45,15 @@ func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaig
 }
 
 func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
-	return s.deviceRepo.ListDevices(ctx)
+	return s.deviceRepo.List(ctx)
 }
 
 func (s *DeviceService) Create(ctx context.Context, device domain.Device) (domain.Device, error) {
-	return s.deviceRepo.CreateDevice(ctx, device)
+	return s.deviceRepo.Create(ctx, device)
 }
 
 func (s *DeviceService) Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error) {
-	return s.deviceRepo.DecommissionDevice(ctx, id)
+	return s.deviceRepo.Decommission(ctx, id)
 }
 
 type CheckinResult struct {
@@ -64,7 +64,7 @@ type CheckinResult struct {
 }
 
 func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device) (CheckinResult, error) {
-	device, err := s.deviceRepo.GetDevice(ctx, checkinDevice.ID)
+	device, err := s.deviceRepo.Get(ctx, checkinDevice.ID)
 	if err != nil {
 		return CheckinResult{}, err
 	}
@@ -73,19 +73,19 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	device, err = s.deviceRepo.UpdateDeviceCheckinInfo(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
+	device, err = s.deviceRepo.UpdateCheckinInfo(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
 	if err != nil {
 		return CheckinResult{}, err
 	}
 
-	campaign, err := s.campaignRepo.FindRunningRolloutCampaign(ctx, device.DeviceModel)
+	campaign, err := s.campaignRepo.FindRunning(ctx, device.DeviceModel)
 	if errors.Is(err, domain.ErrRolloutCampaignNotFound) || errors.Is(err, domain.ErrRolloutCampaignWrongStatus) {
 		return CheckinResult{UpdateAvailable: false}, nil
 	} else if err != nil {
 		return CheckinResult{}, err
 	}
 
-	fw, err := s.firmwareRepo.GetFirmwareVersion(ctx, campaign.FirmwareVersionID)
+	fw, err := s.firmwareRepo.Get(ctx, campaign.FirmwareVersionID)
 	if err != nil {
 		return CheckinResult{}, err
 	}
@@ -98,7 +98,7 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	stage, err := s.campaignRepo.FindActiveRolloutStage(ctx, campaign.ID)
+	stage, err := s.campaignRepo.FindActiveStage(ctx, campaign.ID)
 	if err != nil {
 		return CheckinResult{}, err
 	}

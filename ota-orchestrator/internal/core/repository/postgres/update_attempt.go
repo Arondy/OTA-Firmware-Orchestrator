@@ -15,7 +15,7 @@ func NewUpdateAttemptRepo(db *DB) *UpdateAttemptRepo {
 	return &UpdateAttemptRepo{DB: db}
 }
 
-func (r *UpdateAttemptRepo) CreateUpdateAttempt(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error) {
+func (r *UpdateAttemptRepo) Create(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 

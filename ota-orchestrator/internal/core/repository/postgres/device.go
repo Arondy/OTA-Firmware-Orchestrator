@@ -17,7 +17,7 @@ func NewDeviceRepo(db *DB) *DeviceRepo {
 	return &DeviceRepo{DB: db}
 }
 
-func (r *DeviceRepo) ListDevices(ctx context.Context) ([]domain.Device, error) {
+func (r *DeviceRepo) List(ctx context.Context) ([]domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -58,7 +58,7 @@ func (r *DeviceRepo) ListDevices(ctx context.Context) ([]domain.Device, error) {
 	return devices, nil
 }
 
-func (r *DeviceRepo) GetDevice(ctx context.Context, id uuid.UUID) (domain.Device, error) {
+func (r *DeviceRepo) Get(ctx context.Context, id uuid.UUID) (domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -88,7 +88,7 @@ func (r *DeviceRepo) GetDevice(ctx context.Context, id uuid.UUID) (domain.Device
 	return device, nil
 }
 
-func (r *DeviceRepo) CreateDevice(ctx context.Context, device domain.Device) (domain.Device, error) {
+func (r *DeviceRepo) Create(ctx context.Context, device domain.Device) (domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -116,7 +116,7 @@ func (r *DeviceRepo) CreateDevice(ctx context.Context, device domain.Device) (do
 	return createdDevice, nil
 }
 
-func (r *DeviceRepo) UpdateDeviceCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error) {
+func (r *DeviceRepo) UpdateCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -146,7 +146,7 @@ func (r *DeviceRepo) UpdateDeviceCheckinInfo(ctx context.Context, id uuid.UUID, 
 	return device, nil
 }
 
-func (r *DeviceRepo) DecommissionDevice(ctx context.Context, id uuid.UUID) (domain.Device, error) {
+func (r *DeviceRepo) Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
