@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_campaigns_device_model_status;
