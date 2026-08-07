@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
+	"slices"
 
 	"github.com/google/uuid"
-
-	"hash/fnv"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
 	"github.com/Masterminds/semver/v3"
@@ -26,21 +26,28 @@ type FirmwareVersionRepo interface {
 }
 
 type RolloutCampaignRepo interface {
+	Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	FindRunning(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
 	FindActiveStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
 }
 
-type DeviceService struct {
-	deviceRepo   DeviceRepo
-	firmwareRepo FirmwareVersionRepo
-	campaignRepo RolloutCampaignRepo
+type UpdateAttemptRepo interface {
+	Create(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error)
 }
 
-func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo) *DeviceService {
+type DeviceService struct {
+	deviceRepo        DeviceRepo
+	firmwareRepo      FirmwareVersionRepo
+	campaignRepo      RolloutCampaignRepo
+	updateAttemptRepo UpdateAttemptRepo
+}
+
+func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo, updateAttemptRepo UpdateAttemptRepo) *DeviceService {
 	return &DeviceService{
-		deviceRepo:   deviceRepo,
-		firmwareRepo: firmwareRepo,
-		campaignRepo: campaignRepo,
+		deviceRepo:        deviceRepo,
+		firmwareRepo:      firmwareRepo,
+		campaignRepo:      campaignRepo,
+		updateAttemptRepo: updateAttemptRepo,
 	}
 }
 
@@ -136,4 +143,29 @@ func (s *DeviceService) calculateBucket(deviceID, campaignID uuid.UUID) uint32 {
 	hash.Write(deviceID[:])
 	hash.Write(campaignID[:])
 	return (hash.Sum32() % 100) + 1
+}
+
+func (s *DeviceService) Report(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error) {
+	campaign, err := s.campaignRepo.Get(ctx, updateAttempt.CampaignID)
+	if err != nil {
+		return domain.UpdateAttempt{}, err
+	}
+
+	hasStage := slices.ContainsFunc(campaign.RolloutStages, func(stage domain.RolloutStage) bool {
+		return stage.ID == updateAttempt.StageID
+	})
+	if !hasStage {
+		return domain.UpdateAttempt{}, domain.ErrRolloutStageNotFoundInCampaign
+	}
+
+	device, err := s.deviceRepo.Get(ctx, updateAttempt.DeviceID)
+	if err != nil {
+		return domain.UpdateAttempt{}, err
+	}
+
+	if device.DeviceModel != campaign.DeviceModel {
+		return domain.UpdateAttempt{}, domain.ErrWrongDeviceModel
+	}
+
+	return s.updateAttemptRepo.Create(ctx, updateAttempt)
 }

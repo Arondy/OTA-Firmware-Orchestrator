@@ -11,3 +11,6 @@ var ErrCampaignAlreadyRunning = errors.New("another campaign for this model is a
 var ErrRolloutStageAlreadyExists = errors.New("rollout stage for this rollout campaign with such index already exists")
 
 var ErrRolloutCampaignWrongStatus = errors.New("wrong status")
+
+var ErrRolloutStageNotFoundInCampaign = errors.New("rollout stage not found in this campaign")
+var ErrWrongDeviceModel = errors.New("this device's model is not updated in this campaign")
