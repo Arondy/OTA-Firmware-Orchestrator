@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/dto"
 	"github.com/go-playground/validator/v10"
@@ -29,6 +30,11 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, logger *zap.SugaredL
 	if err == io.EOF {
 		logger.Warnw("empty json", "error", err)
 		WriteError(w, logger, http.StatusBadRequest, "request body is required")
+		return false
+	} else if strings.HasPrefix(err.Error(), "json: unknown field") {
+		logger.Warnw("unknown field in request body", "error", err)
+		msg := fmt.Sprintf("unknown field in request body: %s", strings.TrimPrefix(err.Error(), "json: unknown field "))
+		WriteError(w, logger, http.StatusBadRequest, msg)
 		return false
 	} else if err != nil {
 		logger.Warnw("failed to decode request body", "error", err)
