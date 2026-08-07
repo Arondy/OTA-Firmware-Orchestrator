@@ -32,6 +32,11 @@ tasks:
     cmds:
       - task migrate -- down 1
 
+  create-migration:
+    desc: Create new migration
+    cmds:
+      - migrate create -ext sql -dir ./migrations -seq {{.CLI_ARGS}}
+
   psql:
     desc: Open psql
     cmds:
