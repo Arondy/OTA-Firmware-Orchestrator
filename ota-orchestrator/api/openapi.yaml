@@ -93,6 +93,64 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/v1/devices/{id}/checkin:
+    post:
+      tags:
+        - Devices
+      summary: Check in a device
+      operationId: checkinDevice
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckinDeviceRequest"
+      responses:
+        "200":
+          description: Checkin result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckinDeviceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/v1/devices/{id}/report:
+    post:
+      tags:
+        - Devices
+      summary: Report an update attempt result
+      operationId: reportUpdateAttempt
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportDeviceRequest"
+      responses:
+        "200":
+          description: Update attempt recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDeviceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/v1/firmware:
     get:
       tags:
@@ -261,6 +319,27 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns/{id}/advance-stage:
+    post:
+      tags:
+        - Rollout Campaigns
+      summary: Advance a rollout campaign to the next stage
+      operationId: advanceRolloutCampaignStage
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Rollout campaign advanced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloutCampaignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 components:
   parameters:
     Id:
@@ -402,6 +481,82 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DeviceResponse"
+    CheckinDeviceRequest:
+      type: object
+      required:
+        - current_version
+      properties:
+        current_version:
+          type: string
+          maxLength: 64
+          pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    CheckinDeviceResponse:
+      type: object
+      required:
+        - update_available
+      properties:
+        update_available:
+          type: boolean
+        stage_id:
+          type: string
+          format: uuid
+        binary_url:
+          type: string
+          format: uri
+        fw_checksum:
+          type: string
+          pattern: "^[0-9a-fA-F]{64}$"
+    UpdateAttemptsResult:
+      type: string
+      enum:
+        - success
+        - failure
+        - timeout
+    ReportDeviceRequest:
+      type: object
+      required:
+        - campaign_id
+        - stage_id
+        - result
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+        stage_id:
+          type: string
+          format: uuid
+        result:
+          $ref: "#/components/schemas/UpdateAttemptsResult"
+        error_message:
+          type: string
+          maxLength: 1024
+    ReportDeviceResponse:
+      type: object
+      required:
+        - id
+        - device_id
+        - campaign_id
+        - stage_id
+        - result
+        - reported_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        campaign_id:
+          type: string
+          format: uuid
+        stage_id:
+          type: string
+          format: uuid
+        result:
+          $ref: "#/components/schemas/UpdateAttemptsResult"
+        reported_at:
+          type: string
+          format: date-time
     FirmwareVersionResponse:
       type: object
       required:
