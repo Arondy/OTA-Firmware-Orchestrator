@@ -1,9 +1,8 @@
 # OTA Firmware Orchestrator
 
-Canary-раскатка обновлений прошивки на парк устройств с автоматическим принятием решений.
-
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go)](https://go.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-6BA539?style=flat-square&logo=swagger)](https://github.com/Arondy/OTA-Firmware-Orchestrator/blob/main/ota-orchestrator/api/openapi.yaml)
 
 ## Содержание
 
@@ -14,39 +13,46 @@ Canary-раскатка обновлений прошивки на парк ус
 - [План развития](#план-развития)
 - [Что реализовано сейчас](#что-реализовано-сейчас)
 
-Система управляет раскаткой обновлений прошивки методом canary-деплоя: обновление сначала получает небольшой процент устройств, и только при подтверждённой стабильности раскатка расширяется на следующую группу. Решение о продвижении или откате стадии принимается автоматически на основе метрик успешности установки, без участия человека в штатном режиме.
+Canary-раскатка OTA-обновлений прошивок: обновление сначала получает небольшая группа устройств, и только при подтверждённой стабильности раскатка расширяется на следующую стадию. Решение о продвижении или откате принимается автоматически по метрикам успешности установки. Ответственность разделена между двумя сервисами: **main service** работает с устройствами и администратором, **Rollout Controller** — источник решений по раскатке.
 
-Ответственность разделена между двумя сервисами: **main service** работает с устройствами и администратором, **Rollout Controller** - единственный источник решений по раскатке. Полное описание - в [`Задание/ТЗ.md`](Задание/ТЗ.md), пошаговый план - в [`Задание/Этапы.md`](Задание/Этапы.md).
+Полное описание — в [`Задание/ТЗ.md`](Задание/ТЗ.md), пошаговый план — в [`Задание/Этапы.md`](Задание/Этапы.md).
 
 ## Возможности
 
-- **Управление устройствами** - регистрация с моделью и начальной версией, списание, список всех устройств
-- **Реестр прошивок** - регистрация версий с моделью, sha256-контрольной суммой и URL бинарника; защита от дубликатов пары (модель, версия)
-- **Кампании раскатки со стадиями** - создание кампании с несколькими упорядоченными стадиями одним запросом
-- **Жизненный цикл кампании** - `draft - running - paused - running`, старт активирует первую стадию
-- **Валидация входных данных** - semver, sha256-hex, диапазоны стадий, порядок индексов стадий, лимит размера тела запроса
-- **OpenAPI-спецификация** - весь API описан в `ota-orchestrator/api/openapi.yaml`
+- **Управление устройствами** — регистрация с моделью и текущей версией, вывод из эксплуатации, список устройств
+- **Реестр прошивок** — регистрация версий с моделью, sha256-контрольной суммой и URL бинарника; защита от дубликатов пары (модель, версия)
+- **Кампании раскатки со стадиями** — создание кампании с несколькими упорядоченными стадиями одним запросом; жизненный цикл `draft - running - paused - running - completed`
+- **Checkin** — устройство сообщает текущую версию и получает ответ, доступно ли обновление (с URL бинарника и контрольной суммой)
+- **Report** — устройство сообщает результат установки (`success`/`failure`/`timeout`); каждый результат сохраняется в `update_attempts`
+- **Advance-stage** — ручной переход кампании к следующей стадии; после последней кампания завершается
+- **Строгая валидация** — semver, sha256-hex, диапазоны стадий, лимит тела запроса 1 MiB, запрет неизвестных полей в JSON
+- **OpenAPI-спецификация** — весь API описан в `ota-orchestrator/api/openapi.yaml`
 
 ## Архитектура
 
-- **Main service** (`ota-orchestrator/`) - HTTP API для устройств и администратора, источник правды - PostgreSQL. Раскаточных решений не принимает: только выполняет их.
-- **Rollout Controller** - периодически оценивает метрики кампаний и публикует решения в Kafka; состояние счётчиков живёт в Redis.
-- **PostgreSQL** - схемы устройств, прошивок, кампаний и стадий.
-- **Redis / Kafka** - добавляются на этапах 3–6: Redis ускоряет чтение активной стадии на checkin, Kafka связывает сервисы асинхронным пайплайном событий.
+- **Main service** (`ota-orchestrator/`) — HTTP API для устройств и администратора, источник правды — PostgreSQL. Раскаточных решений не принимает: только выполняет их.
+- **Rollout Controller** (`rollout-controller/`) — периодически оценивает метрики кампаний и публикует решения в Kafka; состояние счётчиков живёт в Redis. Появится на этапе 5.
+- **PostgreSQL** — схемы устройств, прошивок, кампаний, стадий и попыток обновления.
+- **Redis / Kafka** — добавляются на этапах 3–4: Redis ускоряет чтение активной стадии на checkin, Kafka связывает сервисы асинхронным пайплайном событий.
+
+Main service построен слоями: `transport/http` (handlers + dto) → `service/<домен>` → `repository/postgres`; доменные типы и ошибки живут в `internal/core/domain`, сборка зависимостей — в `internal/core/app.go`.
 
 ## Быстрый старт
 
 Требования: [Go 1.26+](https://go.dev/dl), [Docker](https://www.docker.com), [Task](https://taskfile.dev) (опционально).
 
 ```bash
-cp .env.example .env        # задать переменные Postgres
-cp ota-orchestrator/.env.example ota-orchestrator/.env # задать переменные приложения
-docker compose up -d        # поднять Postgres
-task migrate-up             # применить миграции
-task run                    # собрать и запустить main service
+cp .env.example .env                          # переменные Postgres
+cp ota-orchestrator/.env.example ota-orchestrator/.env   # переменные приложения
+docker compose up -d                          # поднять Postgres 18
+task migrate-up                               # применить миграции
+task run                                      # собрать и запустить main service
 ```
 
 Проверка: `curl http://localhost:8080/healthz` должен вернуть `{"status":"OK"}`.
+
+> [!NOTE]
+> Конфиг приложения читается из `.env` в текущей директории, поэтому `go run` нужно запускать из `ota-orchestrator/` — `task run` делает это сам. Файлы `.env` игнорируются git, коммитятся только `.env.example`.
 
 ### Конфигурация
 
@@ -59,7 +65,7 @@ task run                    # собрать и запустить main service
 
 ## API
 
-Все маршруты, кроме health check, имеют префикс `/api/v1`. Полная спецификация - [`ota-orchestrator/api/openapi.yaml`](ota-orchestrator/api/openapi.yaml).
+Все маршруты, кроме health check, имеют префикс `/api/v1`. Полная спецификация — [`ota-orchestrator/api/openapi.yaml`](ota-orchestrator/api/openapi.yaml).
 
 | Метод | Путь | Описание |
 |---|---|---|
@@ -67,6 +73,8 @@ task run                    # собрать и запустить main service
 | `POST` | `/devices` | регистрация устройства |
 | `GET` | `/devices` | список устройств |
 | `POST` | `/devices/{id}/decommission` | вывод устройства из эксплуатации |
+| `POST` | `/devices/{id}/checkin` | устройство сообщает текущую версию; в ответе — доступность обновления и данные бинарника |
+| `POST` | `/devices/{id}/report` | устройство сообщает результат установки; запись в `update_attempts` |
 | `POST` | `/firmware` | регистрация версии прошивки |
 | `GET` | `/firmware` | список версий прошивок |
 | `POST` | `/campaigns` | создание кампании со стадиями; `device_model` копируется из прошивки |
@@ -75,13 +83,14 @@ task run                    # собрать и запустить main service
 | `POST` | `/campaigns/{id}/start` | `draft - running`, активация первой стадии |
 | `POST` | `/campaigns/{id}/pause` | `running - paused` |
 | `POST` | `/campaigns/{id}/resume` | `paused - running` |
+| `POST` | `/campaigns/{id}/advance-stage` | переход к следующей стадии; последняя стадия завершает кампанию |
 
 ## План развития
 
 | Этап | Содержание | Статус |
 |---|---|---|
 | 1 | Каркас, основная схема БД, устройства/прошивки/кампании без бизнес-логики раскатки | Готово |
-| 2 | Checkin и report поверх Postgres | ... |
+| 2 | Checkin и report поверх Postgres, advance-stage | Готово |
 | 3 | Redis как быстрый путь чтения активной стадии | ... |
 | 4 | Kafka: события checkin и report | ... |
 | 5 | Rollout Controller: consumer результатов и счётчики в Redis | ... |
@@ -92,23 +101,24 @@ task run                    # собрать и запустить main service
 
 ## Что реализовано сейчас
 
-Состояние соответствует **этапу 1** - каркас и основная схема, без бизнес-логики раскатки. Redis, Kafka и checkin/report здесь намеренно отсутствуют.
+Состояние соответствует **этапам 1–2**.
 
 **Main service** (`ota-orchestrator/`):
-- слоистая структура: `transport/http - service - repository/postgres`, чистая сборка зависимостей в `internal/core/app.go`
+- слоистая структура `transport/http - service - repository/postgres`, чистая сборка зависимостей в `internal/core/app.go`
 - HTTP-сервер на стандартной библиотеке с middleware: request ID, access-логирование, трейсинг, восстановление после паник
 - конфигурация на koanf с валидацией обязательных переменных, логирование zap
 - строгая обработка JSON: лимит тела 1 MiB, запрет неизвестных полей, подробные ошибки валидации с разбивкой по полям
-- отправка доменных ошибок на уровне репозитория/сервиса
+- Checkin: устройство сообщает версию, сервер находит активную стадию running-кампании его модели и возвращает обновление или «нет обновлений»
+- Report: результат установки (`success`/`failure`/`timeout`) валидируется (кампания и стадия существуют, модель совпадает) и пишется в `update_attempts`
+- Advance-stage: активная стадия → `passed`, следующая → `active`; после последней стадии кампания → `completed` — всё в одной транзакции
 - OpenAPI-спецификация в `ota-orchestrator/api/openapi.yaml`
 
-**База данных** (`migrations/000001_init.up.sql`):
-- статусные ENUM-типы: `DEVICE_STATUS`, `ROLLOUT_CAMPAIGNS_STATUS`, `ROLLOUT_STAGES_STATUS`
-- таблицы `devices`, `firmware_versions`, `rollout_campaigns`, `rollout_stages`; PK - `uuidv7()`, PK в стиле `device_model` / `fw_version` / `fw_checksum`
-- ограничения: unique (модель, версия прошивки), unique (кампания, порядок стадии), CHECK-диапазоны стадий, partial unique index `one_running_campaign_per_model`
-- миграция имеет down-версию; применяется отдельным контейнером `migrate` через docker compose
+**База данных** (`migrations/`):
+- `000001_init`: статусные ENUM-типы (`DEVICE_STATUS`, `ROLLOUT_CAMPAIGNS_STATUS`, `ROLLOUT_STAGES_STATUS`), таблицы `devices`, `firmware_versions`, `rollout_campaigns`, `rollout_stages`; PK — `uuidv7()`, именование колонок с префиксом сущности (`device_model`, `fw_version`, `fw_checksum`); partial unique index `one_running_campaign_per_model`
+- `000002_create_update_attempts`: таблица `update_attempts` с ENUM `UPDATE_ATTEMPTS_RESULT` (`success`/`failure`/`timeout`) для истории попыток установки
+- `000003_create_idx_campaigns_device_model_status`: индекс для поиска активных кампаний при checkin
 
-**Инфраструктура**: `docker-compose.yml` - Postgres 18 + контейнер миграций с профилем `migrate`, `Taskfile.yml` - run/stop/migrate/psql.
+**Инфраструктура**: `docker-compose.yml` — Postgres 18 + контейнер миграций с профилем `migrate`; `Taskfile.yml` — run/stop/migrate-up/migrate-down/create-migration/psql.
 
 ## Использование ИИ
 
@@ -116,7 +126,12 @@ task run                    # собрать и запустить main service
 - Составление ТЗ и разбивка на этапы
 - Уточнения по структуре проекта
 - Проверка кода на баги и соответствие ТЗ
+- Написание README (кроме этого раздела)
 - Написание полностью однотипного кода:
-  - структуры конфигов с тегами, JSON теги в DTO
-  - методы репозиторного слоя для получения/создания объектов по образцу
-  - интерфейсы репозиториев в сервисном слое
+  1. Этап 1:
+    - структуры конфигов с тегами, JSON теги в DTO
+    - методы репозиторного слоя для получения/создания объектов по образцу
+    - интерфейсы репозиториев в сервисном слое
+  2. Этап 2:
+    - рефакторинг сервисного слоя с разнесением по подпапкам
+    - рефакторинг названий методов репозиторного слоя
