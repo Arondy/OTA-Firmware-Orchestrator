@@ -386,6 +386,76 @@ func (r *RolloutCampaignRepo) FindActiveStage(ctx context.Context, campaignID uu
 	return stage, nil
 }
 
+func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutCampaign, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
+	defer cancel()
+
+	tx, err := r.pool.BeginTx(reqCtx, pgx.TxOptions{})
+	if err != nil {
+		return domain.RolloutCampaign{}, fmt.Errorf("failed to start transaction for campaign advance: %w", err)
+	}
+	defer tx.Rollback(reqCtx)
+
+	passedQuery := `
+	WITH target AS (
+		SELECT s.id, s.order_index
+		FROM rollout_stages s
+		JOIN rollout_campaigns c ON c.id = s.campaign_id
+		WHERE s.campaign_id = $1 AND s.status = 'active' AND c.status = 'running'
+		FOR UPDATE
+	)
+		
+	UPDATE rollout_stages
+	SET status = 'passed'
+	FROM target
+	WHERE rollout_stages.id = target.id
+	RETURNING target.order_index
+	`
+
+	passedRow := tx.QueryRow(reqCtx, passedQuery, campaignID)
+
+	var orderIndex int
+	err = passedRow.Scan(&orderIndex)
+
+	if err == pgx.ErrNoRows {
+		return domain.RolloutCampaign{}, domain.ErrRolloutCampaignWrongStatus
+	} else if err != nil {
+		return domain.RolloutCampaign{}, fmt.Errorf("failed to change stage to passed: %w", err)
+	}
+
+	activeQuery := `
+	UPDATE rollout_stages
+	SET status = 'active', entered_at = now()
+	WHERE status = 'pending' AND campaign_id = $1 AND order_index = $2
+	`
+
+	ct, err := tx.Exec(reqCtx, activeQuery, campaignID, orderIndex+1)
+
+	// Нет следующей стадии => кампания завершена
+	if err != nil {
+		return domain.RolloutCampaign{}, fmt.Errorf("failed to change next stage to active: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		campaignQuery := `
+		UPDATE rollout_campaigns
+		SET status = 'completed', completed_at = now()
+		WHERE id = $1
+		`
+
+		_, err = tx.Exec(reqCtx, campaignQuery, campaignID)
+		if err != nil {
+			return domain.RolloutCampaign{}, fmt.Errorf("failed to complete rollout campaign: %w", err)
+		}
+	}
+
+	err = tx.Commit(reqCtx)
+	if err != nil {
+		return domain.RolloutCampaign{}, fmt.Errorf("failed to commit stage advance: %w", err)
+	}
+
+	return r.Get(reqCtx, campaignID)
+}
+
 func (r *RolloutCampaignRepo) listRolloutStagesByCampaignID(ctx context.Context, campaignID uuid.UUID) ([]domain.RolloutStage, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
