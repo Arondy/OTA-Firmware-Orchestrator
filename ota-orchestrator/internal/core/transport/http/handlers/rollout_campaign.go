@@ -18,6 +18,7 @@ type RolloutCampaignService interface {
 	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	AdvanceStage(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 }
 
 type RolloutCampaignHandler struct {
@@ -195,6 +196,35 @@ func (h *RolloutCampaignHandler) Resume(w http.ResponseWriter, r *http.Request) 
 		return
 	} else if err != nil {
 		logger.Errorw("failed to resume rollout campaign", "error", err)
+		WriteInternalServerError(w, logger)
+		return
+	}
+
+	response := dto.RolloutCampaignFromDomain(campaign)
+	WriteJSON(w, logger, http.StatusOK, response)
+}
+
+func (h *RolloutCampaignHandler) AdvanceStage(w http.ResponseWriter, r *http.Request) {
+	logger := config.LoggerFromContext(r.Context())
+
+	id, ok := ParseUUIDFromPath(w, r, logger)
+	if !ok {
+		return
+	}
+
+	logger = logger.With("id", id)
+
+	campaign, err := h.svc.AdvanceStage(r.Context(), id)
+	if errors.Is(err, domain.ErrRolloutCampaignNotFound) {
+		logger.Warnw("nonexistent id was received", "error", err)
+		WriteError(w, logger, http.StatusNotFound, domain.ErrRolloutCampaignNotFound.Error())
+		return
+	} else if errors.Is(err, domain.ErrRolloutCampaignWrongStatus) {
+		logger.Warnw("wrong status", "error", err)
+		WriteError(w, logger, http.StatusBadRequest, "can't advance non-running rollout campaign")
+		return
+	} else if err != nil {
+		logger.Errorw("failed to advance rollout campaign", "error", err)
 		WriteInternalServerError(w, logger)
 		return
 	}

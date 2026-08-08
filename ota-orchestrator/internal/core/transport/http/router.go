@@ -28,4 +28,5 @@ func registerRoutes(mux *http.ServeMux, health HealthAPI, device DeviceAPI, firm
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/start", campaign.Start)
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/pause", campaign.Pause)
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/resume", campaign.Resume)
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/advance-stage", campaign.AdvanceStage)
 }
