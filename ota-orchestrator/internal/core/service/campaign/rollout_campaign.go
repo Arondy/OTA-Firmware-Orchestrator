@@ -15,6 +15,7 @@ type RolloutCampaignRepo interface {
 	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
+	AdvanceStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutCampaign, error)
 }
 
 type FirmwareVersionRepo interface {
@@ -88,4 +89,17 @@ func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (doma
 	}
 
 	return s.campaignRepo.Resume(ctx, id)
+}
+
+func (s *RolloutCampaignService) AdvanceStage(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
+	campaign, err := s.campaignRepo.Get(ctx, id)
+	if err != nil {
+		return domain.RolloutCampaign{}, err
+	}
+
+	if campaign.Status != domain.RolloutCampaignsStatusRunning {
+		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't advance %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
+	}
+
+	return s.campaignRepo.AdvanceStage(ctx, id)
 }
