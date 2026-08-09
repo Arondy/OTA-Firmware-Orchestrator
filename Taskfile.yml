@@ -37,6 +37,16 @@ tasks:
     cmds:
       - migrate create -ext sql -dir ./migrations -seq {{.CLI_ARGS}}
 
+  kafka-init:
+    desc: Init kafka with topics
+    cmds:
+      - docker compose --profile kafka-init run --rm kafka-init
+
+  kafka-ui:
+    desc: Run docker with kafka-ui
+    cmds:
+      - docker compose --profile kafka-ui run --rm --service-ports kafka-ui
+
   psql:
     desc: Open psql
     cmds:
