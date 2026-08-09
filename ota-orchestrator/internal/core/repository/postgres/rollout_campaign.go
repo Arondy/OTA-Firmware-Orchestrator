@@ -31,7 +31,6 @@ func (r *RolloutCampaignRepo) List(ctx context.Context) ([]domain.RolloutCampaig
 	`
 
 	rows, err := r.pool.Query(reqCtx, query)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to list rollout campaigns: %w", err)
 	}
@@ -356,34 +355,90 @@ func (r *RolloutCampaignRepo) FindRunning(ctx context.Context, deviceModel strin
 	return campaign, nil
 }
 
-func (r *RolloutCampaignRepo) FindActiveStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error) {
+func (r *RolloutCampaignRepo) ListRunning(ctx context.Context) ([]domain.RolloutCampaign, error) {
+	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
+	defer cancel()
+
+	query := `
+	SELECT id, firmware_version_id, device_model, status, created_at, started_at, completed_at
+	FROM rollout_campaigns
+	WHERE status = 'running'
+	ORDER BY created_at DESC
+	`
+
+	rows, err := r.pool.Query(reqCtx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list running rollout campaigns: %w", err)
+	}
+	defer rows.Close()
+
+	var rolloutCampaigns []domain.RolloutCampaign
+	for rows.Next() {
+		var rolloutCampaign domain.RolloutCampaign
+		err = rows.Scan(
+			&rolloutCampaign.ID,
+			&rolloutCampaign.FirmwareVersionID,
+			&rolloutCampaign.DeviceModel,
+			&rolloutCampaign.Status,
+			&rolloutCampaign.CreatedAt,
+			&rolloutCampaign.StartedAt,
+			&rolloutCampaign.CompletedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan rollout campaign: %w", err)
+		}
+
+		rolloutCampaigns = append(rolloutCampaigns, rolloutCampaign)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read running rollout campaigns: %w", err)
+	}
+
+	return rolloutCampaigns, nil
+}
+
+func (r *RolloutCampaignRepo) FindActiveStages(ctx context.Context, campaignIDs []uuid.UUID) ([]domain.RolloutStage, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
 	query := `
 	SELECT id, campaign_id, order_index, target_percent, min_sample_size, success_threshold, status, entered_at
 	FROM rollout_stages
-	WHERE campaign_id = $1 AND status = 'active'
+	WHERE campaign_id = ANY($1) AND status = 'active'
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, campaignID)
-
-	var stage domain.RolloutStage
-	err := row.Scan(
-		&stage.ID,
-		&stage.CampaignID,
-		&stage.OrderIndex,
-		&stage.TargetPercent,
-		&stage.MinSampleSize,
-		&stage.SuccessThreshold,
-		&stage.Status,
-		&stage.EnteredAt,
-	)
+	rows, err := r.pool.Query(reqCtx, query, campaignIDs)
 	if err != nil {
-		return domain.RolloutStage{}, fmt.Errorf("failed to find active rollout stage: %w", err)
+		return nil, fmt.Errorf("failed to list rollout campaigns: %w", err)
+	}
+	defer rows.Close()
+
+	var stages []domain.RolloutStage
+	for rows.Next() {
+		var stage domain.RolloutStage
+		err := rows.Scan(
+			&stage.ID,
+			&stage.CampaignID,
+			&stage.OrderIndex,
+			&stage.TargetPercent,
+			&stage.MinSampleSize,
+			&stage.SuccessThreshold,
+			&stage.Status,
+			&stage.EnteredAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan active rollout stage: %w", err)
+		}
+
+		stages = append(stages, stage)
 	}
 
-	return stage, nil
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read active rollout stages: %w", err)
+	}
+
+	return stages, nil
 }
 
 func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutCampaign, error) {
@@ -404,7 +459,7 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 		WHERE s.campaign_id = $1 AND s.status = 'active' AND c.status = 'running'
 		FOR UPDATE
 	)
-		
+	
 	UPDATE rollout_stages
 	SET status = 'passed'
 	FROM target
