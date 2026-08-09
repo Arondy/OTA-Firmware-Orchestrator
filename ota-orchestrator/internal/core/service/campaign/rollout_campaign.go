@@ -123,7 +123,35 @@ func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (doma
 		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't resume %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
-	return s.campaignRepo.Resume(ctx, id)
+	campaign, err = s.campaignRepo.Resume(ctx, id)
+	if err != nil {
+		return domain.RolloutCampaign{}, err
+	}
+
+	logger := config.LoggerFromContext(ctx)
+
+	var activeStage domain.RolloutStage
+	var found bool
+	for _, stage := range campaign.RolloutStages {
+		if stage.Status == domain.RolloutStagesStatusActive {
+			activeStage = stage
+			found = true
+			break
+		}
+	}
+	if !found {
+		logger.Warnw("resume: failed to find active stage to put in cache", "campaign_id", id)
+		return campaign, nil
+	}
+
+	if err = s.cache.SetCurrentStage(ctx, id, activeStage.ID); err != nil {
+		logger.Warnw("resume: failed to put current stage in cache", "error", err, "campaign_id", id)
+	}
+	if err = s.cache.SetCurrentTargetPercent(ctx, id, activeStage.TargetPercent); err != nil {
+		logger.Warnw("resume: failed to put current target percent in cache", "error", err, "campaign_id", id)
+	}
+
+	return campaign, nil
 }
 
 func (s *RolloutCampaignService) AdvanceStage(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
