@@ -52,7 +52,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 
 	var router http.Handler = core_http.NewRouter(healthAPI, deviceAPI, firmwareVersionAPI, rolloutCampaignAPI)
 	router = middleware.WrapInMiddleware(router, logger)
-	server := core_http.NewServer(router, &config.HTTPServer, logger.Named("Server"))
+	server := core_http.NewServer(router, config.HTTPServer, logger.Named("Server"))
 
 	if err := server.Run(ctx); err != nil {
 		return err

@@ -25,12 +25,12 @@ func (w *zapLoggerWriter) Write(p []byte) (n int, err error) {
 }
 
 type Server struct {
-	server *http.Server
-	config *config.HTTPServerConfig
-	logger *zap.SugaredLogger
+	server  *http.Server
+	timeout time.Duration
+	logger  *zap.SugaredLogger
 }
 
-func NewServer(router http.Handler, config *config.HTTPServerConfig, logger *zap.SugaredLogger) *Server {
+func NewServer(router http.Handler, config config.HTTPServerConfig, logger *zap.SugaredLogger) *Server {
 	zapWriter := &zapLoggerWriter{logger: logger.Named("ServerErrorLog")}
 	stdLogger := log.New(zapWriter, "", 0)
 
@@ -43,9 +43,9 @@ func NewServer(router http.Handler, config *config.HTTPServerConfig, logger *zap
 	}
 
 	return &Server{
-		server: server,
-		config: config,
-		logger: logger,
+		server:  server,
+		timeout: config.Timeout,
+		logger:  logger,
 	}
 }
 
@@ -66,7 +66,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return err
 	case <-ctx.Done():
 		s.logger.Warn("Shutting down server")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.config.Timeout)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.timeout)
 		defer cancel()
 
 		if err := s.server.Shutdown(shutdownCtx); err != nil {
