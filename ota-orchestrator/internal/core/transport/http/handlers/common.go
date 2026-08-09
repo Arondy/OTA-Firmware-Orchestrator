@@ -31,7 +31,7 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, logger *zap.SugaredL
 		logger.Warnw("empty json", "error", err)
 		WriteError(w, logger, http.StatusBadRequest, "request body is required")
 		return false
-	} else if strings.HasPrefix(err.Error(), "json: unknown field") {
+	} else if err != nil && strings.HasPrefix(err.Error(), "json: unknown field") {
 		logger.Warnw("unknown field in request body", "error", err)
 		msg := fmt.Sprintf("unknown field in request body: %s", strings.TrimPrefix(err.Error(), "json: unknown field "))
 		WriteError(w, logger, http.StatusBadRequest, msg)
