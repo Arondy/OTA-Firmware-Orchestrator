@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"hash/fnv"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
 	"github.com/Masterminds/semver/v3"
 )
@@ -17,7 +19,6 @@ type DeviceRepo interface {
 	List(ctx context.Context) ([]domain.Device, error)
 	Get(ctx context.Context, id uuid.UUID) (domain.Device, error)
 	Create(ctx context.Context, device domain.Device) (domain.Device, error)
-	UpdateCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error)
 	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
 }
 
@@ -28,11 +29,22 @@ type FirmwareVersionRepo interface {
 type RolloutCampaignRepo interface {
 	Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	FindRunning(ctx context.Context, deviceModel string) (domain.RolloutCampaign, error)
-	FindActiveStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutStage, error)
 }
 
 type UpdateAttemptRepo interface {
 	Create(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error)
+}
+
+type DeviceCacheRepo interface {
+	GetCurrentVersion(ctx context.Context, id uuid.UUID) (string, error)
+	SetCurrentVersion(ctx context.Context, id uuid.UUID, currentVersion string) error
+	GetLastSeen(ctx context.Context, id uuid.UUID) (time.Time, error)
+	SetLastSeen(ctx context.Context, id uuid.UUID, lastSeen time.Time) error
+}
+
+type CampaignCacheRepo interface {
+	GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	GetCurrentTargetPercent(ctx context.Context, id uuid.UUID) (int, error)
 }
 
 type DeviceService struct {
@@ -40,19 +52,39 @@ type DeviceService struct {
 	firmwareRepo      FirmwareVersionRepo
 	campaignRepo      RolloutCampaignRepo
 	updateAttemptRepo UpdateAttemptRepo
+	deviceCacheRepo   DeviceCacheRepo
+	campaignCacheRepo CampaignCacheRepo
 }
 
-func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo, updateAttemptRepo UpdateAttemptRepo) *DeviceService {
+func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo, updateAttemptRepo UpdateAttemptRepo, deviceCacheRepo DeviceCacheRepo, campaignCacheRepo CampaignCacheRepo) *DeviceService {
 	return &DeviceService{
 		deviceRepo:        deviceRepo,
 		firmwareRepo:      firmwareRepo,
 		campaignRepo:      campaignRepo,
 		updateAttemptRepo: updateAttemptRepo,
+		deviceCacheRepo:   deviceCacheRepo,
+		campaignCacheRepo: campaignCacheRepo,
 	}
 }
 
 func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
-	return s.deviceRepo.List(ctx)
+	devices, err := s.deviceRepo.List(ctx)
+	for i, device := range devices {
+		currentVersion, err := s.deviceCacheRepo.GetCurrentVersion(ctx, device.ID)
+		if err != nil {
+			continue
+		}
+
+		lastSeen, err := s.deviceCacheRepo.GetLastSeen(ctx, device.ID)
+		if err != nil {
+			continue
+		}
+
+		devices[i].CurrentVersion = currentVersion
+		devices[i].LastSeen = &lastSeen
+	}
+
+	return devices, err
 }
 
 func (s *DeviceService) Create(ctx context.Context, device domain.Device) (domain.Device, error) {
@@ -80,9 +112,16 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	device, err = s.deviceRepo.UpdateCheckinInfo(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
+	logger := config.LoggerFromContext(ctx)
+
+	err = s.deviceCacheRepo.SetCurrentVersion(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
 	if err != nil {
-		return CheckinResult{}, err
+		logger.Warnw("failed to set device current version", "error", err, "device_id", checkinDevice.ID)
+	}
+
+	err = s.deviceCacheRepo.SetLastSeen(ctx, checkinDevice.ID, time.Now())
+	if err != nil {
+		logger.Warnw("failed to set device last seen", "error", err, "device_id", checkinDevice.ID)
 	}
 
 	campaign, err := s.campaignRepo.FindRunning(ctx, device.DeviceModel)
@@ -97,7 +136,7 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return CheckinResult{}, err
 	}
 
-	isGreater, err := isGreaterSemver(device.CurrentVersion, fw.FWVersion)
+	isGreater, err := isGreaterSemver(checkinDevice.CurrentVersion, fw.FWVersion)
 	if err != nil {
 		return CheckinResult{}, err
 	}
@@ -105,19 +144,24 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	stage, err := s.campaignRepo.FindActiveStage(ctx, campaign.ID)
+	stageID, err := s.campaignCacheRepo.GetCurrentStage(ctx, campaign.ID)
+	if err != nil {
+		return CheckinResult{}, err
+	}
+
+	targetPercent, err := s.campaignCacheRepo.GetCurrentTargetPercent(ctx, campaign.ID)
 	if err != nil {
 		return CheckinResult{}, err
 	}
 
 	bucket := s.calculateBucket(device.ID, campaign.ID)
-	if bucket > uint32(stage.TargetPercent) {
+	if bucket > uint32(targetPercent) {
 		return CheckinResult{UpdateAvailable: false}, nil
 	}
 
 	return CheckinResult{
 		UpdateAvailable: true,
-		StageID:         &stage.ID,
+		StageID:         &stageID,
 		BinaryUrl:       fw.BinaryUrl,
 		FWChecksum:      fw.FWChecksum,
 	}, nil
