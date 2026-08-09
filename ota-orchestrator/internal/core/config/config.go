@@ -16,6 +16,7 @@ import (
 type Config struct {
 	HTTPServer HTTPServerConfig `koanf:",squash"`
 	DB         DBConfig         `koanf:",squash"`
+	Cache      CacheConfig      `koanf:",squash"`
 }
 
 type HTTPServerConfig struct {
@@ -65,6 +66,13 @@ func (c DBConfig) ConnString() string {
 	}
 
 	return b.String()
+}
+
+type CacheConfig struct {
+	Host                         string        `koanf:"CACHE_HOST" validate:"required"`
+	Port                         int           `koanf:"CACHE_PORT" validate:"required"`
+	CacheDeviceLastSeenTTL       time.Duration `koanf:"CACHE_DEVICE_LAST_SEEN_TTL" validate:"required"`
+	CacheDeviceCurrentVersionTTL time.Duration `koanf:"CACHE_DEVICE_CURRENT_VERSION_TTL" validate:"required"`
 }
 
 func LoadConfig() *Config {

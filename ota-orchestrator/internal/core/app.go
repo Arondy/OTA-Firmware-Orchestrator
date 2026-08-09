@@ -6,6 +6,7 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/repository/postgres"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/repository/redis"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/campaign"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/device"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/firmware"
@@ -22,14 +23,27 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	}
 	defer db.Close()
 
+	rdb, err := redis.NewRedisClient(ctx, config.Cache)
+	if err != nil {
+		return err
+	}
+	defer rdb.Close()
+
 	deviceRepo := postgres.NewDeviceRepo(db)
 	firmwareVersionRepo := postgres.NewFirmwareVersionRepo(db)
 	rolloutCampaignRepo := postgres.NewRolloutCampaignRepo(db)
 	updateAttemptRepo := postgres.NewUpdateAttemptRepo(db)
+	deviceCacheRepo := redis.NewDeviceCacheRepo(rdb, config.Cache)
+	campaignCacheRepo := redis.NewCampaignCacheRepo(rdb)
 
-	deviceSvc := device.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo)
+	deviceSvc := device.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo)
 	firmwareVersionSvc := firmware.NewService(firmwareVersionRepo)
-	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo)
+	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo, campaignCacheRepo)
+
+	err = rolloutCampaignSvc.WarmUpCache(ctx, logger)
+	if err != nil {
+		logger.Errorw("errors during cache warmup, last one:", "error", err)
+	}
 
 	healthAPI := handlers.NewHealthHandler()
 	deviceAPI := handlers.NewDeviceHandler(deviceSvc)

@@ -1,0 +1,56 @@
+package redis
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+)
+
+type CampaignCacheRepo struct {
+	*redis.Client
+	key string
+}
+
+func NewCampaignCacheRepo(rdb *redis.Client) *CampaignCacheRepo {
+	return &CampaignCacheRepo{
+		Client: rdb,
+		key:    "campaign",
+	}
+}
+
+func (r *CampaignCacheRepo) GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	key := fmt.Sprintf("%s:%s:current_stage", r.key, id)
+	value, err := r.Get(ctx, key).Bytes()
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("failed to get campaign current_stage: %w", err)
+	}
+
+	return uuid.FromBytes(value)
+}
+
+func (r *CampaignCacheRepo) SetCurrentStage(ctx context.Context, id uuid.UUID, stageID uuid.UUID) error {
+	key := fmt.Sprintf("%s:%s:current_stage", r.key, id)
+	return r.Set(ctx, key, stageID, 0).Err()
+}
+
+func (r *CampaignCacheRepo) DeleteCurrentStage(ctx context.Context, id uuid.UUID) error {
+	key := fmt.Sprintf("%s:%s:current_stage", r.key, id)
+	return r.Del(ctx, key).Err()
+}
+
+func (r *CampaignCacheRepo) GetCurrentTargetPercent(ctx context.Context, id uuid.UUID) (int, error) {
+	key := fmt.Sprintf("%s:%s:current_target_percent", r.key, id)
+	return r.Get(ctx, key).Int()
+}
+
+func (r *CampaignCacheRepo) SetCurrentTargetPercent(ctx context.Context, id uuid.UUID, percent int) error {
+	key := fmt.Sprintf("%s:%s:current_target_percent", r.key, id)
+	return r.Set(ctx, key, percent, 0).Err()
+}
+
+func (r *CampaignCacheRepo) DeleteCurrentTargetPercent(ctx context.Context, id uuid.UUID) error {
+	key := fmt.Sprintf("%s:%s:current_target_percent", r.key, id)
+	return r.Del(ctx, key).Err()
+}

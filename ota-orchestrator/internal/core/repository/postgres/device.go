@@ -116,36 +116,6 @@ func (r *DeviceRepo) Create(ctx context.Context, device domain.Device) (domain.D
 	return createdDevice, nil
 }
 
-func (r *DeviceRepo) UpdateCheckinInfo(ctx context.Context, id uuid.UUID, version string) (domain.Device, error) {
-	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
-	defer cancel()
-
-	query := `
-	UPDATE devices SET current_version = $1, last_seen = now()
-	WHERE id = $2
-	RETURNING id, device_model, current_version, status, last_seen, created_at
-	`
-
-	row := r.pool.QueryRow(reqCtx, query, version, id)
-
-	var device domain.Device
-	err := row.Scan(
-		&device.ID,
-		&device.DeviceModel,
-		&device.CurrentVersion,
-		&device.Status,
-		&device.LastSeen,
-		&device.CreatedAt,
-	)
-	if err == pgx.ErrNoRows {
-		return domain.Device{}, domain.ErrDeviceNotFound
-	} else if err != nil {
-		return domain.Device{}, fmt.Errorf("failed to create device: %w", err)
-	}
-
-	return device, nil
-}
-
 func (r *DeviceRepo) Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
