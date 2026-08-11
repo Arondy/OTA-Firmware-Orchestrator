@@ -3,6 +3,7 @@
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go)](https://go.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-8-DC382D?style=flat-square&logo=redis)](https://redis.io)
+[![Kafka](https://img.shields.io/badge/Kafka-4.3.1-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-6BA539?style=flat-square&logo=swagger)](https://github.com/Arondy/OTA-Firmware-Orchestrator/blob/main/ota-orchestrator/api/openapi.yaml)
 
 ## Содержание
@@ -25,8 +26,9 @@ Canary-раскатка OTA-обновлений прошивок: обновл�
 - **Управление устройствами** — регистрация с моделью и текущей версией, вывод из эксплуатации, список устройств
 - **Реестр прошивок** — регистрация версий с моделью, sha256-контрольной суммой и URL бинарника; защита от дубликатов пары (модель, версия)
 - **Кампании раскатки со стадиями** — создание кампании с несколькими упорядоченными стадиями одним запросом; жизненный цикл `draft - running - paused - running - completed`
-- **Checkin с Redis на горячем пути** — активная стадия и `target_percent` читаются из Redis, running-кампания ищется в Postgres; детерминированный bucket (`FNV(device_id + campaign_id) mod 100`) решает, попадает ли устройство в стадию
-- **Report** — устройство сообщает результат установки (`success`/`failure`/`timeout`); каждый результат сохраняется в `update_attempts`
+- **Checkin с Redis на горячем пути** — активная стадия и `target_percent` читаются из Redis, running-кампания ищется в Postgres; детерминированный bucket (`FNV(device_id + campaign_id) mod 100`) решает, попадает ли устройство в стадию; событие о checkin публикуется в Kafka асинхронно и не влияет на ответ устройству
+- **Report** — устройство сообщает результат установки (`success`/`failure`/`timeout`); каждый результат сохраняется в `update_attempts` с уникальным `event_id` и публикуется в Kafka — по `event_id` контроллер дедуплицирует повторную доставку
+- **Событийный пайплайн Kafka** — топики `device.checkins` и `firmware.update-results` (KRaft, без ZooKeeper); checkin уходит fire-and-forget через буферизированный канал (переполнение буфера — дроп с warn-логом), report — синхронно, при недоступном брокере возвращается 503
 - **Advance-stage** — ручной переход кампании к следующей стадии; после последней кампания завершается
 - **Прогрев кэша при старте** — main service восстанавливает ключи активных стадий в Redis по running-кампаниям из Postgres
 - **Строгая валидация** — semver, sha256-hex, диапазоны стадий, лимит тела запроса 1 MiB, запрет неизвестных полей в JSON
@@ -34,20 +36,20 @@ Canary-раскатка OTA-обновлений прошивок: обновл�
 
 ## Архитектура
 
-- **Main service** (`ota-orchestrator/`) — HTTP API для устройств и администратора, источник правды — PostgreSQL. Раскаточных решений не принимает: только выполняет их.
-- **Rollout Controller** (`rollout-controller/`) — периодически оценивает метрики кампаний и публикует решения в Kafka; состояние счётчиков живёт в Redis. Появится на этапе 5.
+- **Main service** (`ota-orchestrator/`) — HTTP API для устройств и администратора, источник правды — PostgreSQL; публикует события checkin и результатов установки в Kafka. Раскаточных решений не принимает: только выполняет их.
+- **Rollout Controller** (`rollout-controller/`) — будет потреблять результаты из Kafka, вести счётчики в Redis и периодически публиковать решения по раскатке. Появится на этапе 5.
 - **PostgreSQL** — схемы устройств, прошивок, кампаний, стадий и попыток обновления.
 - **Redis** — проекция активной стадии (`campaign:{id}:current_stage`, `campaign:{id}:current_target_percent`) и `last_seen`/`current_version` устройств с TTL 24 часа. Postgres — источник правды, Redis — быстрый путь чтения на checkin.
-- **Kafka** — появится на этапе 4: асинхронный пайплайн событий checkin и report между сервисами.
+- **Kafka** (KRaft, без ZooKeeper) — асинхронный пайплайн событий: топик `device.checkins` (ключ `device_id`) и `firmware.update-results` (ключ `campaign_id` — все результаты кампании в одной партиции, чтобы счётчики этапа 5 читались последовательно).
 
-Main service построен слоями: `transport/http` (handlers + dto) → `service/<домен>` → `repository/postgres` + `repository/redis`; доменные типы и ошибки живут в `internal/core/domain`, сборка зависимостей — в `internal/core/app.go`.
+Main service построен слоями: `transport/http` (handlers + dto) → `service/<домен>` → `repository/postgres` + `repository/redis` + `repository/kafka`; доменные типы и ошибки живут в `internal/core/domain`, сборка зависимостей — в `internal/core/app.go`.
 
 ## Как это работает
 
 1. Прошивка регистрируется, для неё создаётся кампания со стадиями — например, 25% и 100% устройств модели.
 2. `start` активирует первую стадию: Postgres — `running` + стадия `active`, Redis — ключи активной стадии.
-3. Устройство шлёт `checkin` с текущей версией: main service находит running-кампанию по модели в Postgres, читает `current_stage`/`current_target_percent` из Redis и хэширует (`device_id` + `campaign_id`) в bucket 1–100. Обновление выдаётся, если bucket ≤ `target_percent` и версия устройства ниже целевой.
-4. Устройство ставит прошивку и шлёт `report` с `campaign_id` и `stage_id`; результат пишется в `update_attempts`.
+3. Устройство шлёт `checkin` с текущей версией: main service находит running-кампанию по модели в Postgres, читает `current_stage`/`current_target_percent` из Redis и хэширует (`device_id` + `campaign_id`) в bucket 1–100. Обновление выдаётся, если bucket ≤ `target_percent` и версия устройства ниже целевой. Событие checkin публикуется в Kafka асинхронно — ответ устройству не зависит от брокера.
+4. Устройство ставит прошивку и шлёт `report` с `campaign_id` и `stage_id`; результат с уникальным `event_id` пишется в `update_attempts` и синхронно публикуется в `firmware.update-results` — контроллер дедуплицирует повторную доставку по `event_id`.
 5. `advance-stage` переводит стадию в `passed` и активирует следующую, обновляя ключи в Redis; после последней стадии кампания завершается.
 
 > [!NOTE]
@@ -58,14 +60,18 @@ Main service построен слоями: `transport/http` (handlers + dto) �
 Требования: [Go 1.26+](https://go.dev/dl), [Docker](https://www.docker.com), [Task](https://taskfile.dev) (опционально).
 
 ```bash
-cp .env.example .env                          # переменные Postgres и Redis
+cp .env.example .env                          # переменные Postgres, Redis и Kafka
 cp ota-orchestrator/.env.example ota-orchestrator/.env   # переменные приложения
-docker compose up -d                          # поднять Postgres 18 + Redis 8
+docker compose up -d                          # поднять Postgres 18 + Redis 8 + Kafka (KRaft)
+task kafka-init                               # создать топики Kafka (один раз)
 task migrate-up                               # применить миграции
 task run                                      # собрать и запустить main service
 ```
 
 Проверка: `curl http://localhost:8080/healthz` должен вернуть `{"status":"OK"}`.
+
+> [!NOTE]
+> Топики Kafka не создаются автоматически (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`) — обязателен один запуск `task kafka-init` после поднятия Kafka. kafka-ui поднимается отдельным профилем: `task kafka-ui`. main service не стартует, пока Kafka недоступна (ping брокера при старте), поэтому сначала `docker compose up -d`, затем `task kafka-init`.
 
 > [!NOTE]
 > Конфиг приложения читается из `.env` в текущей директории, поэтому `go run` нужно запускать из `ota-orchestrator/` — `task run` делает это сам. Файлы `.env` игнорируются git, коммитятся только `.env.example`.
@@ -79,6 +85,8 @@ task run                                      # собрать и запусти
 | `DB_MAX_CONNS`, `DB_MIN_CONNS`, `DB_MAX_CONN_LIFETIME`, `DB_MAX_CONN_IDLE_TIME`, `DB_HEALTH_CHECK_PERIOD`, `DB_MAX_CONN_LIFETIME_JITTER` | параметры пула соединений pgx |
 | `CACHE_HOST`, `CACHE_PORT` | подключение к Redis |
 | `CACHE_DEVICE_LAST_SEEN_TTL`, `CACHE_DEVICE_CURRENT_VERSION_TTL` | TTL ключей устройств (по умолчанию 24 часа) |
+| `BROKER_HOST`, `BROKER_PORT`, `BROKER_TIMEOUT` | подключение к Kafka и таймаут одной записи |
+| `BROKER_BUFFER_SIZE` | размер буфера checkin-продюсера; при переполнении события дропаются с warn-логом |
 | `REQUEST_TIMEOUT` | таймаут одного запроса к БД |
 
 ## API
@@ -91,8 +99,8 @@ task run                                      # собрать и запусти
 | `POST` | `/devices` | регистрация устройства |
 | `GET` | `/devices` | список устройств (с `last_seen`/`current_version` из Redis, если ключи живы) |
 | `POST` | `/devices/{id}/decommission` | вывод устройства из эксплуатации |
-| `POST` | `/devices/{id}/checkin` | устройство сообщает текущую версию; в ответе — доступность обновления и данные бинарника |
-| `POST` | `/devices/{id}/report` | устройство сообщает результат установки; запись в `update_attempts` |
+| `POST` | `/devices/{id}/checkin` | устройство сообщает текущую версию; в ответе — доступность обновления и данные бинарника; событие публикуется в Kafka |
+| `POST` | `/devices/{id}/report` | устройство сообщает результат установки; запись в `update_attempts` с `event_id` и публикация в Kafka; при недоступном брокере — 503 |
 | `POST` | `/firmware` | регистрация версии прошивки |
 | `GET` | `/firmware` | список версий прошивок |
 | `POST` | `/campaigns` | создание кампании со стадиями; `device_model` копируется из прошивки |
@@ -110,7 +118,7 @@ task run                                      # собрать и запусти
 | 1 | Каркас, основная схема БД, устройства/прошивки/кампании без бизнес-логики раскатки | Готово |
 | 2 | Checkin и report поверх Postgres, advance-stage | Готово |
 | 3 | Redis как быстрый путь чтения активной стадии | Готово |
-| 4 | Kafka: события checkin и report | ... |
+| 4 | Kafka: события checkin и report | Готово |
 | 5 | Rollout Controller: consumer результатов и счётчики в Redis | ... |
 | 6 | Автоматические решения evaluator'а, consumer решений в main service | ... |
 | 7 | Ручной откат через gRPC ForceRollback | ... |
@@ -119,15 +127,15 @@ task run                                      # собрать и запусти
 
 ## Что реализовано сейчас
 
-Состояние соответствует **этапам 1–3**.
+Состояние соответствует **этапам 1–4**.
 
 **Main service** (`ota-orchestrator/`):
-- слоистая структура `transport/http - service - repository/postgres + repository/redis`, чистая сборка зависимостей в `internal/core/app.go`
+- слоистая структура `transport/http - service - repository/postgres + repository/redis + repository/kafka`, чистая сборка зависимостей в `internal/core/app.go`
 - HTTP-сервер на стандартной библиотеке с middleware: request ID, access-логирование, трейсинг, восстановление после паник
 - конфигурация на koanf с валидацией обязательных переменных, логирование zap
 - строгая обработка JSON: лимит тела 1 MiB, запрет неизвестных полей, подробные ошибки валидации с разбивкой по полям
-- Checkin: running-кампания ищется в Postgres по `device_model`, активная стадия и `target_percent` читаются из Redis; ответ — обновление или «нет обновлений»
-- Report: результат установки (`success`/`failure`/`timeout`) валидируется (кампания и стадия существуют, модель совпадает) и пишется в `update_attempts`
+- Checkin: running-кампания ищется в Postgres по `device_model`, активная стадия и `target_percent` читаются из Redis; ответ — обновление или «нет обновлений»; событие checkin публикуется в Kafka асинхронно, не влияя на ответ
+- Report: результат установки (`success`/`failure`/`timeout`) валидируется (кампания и стадия существуют, модель совпадает), пишется в `update_attempts` с `event_id` и синхронно публикуется в `firmware.update-results`; неудачная публикация — 503 (запись в БД при этом уже сделана, повторный report создаёт новую запись с новым `event_id` — осознанное ограничение пет-проекта)
 - Advance-stage: активная стадия → `passed`, следующая → `active`; после последней стадии кампания → `completed` — всё в одной транзакции, ключи стадии обновляются в Redis
 - GET /v1/devices подмешивает `last_seen`/`current_version` из Redis поверх строки Postgres; при истёкших ключах — значения из Postgres
 - прогрев кэша при старте: `WarmUpCache` восстанавливает ключи активных стадий по running-кампаниям
@@ -137,10 +145,13 @@ task run                                      # собрать и запусти
 - `000001_init`: статусные ENUM-типы (`DEVICE_STATUS`, `ROLLOUT_CAMPAIGNS_STATUS`, `ROLLOUT_STAGES_STATUS`), таблицы `devices`, `firmware_versions`, `rollout_campaigns`, `rollout_stages`; PK — `uuidv7()`, именование колонок с префиксом сущности (`device_model`, `fw_version`, `fw_checksum`); partial unique index `one_running_campaign_per_model`
 - `000002_create_update_attempts`: таблица `update_attempts` с ENUM `UPDATE_ATTEMPTS_RESULT` (`success`/`failure`/`timeout`) для истории попыток установки
 - `000003_create_idx_campaigns_device_model_status`: индекс для поиска активных кампаний при checkin
+- `000004`–`000007`: колонка `event_id` в `update_attempts` expand-contract'ом — колонка + бэкафилл `uuidv7()` → NOT NULL → UNIQUE-индекс → constraint; `event_id` генерирует main service на report и по нему контроллер (этап 5) дедуплицирует повторную доставку
 
 **Кэш** (`repository/redis`): ключи `campaign:{id}:current_stage` и `campaign:{id}:current_target_percent` (без TTL), `device:{id}:last_seen` и `device:{id}:current_version` (TTL из конфига); Postgres остаётся источником правды, ошибки записи в кэш не роняют checkin.
 
-**Инфраструктура**: `docker-compose.yml` — Postgres 18 + Redis 8 + контейнер миграций с профилем `migrate`; `Taskfile.yml` — run/stop/migrate-up/migrate-down/create-migration/psql.
+**События** (`repository/kafka`): продюсер checkin — буферизированный канал с неблокирующей отправкой (`select`/`default`), события дропаются при переполнении с warn-логом, запись `RequireNone`; продюсер результатов — синхронная запись `RequireOne`, ключ `campaign_id` держит результаты одной кампании в одной партиции. `event_id` генерируется на report (uuidv7) и одинаков в БД и в событии.
+
+**Инфраструктура**: `docker-compose.yml` — Postgres 18 + Redis 8 + Kafka 4.3.1 (KRaft, без ZooKeeper) + контейнер миграций с профилем `migrate`; Kafka-топики создаются профилем `kafka-init` (`task kafka-init`), визуальная отладка — профиль `kafka-ui` (`task kafka-ui`); `Taskfile.yml` — run/stop/migrate-up/migrate-down/create-migration/kafka-init/kafka-ui/psql.
 
 ## Использование ИИ
 
