@@ -11,6 +11,7 @@ import (
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/campaign"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/device"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/firmware"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/update"
 	core_http "github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/handlers"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/middleware"
@@ -49,7 +50,8 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	deviceCacheRepo := redis.NewDeviceCacheRepo(rdb, config.Cache)
 	campaignCacheRepo := redis.NewCampaignCacheRepo(rdb)
 
-	deviceSvc := device.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo, checkinsProducer, updateResultsProducer)
+	deviceSvc := device.NewService(deviceRepo, deviceCacheRepo)
+	updateSvc := update.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo, checkinsProducer, updateResultsProducer)
 	firmwareVersionSvc := firmware.NewService(firmwareVersionRepo)
 	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo, campaignCacheRepo)
 
@@ -59,7 +61,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	}
 
 	healthAPI := handlers.NewHealthHandler()
-	deviceAPI := handlers.NewDeviceHandler(deviceSvc)
+	deviceAPI := handlers.NewDeviceHandler(deviceSvc, updateSvc)
 	firmwareVersionAPI := handlers.NewFirmwareVersionHandler(firmwareVersionSvc)
 	rolloutCampaignAPI := handlers.NewRolloutCampaignHandler(rolloutCampaignSvc)
 

@@ -15,24 +15,29 @@ type DeviceService interface {
 	List(ctx context.Context) ([]domain.Device, error)
 	Create(ctx context.Context, device domain.Device) (domain.Device, error)
 	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
+}
+
+type UpdateService interface {
 	Checkin(ctx context.Context, device domain.Device) (domain.CheckinResult, error)
 	Report(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error)
 }
 
 type DeviceHandler struct {
-	svc DeviceService
+	deviceSvc DeviceService
+	updateSvc UpdateService
 }
 
-func NewDeviceHandler(svc DeviceService) *DeviceHandler {
+func NewDeviceHandler(deviceSvc DeviceService, updateSvc UpdateService) *DeviceHandler {
 	return &DeviceHandler{
-		svc: svc,
+		deviceSvc: deviceSvc,
+		updateSvc: updateSvc,
 	}
 }
 
 func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
-	devices, err := h.svc.List(r.Context())
+	devices, err := h.deviceSvc.List(r.Context())
 	if err != nil {
 		logger.Errorw("failed to list devices", "error", err)
 		WriteInternalServerError(w, logger)
@@ -63,7 +68,7 @@ func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	device := deviceReq.ToDomain()
-	createdDevice, err := h.svc.Create(r.Context(), device)
+	createdDevice, err := h.deviceSvc.Create(r.Context(), device)
 	if err != nil {
 		logger.Errorw("failed to create device", "error", err)
 		WriteInternalServerError(w, logger)
@@ -84,7 +89,7 @@ func (h *DeviceHandler) Decommission(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.With("id", id)
 
-	device, err := h.svc.Decommission(r.Context(), id)
+	device, err := h.deviceSvc.Decommission(r.Context(), id)
 	if errors.Is(err, domain.ErrDeviceNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrDeviceNotFound.Error())
@@ -121,7 +126,7 @@ func (h *DeviceHandler) Checkin(w http.ResponseWriter, r *http.Request) {
 
 	device := checkinReq.ToDomainWithID(id)
 
-	checkinResult, err := h.svc.Checkin(r.Context(), device)
+	checkinResult, err := h.updateSvc.Checkin(r.Context(), device)
 	if errors.Is(err, domain.ErrDeviceNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrDeviceNotFound.Error())
@@ -162,7 +167,7 @@ func (h *DeviceHandler) Report(w http.ResponseWriter, r *http.Request) {
 
 	updateAttempt := reportReq.ToDomainWithDeviceID(id)
 
-	updateAttemptResult, err := h.svc.Report(r.Context(), updateAttempt)
+	updateAttemptResult, err := h.updateSvc.Report(r.Context(), updateAttempt)
 	if errors.Is(err, domain.ErrDeviceNotFound) {
 		logger.Warnw("nonexistent id was received", "error", err)
 		WriteError(w, logger, http.StatusNotFound, domain.ErrDeviceNotFound.Error())
