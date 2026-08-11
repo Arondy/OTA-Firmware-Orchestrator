@@ -1,0 +1,3 @@
+ALTER TABLE update_attempts
+ADD CONSTRAINT uq_update_attempts_event_id UNIQUE
+USING INDEX uq_update_attempts_event_id;

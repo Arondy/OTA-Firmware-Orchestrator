@@ -17,6 +17,7 @@ type Config struct {
 	HTTPServer HTTPServerConfig `koanf:",squash"`
 	DB         DBConfig         `koanf:",squash"`
 	Cache      CacheConfig      `koanf:",squash"`
+	Broker     BrokerConfig     `koanf:",squash"`
 }
 
 type HTTPServerConfig struct {
@@ -73,6 +74,13 @@ type CacheConfig struct {
 	Port                         int           `koanf:"CACHE_PORT" validate:"required"`
 	CacheDeviceLastSeenTTL       time.Duration `koanf:"CACHE_DEVICE_LAST_SEEN_TTL" validate:"required"`
 	CacheDeviceCurrentVersionTTL time.Duration `koanf:"CACHE_DEVICE_CURRENT_VERSION_TTL" validate:"required"`
+}
+
+type BrokerConfig struct {
+	Host       string        `koanf:"BROKER_HOST" validate:"required"`
+	Port       int           `koanf:"BROKER_PORT" validate:"required"`
+	Timeout    time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
+	BufferSize int           `koanf:"BROKER_BUFFER_SIZE" validate:"required,min=1"`
 }
 
 func LoadConfig() *Config {

@@ -47,23 +47,35 @@ type CampaignCacheRepo interface {
 	GetCurrentTargetPercent(ctx context.Context, id uuid.UUID) (int, error)
 }
 
-type DeviceService struct {
-	deviceRepo        DeviceRepo
-	firmwareRepo      FirmwareVersionRepo
-	campaignRepo      RolloutCampaignRepo
-	updateAttemptRepo UpdateAttemptRepo
-	deviceCacheRepo   DeviceCacheRepo
-	campaignCacheRepo CampaignCacheRepo
+type CheckinProducer interface {
+	Produce(event domain.CheckinEvent)
 }
 
-func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo, updateAttemptRepo UpdateAttemptRepo, deviceCacheRepo DeviceCacheRepo, campaignCacheRepo CampaignCacheRepo) *DeviceService {
+type UpdateResultsProducer interface {
+	Produce(event domain.UpdateResultsEvent) error
+}
+
+type DeviceService struct {
+	deviceRepo            DeviceRepo
+	firmwareRepo          FirmwareVersionRepo
+	campaignRepo          RolloutCampaignRepo
+	updateAttemptRepo     UpdateAttemptRepo
+	deviceCacheRepo       DeviceCacheRepo
+	campaignCacheRepo     CampaignCacheRepo
+	checkinProducer       CheckinProducer
+	updateResultsProducer UpdateResultsProducer
+}
+
+func NewService(deviceRepo DeviceRepo, firmwareRepo FirmwareVersionRepo, campaignRepo RolloutCampaignRepo, updateAttemptRepo UpdateAttemptRepo, deviceCacheRepo DeviceCacheRepo, campaignCacheRepo CampaignCacheRepo, producer CheckinProducer, updateResultsProducer UpdateResultsProducer) *DeviceService {
 	return &DeviceService{
-		deviceRepo:        deviceRepo,
-		firmwareRepo:      firmwareRepo,
-		campaignRepo:      campaignRepo,
-		updateAttemptRepo: updateAttemptRepo,
-		deviceCacheRepo:   deviceCacheRepo,
-		campaignCacheRepo: campaignCacheRepo,
+		deviceRepo:            deviceRepo,
+		firmwareRepo:          firmwareRepo,
+		campaignRepo:          campaignRepo,
+		updateAttemptRepo:     updateAttemptRepo,
+		deviceCacheRepo:       deviceCacheRepo,
+		campaignCacheRepo:     campaignCacheRepo,
+		checkinProducer:       producer,
+		updateResultsProducer: updateResultsProducer,
 	}
 }
 
@@ -112,16 +124,16 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	logger := config.LoggerFromContext(ctx)
+	logger := config.LoggerFromContext(ctx).With("device_id", checkinDevice.ID)
 
 	err = s.deviceCacheRepo.SetCurrentVersion(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
 	if err != nil {
-		logger.Warnw("failed to set device current version", "error", err, "device_id", checkinDevice.ID)
+		logger.Warnw("failed to set device current version", "error", err)
 	}
 
 	err = s.deviceCacheRepo.SetLastSeen(ctx, checkinDevice.ID, time.Now())
 	if err != nil {
-		logger.Warnw("failed to set device last seen", "error", err, "device_id", checkinDevice.ID)
+		logger.Warnw("failed to set device last seen", "error", err)
 	}
 
 	campaign, err := s.campaignRepo.FindRunning(ctx, device.DeviceModel)
@@ -130,6 +142,14 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 	} else if err != nil {
 		return CheckinResult{}, err
 	}
+
+	s.checkinProducer.Produce(domain.CheckinEvent{
+		DeviceID:       checkinDevice.ID,
+		DeviceModel:    device.DeviceModel,
+		CurrentVersion: checkinDevice.CurrentVersion,
+		CampaignID:     campaign.ID,
+		Timestamp:      time.Now(),
+	})
 
 	fw, err := s.firmwareRepo.Get(ctx, campaign.FirmwareVersionID)
 	if err != nil {
@@ -211,5 +231,22 @@ func (s *DeviceService) Report(ctx context.Context, updateAttempt domain.UpdateA
 		return domain.UpdateAttempt{}, domain.ErrWrongDeviceModel
 	}
 
-	return s.updateAttemptRepo.Create(ctx, updateAttempt)
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return domain.UpdateAttempt{}, fmt.Errorf("failed to generate event_id: %w", err)
+	}
+	updateAttempt.EventID = eventID
+
+	attempt, err := s.updateAttemptRepo.Create(ctx, updateAttempt)
+	if err != nil {
+		return domain.UpdateAttempt{}, err
+	}
+
+	updateResults := domain.UpdateResultsEventFromAttempt(attempt)
+	err = s.updateResultsProducer.Produce(updateResults)
+	if err != nil {
+		return domain.UpdateAttempt{}, fmt.Errorf("%w: %w", domain.ErrUpdateResultNotProduced, err)
+	}
+
+	return attempt, err
 }

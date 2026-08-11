@@ -52,5 +52,6 @@ type UpdateAttempt struct {
 	CampaignID uuid.UUID
 	StageID    uuid.UUID
 	Result     UpdateAttemptsResult
+	EventID    uuid.UUID
 	ReportedAt time.Time
 }

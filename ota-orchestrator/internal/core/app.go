@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/repository/kafka"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/repository/postgres"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/repository/redis"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/campaign"
@@ -29,6 +30,18 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	}
 	defer rdb.Close()
 
+	checkinsProducer, err := kafka.NewCheckinsProducer(logger, config.Broker)
+	if err != nil {
+		return err
+	}
+	defer checkinsProducer.Close()
+
+	updateResultsProducer, err := kafka.NewUpdateResultsProducer(logger, config.Broker)
+	if err != nil {
+		return err
+	}
+	defer updateResultsProducer.Close()
+
 	deviceRepo := postgres.NewDeviceRepo(db)
 	firmwareVersionRepo := postgres.NewFirmwareVersionRepo(db)
 	rolloutCampaignRepo := postgres.NewRolloutCampaignRepo(db)
@@ -36,7 +49,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	deviceCacheRepo := redis.NewDeviceCacheRepo(rdb, config.Cache)
 	campaignCacheRepo := redis.NewCampaignCacheRepo(rdb)
 
-	deviceSvc := device.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo)
+	deviceSvc := device.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo, checkinsProducer, updateResultsProducer)
 	firmwareVersionSvc := firmware.NewService(firmwareVersionRepo)
 	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo, campaignCacheRepo)
 

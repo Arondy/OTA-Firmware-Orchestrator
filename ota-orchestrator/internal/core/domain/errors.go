@@ -14,3 +14,5 @@ var ErrRolloutCampaignWrongStatus = errors.New("wrong status")
 
 var ErrRolloutStageNotFoundInCampaign = errors.New("rollout stage not found in this campaign")
 var ErrWrongDeviceModel = errors.New("this device's model is not updated in this campaign")
+
+var ErrUpdateResultNotProduced = errors.New("failed to produce update result")
