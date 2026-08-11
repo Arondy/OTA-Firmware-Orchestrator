@@ -180,6 +180,10 @@ func (h *DeviceHandler) Report(w http.ResponseWriter, r *http.Request) {
 		logger.Warnw("device's model mismatch with the rollout campaign's one", "error", err, "rollout_campaign_id", updateAttempt.CampaignID, "device_id", updateAttempt.DeviceID)
 		WriteError(w, logger, http.StatusBadRequest, domain.ErrWrongDeviceModel.Error())
 		return
+	} else if errors.Is(err, domain.ErrUpdateResultNotProduced) {
+		logger.Errorw("failed to produce update result for device", "error", err)
+		WriteError(w, logger, http.StatusServiceUnavailable, "service unavailable")
+		return
 	} else if err != nil {
 		logger.Errorw("failed to report device", "error", err)
 		WriteInternalServerError(w, logger)
