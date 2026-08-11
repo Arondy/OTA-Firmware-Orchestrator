@@ -20,12 +20,12 @@ func (r *UpdateAttemptRepo) Create(ctx context.Context, updateAttempt domain.Upd
 	defer cancel()
 
 	query := `
-	INSERT INTO update_attempts (device_id, campaign_id, stage_id, result)
-	VALUES ($1, $2, $3, $4)
-	RETURNING id, device_id, campaign_id, stage_id, result, reported_at
+	INSERT INTO update_attempts (device_id, campaign_id, stage_id, result, event_id)
+	VALUES ($1, $2, $3, $4, $5)
+	RETURNING id, device_id, campaign_id, stage_id, result, event_id, reported_at
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, updateAttempt.DeviceID, updateAttempt.CampaignID, updateAttempt.StageID, updateAttempt.Result)
+	row := r.pool.QueryRow(reqCtx, query, updateAttempt.DeviceID, updateAttempt.CampaignID, updateAttempt.StageID, updateAttempt.Result, updateAttempt.EventID)
 
 	var createdUpdateAttempt domain.UpdateAttempt
 	err := row.Scan(
@@ -34,6 +34,7 @@ func (r *UpdateAttemptRepo) Create(ctx context.Context, updateAttempt domain.Upd
 		&createdUpdateAttempt.CampaignID,
 		&createdUpdateAttempt.StageID,
 		&createdUpdateAttempt.Result,
+		&createdUpdateAttempt.EventID,
 		&createdUpdateAttempt.ReportedAt,
 	)
 
