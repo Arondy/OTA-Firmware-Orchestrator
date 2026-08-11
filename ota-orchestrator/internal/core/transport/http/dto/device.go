@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/device"
 	"github.com/google/uuid"
 )
 
@@ -51,7 +50,7 @@ type CheckinDeviceResponse struct {
 	FWChecksum      string     `json:"fw_checksum,omitempty"`
 }
 
-func CheckinResponseFromDomain(c device.CheckinResult) CheckinDeviceResponse {
+func CheckinResponseFromDomain(c domain.CheckinResult) CheckinDeviceResponse {
 	return CheckinDeviceResponse{
 		UpdateAvailable: c.UpdateAvailable,
 		StageID:         c.StageID,

@@ -107,21 +107,14 @@ func (s *DeviceService) Decommission(ctx context.Context, id uuid.UUID) (domain.
 	return s.deviceRepo.Decommission(ctx, id)
 }
 
-type CheckinResult struct {
-	UpdateAvailable bool
-	StageID         *uuid.UUID
-	BinaryUrl       string
-	FWChecksum      string
-}
-
-func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device) (CheckinResult, error) {
+func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device) (domain.CheckinResult, error) {
 	device, err := s.deviceRepo.Get(ctx, checkinDevice.ID)
 	if err != nil {
-		return CheckinResult{}, err
+		return domain.CheckinResult{}, err
 	}
 
 	if device.Status == domain.DeviceStatusDecommissioned {
-		return CheckinResult{UpdateAvailable: false}, nil
+		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
 	logger := config.LoggerFromContext(ctx).With("device_id", checkinDevice.ID)
@@ -138,9 +131,9 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 
 	campaign, err := s.campaignRepo.FindRunning(ctx, device.DeviceModel)
 	if errors.Is(err, domain.ErrRolloutCampaignNotFound) || errors.Is(err, domain.ErrRolloutCampaignWrongStatus) {
-		return CheckinResult{UpdateAvailable: false}, nil
+		return domain.CheckinResult{UpdateAvailable: false}, nil
 	} else if err != nil {
-		return CheckinResult{}, err
+		return domain.CheckinResult{}, err
 	}
 
 	s.checkinProducer.Produce(domain.CheckinEvent{
@@ -153,33 +146,33 @@ func (s *DeviceService) Checkin(ctx context.Context, checkinDevice domain.Device
 
 	fw, err := s.firmwareRepo.Get(ctx, campaign.FirmwareVersionID)
 	if err != nil {
-		return CheckinResult{}, err
+		return domain.CheckinResult{}, err
 	}
 
 	isGreater, err := isGreaterSemver(checkinDevice.CurrentVersion, fw.FWVersion)
 	if err != nil {
-		return CheckinResult{}, err
+		return domain.CheckinResult{}, err
 	}
 	if isGreater {
-		return CheckinResult{UpdateAvailable: false}, nil
+		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
 	stageID, err := s.campaignCacheRepo.GetCurrentStage(ctx, campaign.ID)
 	if err != nil {
-		return CheckinResult{}, err
+		return domain.CheckinResult{}, err
 	}
 
 	targetPercent, err := s.campaignCacheRepo.GetCurrentTargetPercent(ctx, campaign.ID)
 	if err != nil {
-		return CheckinResult{}, err
+		return domain.CheckinResult{}, err
 	}
 
 	bucket := s.calculateBucket(device.ID, campaign.ID)
 	if bucket > uint32(targetPercent) {
-		return CheckinResult{UpdateAvailable: false}, nil
+		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	return CheckinResult{
+	return domain.CheckinResult{
 		UpdateAvailable: true,
 		StageID:         &stageID,
 		BinaryUrl:       fw.BinaryUrl,

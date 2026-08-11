@@ -7,7 +7,6 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/service/device"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/dto"
 	"github.com/google/uuid"
 )
@@ -16,7 +15,7 @@ type DeviceService interface {
 	List(ctx context.Context) ([]domain.Device, error)
 	Create(ctx context.Context, device domain.Device) (domain.Device, error)
 	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
-	Checkin(ctx context.Context, device domain.Device) (device.CheckinResult, error)
+	Checkin(ctx context.Context, device domain.Device) (domain.CheckinResult, error)
 	Report(ctx context.Context, updateAttempt domain.UpdateAttempt) (domain.UpdateAttempt, error)
 }
 
