@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

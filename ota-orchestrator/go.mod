@@ -1,4 +1,4 @@
-module github.com/Arondy/OTA-Firmware-Orchestrator
+module github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator
 
 go 1.26.0
 

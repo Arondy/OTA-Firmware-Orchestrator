@@ -4,7 +4,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-8-DC382D?style=flat-square&logo=redis)](https://redis.io)
 [![Kafka](https://img.shields.io/badge/Kafka-4.3.1-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org)
-[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-6BA539?style=flat-square&logo=swagger)](https://github.com/Arondy/OTA-Firmware-Orchestrator/blob/main/ota-orchestrator/api/openapi.yaml)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-6BA539?style=flat-square&logo=swagger)](https://github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/blob/main/ota-orchestrator/api/openapi.yaml)
 
 ## Содержание
 

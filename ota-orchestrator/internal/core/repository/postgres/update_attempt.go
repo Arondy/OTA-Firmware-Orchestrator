@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 )
 
 type UpdateAttemptRepo struct {

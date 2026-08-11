@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
-	core_http "github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/handlers"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
+	core_http "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )

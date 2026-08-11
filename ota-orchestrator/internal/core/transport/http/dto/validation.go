@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/go-playground/validator/v10"
 )
 

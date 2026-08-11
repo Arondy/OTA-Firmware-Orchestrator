@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 )
 
 type DeviceRepo interface {

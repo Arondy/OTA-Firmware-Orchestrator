@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 )
 
 func main() {

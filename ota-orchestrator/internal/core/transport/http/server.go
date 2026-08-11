@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"go.uber.org/zap"
 )
 

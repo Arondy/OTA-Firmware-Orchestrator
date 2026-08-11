@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 )
 
 type HealthHandler struct{}

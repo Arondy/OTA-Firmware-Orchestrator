@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 )

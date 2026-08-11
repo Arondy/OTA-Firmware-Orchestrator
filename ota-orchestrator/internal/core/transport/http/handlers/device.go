@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/config"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/domain"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/internal/core/transport/http/dto"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/dto"
 	"github.com/google/uuid"
 )
 
