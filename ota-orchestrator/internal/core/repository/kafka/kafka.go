@@ -8,7 +8,7 @@ import (
 )
 
 func Ping(address string) error {
-	dialer := &kafka.Dialer{Timeout: 5 * time.Second}
+	dialer := &kafka.Dialer{Timeout: 15 * time.Second}
 	conn, err := dialer.Dial("tcp", address)
 	if err != nil {
 		return fmt.Errorf("kafka ping failed: cannot connect to broker: %w", err)
