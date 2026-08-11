@@ -77,10 +77,11 @@ type CacheConfig struct {
 }
 
 type BrokerConfig struct {
-	Host       string        `koanf:"BROKER_HOST" validate:"required"`
-	Port       int           `koanf:"BROKER_PORT" validate:"required"`
-	Timeout    time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
-	BufferSize int           `koanf:"BROKER_BUFFER_SIZE" validate:"required,min=1"`
+	Host         string        `koanf:"BROKER_HOST" validate:"required"`
+	Port         int           `koanf:"BROKER_PORT" validate:"required"`
+	BatchTimeout time.Duration `koanf:"BROKER_BATCH_TIMEOUT" validate:"required"`
+	Timeout      time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
+	BufferSize   int           `koanf:"BROKER_BUFFER_SIZE" validate:"required,min=1"`
 }
 
 func LoadConfig() *Config {
