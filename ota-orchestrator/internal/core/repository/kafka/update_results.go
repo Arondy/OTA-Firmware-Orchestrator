@@ -30,6 +30,7 @@ func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerCon
 		Addr:         addr,
 		Topic:        updateResultsTopic,
 		Balancer:     &kafka.Hash{},
+		BatchTimeout: config.BatchTimeout,
 		RequiredAcks: kafka.RequireOne,
 	}
 
