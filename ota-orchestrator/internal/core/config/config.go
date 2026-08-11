@@ -39,7 +39,7 @@ type DBConfig struct {
 	MaxConnIdleTime       time.Duration `koanf:"DB_MAX_CONN_IDLE_TIME"`
 	HealthCheckPeriod     time.Duration `koanf:"DB_HEALTH_CHECK_PERIOD"`
 	MaxConnLifetimeJitter time.Duration `koanf:"DB_MAX_CONN_LIFETIME_JITTER"`
-	RequestTimeout        time.Duration `koanf:"REQUEST_TIMEOUT" validate:"required"`
+	RequestTimeout        time.Duration `koanf:"DB_REQUEST_TIMEOUT" validate:"required"`
 }
 
 func (c DBConfig) ConnString() string {
