@@ -21,8 +21,8 @@ func NewDeviceCacheRepo(rdb *redis.Client, config config.CacheConfig) *DeviceCac
 	return &DeviceCacheRepo{
 		Client:            rdb,
 		key:               "device",
-		lastSeenTTL:       config.CacheDeviceLastSeenTTL,
-		currentVersionTTL: config.CacheDeviceCurrentVersionTTL,
+		lastSeenTTL:       config.DeviceLastSeenTTL,
+		currentVersionTTL: config.DeviceCurrentVersionTTL,
 	}
 }
 
