@@ -21,26 +21,26 @@ type DeviceCacheRepo interface {
 }
 
 type DeviceService struct {
-	deviceRepo  DeviceRepo
-	deviceCache DeviceCacheRepo
+	repo  DeviceRepo
+	cache DeviceCacheRepo
 }
 
-func NewService(deviceRepo DeviceRepo, deviceCache DeviceCacheRepo) *DeviceService {
+func NewService(repo DeviceRepo, cache DeviceCacheRepo) *DeviceService {
 	return &DeviceService{
-		deviceRepo:  deviceRepo,
-		deviceCache: deviceCache,
+		repo:  repo,
+		cache: cache,
 	}
 }
 
 func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
-	devices, err := s.deviceRepo.List(ctx)
+	devices, err := s.repo.List(ctx)
 	for i, device := range devices {
-		currentVersion, err := s.deviceCache.GetCurrentVersion(ctx, device.ID)
+		currentVersion, err := s.cache.GetCurrentVersion(ctx, device.ID)
 		if err != nil {
 			continue
 		}
 
-		lastSeen, err := s.deviceCache.GetLastSeen(ctx, device.ID)
+		lastSeen, err := s.cache.GetLastSeen(ctx, device.ID)
 		if err != nil {
 			continue
 		}
@@ -53,9 +53,9 @@ func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
 }
 
 func (s *DeviceService) Create(ctx context.Context, device domain.Device) (domain.Device, error) {
-	return s.deviceRepo.Create(ctx, device)
+	return s.repo.Create(ctx, device)
 }
 
 func (s *DeviceService) Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error) {
-	return s.deviceRepo.Decommission(ctx, id)
+	return s.repo.Decommission(ctx, id)
 }
