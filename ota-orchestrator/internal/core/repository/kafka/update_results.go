@@ -26,7 +26,7 @@ func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerCon
 		return nil, err
 	}
 
-	updateResults := &kafka.Writer{
+	writer := &kafka.Writer{
 		Addr:         addr,
 		Topic:        updateResultsTopic,
 		Balancer:     &kafka.Hash{},
@@ -35,7 +35,7 @@ func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerCon
 	}
 
 	p := &UpdateResultsProducer{
-		writer:  updateResults,
+		writer:  writer,
 		timeout: config.Timeout,
 		logger:  logger,
 	}
