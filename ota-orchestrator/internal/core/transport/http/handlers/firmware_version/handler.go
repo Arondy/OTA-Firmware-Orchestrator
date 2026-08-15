@@ -1,11 +1,27 @@
-package dto
+package firmware_version
 
 import (
+	"context"
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 )
+
+type FirmwareVersionService interface {
+	List(ctx context.Context) ([]domain.FirmwareVersion, error)
+	Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
+}
+
+type FirmwareVersionHandler struct {
+	svc FirmwareVersionService
+}
+
+func NewFirmwareVersionHandler(svc FirmwareVersionService) *FirmwareVersionHandler {
+	return &FirmwareVersionHandler{
+		svc: svc,
+	}
+}
 
 type FirmwareVersionResponse struct {
 	ID          uuid.UUID `json:"id"`
@@ -24,25 +40,5 @@ func FirmwareVersionFromDomain(fwv domain.FirmwareVersion) FirmwareVersionRespon
 		FWChecksum:  fwv.FWChecksum,
 		BinaryUrl:   fwv.BinaryUrl,
 		CreatedAt:   fwv.CreatedAt,
-	}
-}
-
-type ListFirmwareVersionsResponse struct {
-	FirmwareVersions []FirmwareVersionResponse `json:"firmware_versions"`
-}
-
-type CreateFirmwareVersionRequest struct {
-	DeviceModel string `json:"device_model" validate:"required,min=2,max=64"`
-	FWVersion   string `json:"fw_version" validate:"required,max=64,semver"`
-	FWChecksum  string `json:"fw_checksum" validate:"required,len=64,hexadecimal"`
-	BinaryUrl   string `json:"binary_url" validate:"required,url"`
-}
-
-func (r CreateFirmwareVersionRequest) ToDomain() domain.FirmwareVersion {
-	return domain.FirmwareVersion{
-		DeviceModel: r.DeviceModel,
-		FWVersion:   r.FWVersion,
-		FWChecksum:  r.FWChecksum,
-		BinaryUrl:   r.BinaryUrl,
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/dto"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -50,7 +49,7 @@ func DecodeJSONBody(w http.ResponseWriter, r *http.Request, logger *zap.SugaredL
 }
 
 func ValidateRequest(w http.ResponseWriter, logger *zap.SugaredLogger, req any) bool {
-	err := dto.Validate.Struct(req)
+	err := Validate.Struct(req)
 	if err == nil {
 		return true
 	}
@@ -62,7 +61,7 @@ func ValidateRequest(w http.ResponseWriter, logger *zap.SugaredLogger, req any) 
 		return false
 	}
 
-	messages := dto.FormatValidation(valErrs)
+	messages := FormatValidation(valErrs)
 	logger.Warnw("request didn't pass validation", "fields", messages)
 	response := map[string]any{"error": "request didn't pass validation", "fields": messages}
 

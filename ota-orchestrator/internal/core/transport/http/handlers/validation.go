@@ -1,4 +1,4 @@
-package dto
+package handlers
 
 import (
 	"fmt"
@@ -34,14 +34,19 @@ func validateSemver(fl validator.FieldLevel) bool {
 }
 
 func validateRolloutStages(fl validator.FieldLevel) bool {
-	stages, ok := fl.Field().Interface().([]RolloutStageRequest)
-	if !ok {
+	field := fl.Field()
+	if field.Kind() != reflect.Slice {
 		return false
 	}
 
-	indexes := make([]int, len(stages))
-	for i, s := range stages {
-		indexes[i] = s.OrderIndex
+	indexes := make([]int, field.Len())
+	for i := 0; i < field.Len(); i++ {
+		elem := field.Index(i)
+		oi := elem.FieldByName("OrderIndex")
+		if !oi.IsValid() || oi.Kind() != reflect.Int {
+			return false
+		}
+		indexes[i] = int(oi.Int())
 	}
 
 	slices.Sort(indexes)

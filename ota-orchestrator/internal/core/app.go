@@ -13,7 +13,10 @@ import (
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/firmware"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/update"
 	core_http "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers"
+	devicehandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/device"
+	firmwarehandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/firmware_version"
+	healthhandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/health"
+	campaignhandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/rollout_campaign"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/middleware"
 	"go.uber.org/zap"
 )
@@ -60,10 +63,10 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 		logger.Errorw("errors during cache warmup, last one:", "error", err)
 	}
 
-	healthAPI := handlers.NewHealthHandler()
-	deviceAPI := handlers.NewDeviceHandler(deviceSvc, updateSvc)
-	firmwareVersionAPI := handlers.NewFirmwareVersionHandler(firmwareVersionSvc)
-	rolloutCampaignAPI := handlers.NewRolloutCampaignHandler(rolloutCampaignSvc)
+	healthAPI := healthhandler.NewHealthHandler()
+	deviceAPI := devicehandler.NewDeviceHandler(deviceSvc, updateSvc)
+	firmwareVersionAPI := firmwarehandler.NewFirmwareVersionHandler(firmwareVersionSvc)
+	rolloutCampaignAPI := campaignhandler.NewRolloutCampaignHandler(rolloutCampaignSvc)
 
 	var router http.Handler = core_http.NewRouter(healthAPI, deviceAPI, firmwareVersionAPI, rolloutCampaignAPI)
 	router = middleware.WrapInMiddleware(router, logger)
