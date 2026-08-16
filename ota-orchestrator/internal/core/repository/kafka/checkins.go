@@ -3,7 +3,8 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
@@ -23,7 +24,7 @@ type CheckinsProducer struct {
 }
 
 func NewCheckinsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) (*CheckinsProducer, error) {
-	addr := kafka.TCP(fmt.Sprintf("%s:%d", config.Host, config.Port))
+	addr := kafka.TCP(net.JoinHostPort(config.Host, strconv.Itoa(config.Port)))
 	if err := Ping(addr.String()); err != nil {
 		return nil, err
 	}

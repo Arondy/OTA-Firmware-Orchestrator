@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
@@ -21,7 +23,7 @@ type UpdateResultsProducer struct {
 }
 
 func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) (*UpdateResultsProducer, error) {
-	addr := kafka.TCP(fmt.Sprintf("%s:%d", config.Host, config.Port))
+	addr := kafka.TCP(net.JoinHostPort(config.Host, strconv.Itoa(config.Port)))
 	if err := Ping(addr.String()); err != nil {
 		return nil, err
 	}

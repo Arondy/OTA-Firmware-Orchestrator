@@ -3,6 +3,8 @@ package redis
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
@@ -11,7 +13,7 @@ import (
 
 func NewRedisClient(ctx context.Context, config config.CacheConfig) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", config.Host, config.Port),
+		Addr:         net.JoinHostPort(config.Host, strconv.Itoa(config.Port)),
 		ReadTimeout:  500 * time.Millisecond,
 		WriteTimeout: 500 * time.Millisecond,
 	})
