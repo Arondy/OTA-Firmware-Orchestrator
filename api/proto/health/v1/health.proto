@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package health.v1;
+
+option go_package = "github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/health/v1;healthv1";
+
+service HealthService {
+  rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse);
+}
+
+message CheckHealthRequest {}
+
+message CheckHealthResponse {
+  string status = 1;
+}
