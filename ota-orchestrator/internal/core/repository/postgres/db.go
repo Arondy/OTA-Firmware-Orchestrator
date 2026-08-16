@@ -7,6 +7,7 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 type DB struct {
@@ -14,7 +15,9 @@ type DB struct {
 	requestTimeout time.Duration
 }
 
-func NewDB(ctx context.Context, config config.DBConfig) (*DB, error) {
+func NewDB(ctx context.Context, config config.DBConfig, logger *zap.SugaredLogger) (*DB, error) {
+	logger.Debugf("Connecting to Postgres on %s:%d", config.Host, config.Port)
+
 	pgxConfig, err := pgxpool.ParseConfig(config.ConnString())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connString: %w", err)

@@ -22,13 +22,13 @@ import (
 )
 
 func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) error {
-	db, err := postgres.NewDB(ctx, config.DB)
+	db, err := postgres.NewDB(ctx, config.DB, logger)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	rdb, err := redis.NewRedisClient(ctx, config.Cache)
+	rdb, err := redis.NewRedisClient(ctx, config.Cache, logger)
 	if err != nil {
 		return err
 	}

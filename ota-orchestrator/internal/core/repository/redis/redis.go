@@ -9,11 +9,15 @@ import (
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
-func NewRedisClient(ctx context.Context, config config.CacheConfig) (*redis.Client, error) {
+func NewRedisClient(ctx context.Context, config config.CacheConfig, logger *zap.SugaredLogger) (*redis.Client, error) {
+	addr := net.JoinHostPort(config.Host, strconv.Itoa(config.Port))
+	logger.Debugf("Connecting to Redis on %s", addr)
+
 	rdb := redis.NewClient(&redis.Options{
-		Addr:         net.JoinHostPort(config.Host, strconv.Itoa(config.Port)),
+		Addr:         addr,
 		ReadTimeout:  500 * time.Millisecond,
 		WriteTimeout: 500 * time.Millisecond,
 	})
