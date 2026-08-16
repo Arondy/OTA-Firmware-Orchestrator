@@ -6,11 +6,21 @@ dotenv: [".env"]
 silent: true
 
 tasks:
-  run:
-    desc: Run services
+  run-orchestrator:
+    aliases:
+      - ro
+    desc: Run orchestrator
     cmds:
       - docker compose up -d
       - cd ota-orchestrator && go run ./cmd/ota-orchestrator/main.go
+
+  run-controller:
+    aliases:
+      - rc
+    desc: Run controller
+    cmds:
+      - docker compose up -d
+      - cd rollout-controller && go run ./cmd/rollout-controller/main.go
 
   stop:
     desc: Stop services
@@ -51,3 +61,8 @@ tasks:
     desc: Open psql
     cmds:
       - docker compose exec -it postgres psql -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}}
+
+  gen:
+    desc: Generate code from .proto
+    cmds:
+      - buf generate
