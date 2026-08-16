@@ -71,8 +71,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 		if err := s.server.Shutdown(shutdownCtx); err != nil {
 			_ = s.server.Close()
-
-			return fmt.Errorf("error while gracefully shutting down server: %w", err)
+			return fmt.Errorf("error during server graceful shutdown: %w", err)
 		}
 
 		s.logger.Info("Server was stopped")
