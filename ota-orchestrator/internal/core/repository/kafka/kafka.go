@@ -8,15 +8,27 @@ import (
 )
 
 func Ping(address string) error {
-	dialer := &kafka.Dialer{Timeout: 15 * time.Second}
-	conn, err := dialer.Dial("tcp", address)
-	if err != nil {
-		return fmt.Errorf("kafka ping failed: cannot connect to broker: %w", err)
-	}
-	defer conn.Close()
+	const attempts = 15
+	const pause = time.Second
+	var lastErr error
 
-	if _, err = conn.Brokers(); err != nil {
-		return fmt.Errorf("kafka ping failed: cannot fetch metadata: %w", err)
+	for i := range attempts {
+		dialer := &kafka.Dialer{Timeout: 5 * time.Second}
+		conn, err := dialer.Dial("tcp", address)
+		if err != nil {
+			return fmt.Errorf("connection to kafka address failed: %w", err)
+		}
+
+		if _, err = conn.Brokers(); err == nil {
+			conn.Close()
+			return nil
+		}
+		lastErr = err
+		conn.Close()
+
+		if i < attempts-1 {
+			time.Sleep(pause)
+		}
 	}
-	return nil
+	return fmt.Errorf("kafka ping failed after %d attempts: %w", attempts, lastErr)
 }

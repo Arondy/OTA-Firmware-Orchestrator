@@ -24,6 +24,8 @@ type UpdateResultsProducer struct {
 
 func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) (*UpdateResultsProducer, error) {
 	addr := kafka.TCP(net.JoinHostPort(config.Host, strconv.Itoa(config.Port)))
+	logger.Debugf("Connecting to UpdateResultsProducer on %s", addr.String())
+
 	if err := Ping(addr.String()); err != nil {
 		return nil, err
 	}

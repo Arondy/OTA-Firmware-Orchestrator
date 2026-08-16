@@ -25,6 +25,8 @@ type CheckinsProducer struct {
 
 func NewCheckinsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) (*CheckinsProducer, error) {
 	addr := kafka.TCP(net.JoinHostPort(config.Host, strconv.Itoa(config.Port)))
+	logger.Debugf("Connecting to CheckinsProducer on %s", addr.String())
+
 	if err := Ping(addr.String()); err != nil {
 		return nil, err
 	}
