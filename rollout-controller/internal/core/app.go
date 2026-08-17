@@ -35,8 +35,10 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 		return updateResultsConsumer.Run(egCtx)
 	})
 
+	healthHandler := handlers.NewHealthHandler()
 	campaignStatsHandler := handlers.NewCampaignStatsHandler(campaignStatsSvc)
-	router := core_connect.NewRouter(campaignStatsHandler)
+
+	router := core_connect.NewRouter(healthHandler, campaignStatsHandler, logger)
 	server := core_connect.NewServer(router, config.Server, logger.Named("Server"))
 
 	eg.Go(func() error {
