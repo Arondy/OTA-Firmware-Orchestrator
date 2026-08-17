@@ -16,10 +16,10 @@ import (
 type Middleware func(next http.Handler) http.Handler
 
 func WrapInMiddleware(router http.Handler, logger *zap.SugaredLogger) http.Handler {
+	router = Recover(router)
 	router = Trace(router)
 	router = Logger(logger)(router)
 	router = RequestID(router)
-	router = Recover(router)
 	return router
 }
 
