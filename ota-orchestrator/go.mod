@@ -3,6 +3,8 @@ module github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator
 go 1.26.0
 
 require (
+	connectrpc.com/connect v1.20.0
+	github.com/Arondy/OTA-Firmware-Orchestrator/api/gen v0.0.1
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/google/uuid v1.6.0
@@ -39,4 +41,7 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 )
+
+replace github.com/Arondy/OTA-Firmware-Orchestrator/api/gen => ../api/gen
