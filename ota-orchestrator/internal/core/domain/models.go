@@ -41,6 +41,7 @@ type RolloutCampaign struct {
 	DeviceModel       string
 	Status            RolloutCampaignsStatus
 	RolloutStages     []RolloutStage
+	Stats             *RolloutCampaignStats
 	CreatedAt         time.Time
 	StartedAt         *time.Time
 	CompletedAt       *time.Time
