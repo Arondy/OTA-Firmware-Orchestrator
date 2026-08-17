@@ -76,7 +76,8 @@ func RolloutStageFromDomain(rs domain.RolloutStage) RolloutStageResponse {
 
 type RolloutCampaignResponse struct {
 	RolloutCampaignListItemResponse
-	RolloutStages []RolloutStageResponse `json:"rollout_stages"`
+	RolloutStages []RolloutStageResponse       `json:"rollout_stages"`
+	Stats         *domain.RolloutCampaignStats `json:"stats,omitempty"`
 }
 
 func RolloutCampaignFromDomain(rc domain.RolloutCampaign) RolloutCampaignResponse {
@@ -88,5 +89,6 @@ func RolloutCampaignFromDomain(rc domain.RolloutCampaign) RolloutCampaignRespons
 	return RolloutCampaignResponse{
 		RolloutCampaignListItemResponse: RolloutCampaignListItemFromDomain(rc),
 		RolloutStages:                   rolloutStages,
+		Stats:                           rc.Stats,
 	}
 }

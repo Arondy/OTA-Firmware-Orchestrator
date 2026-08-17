@@ -1,0 +1,10 @@
+version: v2
+
+plugins:
+  - local: protoc-gen-go
+    out: api/gen
+    opt: module=github.com/Arondy/OTA-Firmware-Orchestrator/api/gen
+
+  - local: protoc-gen-connect-go
+    out: api/gen
+    opt: module=github.com/Arondy/OTA-Firmware-Orchestrator/api/gen

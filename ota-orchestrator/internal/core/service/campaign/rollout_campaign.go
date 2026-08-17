@@ -33,17 +33,23 @@ type CampaignCacheRepo interface {
 	DeleteCurrentTargetPercent(ctx context.Context, id uuid.UUID) error
 }
 
+type RolloutController interface {
+	GetCampaignStats(ctx context.Context, id uuid.UUID) (domain.RolloutCampaignStats, error)
+}
+
 type RolloutCampaignService struct {
 	campaignRepo RolloutCampaignRepo
 	firmwareRepo FirmwareVersionRepo
 	cache        CampaignCacheRepo
+	controller   RolloutController
 }
 
-func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRepo, cache CampaignCacheRepo) *RolloutCampaignService {
+func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRepo, cache CampaignCacheRepo, controller RolloutController) *RolloutCampaignService {
 	return &RolloutCampaignService{
 		campaignRepo: campaignRepo,
 		firmwareRepo: firmwareRepo,
 		cache:        cache,
+		controller:   controller,
 	}
 }
 
@@ -52,7 +58,20 @@ func (s *RolloutCampaignService) List(ctx context.Context) ([]domain.RolloutCamp
 }
 
 func (s *RolloutCampaignService) Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
-	return s.campaignRepo.Get(ctx, id)
+	campaign, err := s.campaignRepo.Get(ctx, id)
+	if err != nil {
+		return domain.RolloutCampaign{}, err
+	}
+
+	stats, err := s.controller.GetCampaignStats(ctx, id)
+	if err != nil {
+		logger := config.LoggerFromContext(ctx)
+		logger.Warnw("failed to get campaign status", "error", err)
+	} else {
+		campaign.Stats = &stats
+	}
+
+	return campaign, nil
 }
 
 func (s *RolloutCampaignService) Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error) {

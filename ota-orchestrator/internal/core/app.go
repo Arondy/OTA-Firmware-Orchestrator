@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	rollout_controller "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/clients/rollout-controller"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/repository/kafka"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/repository/postgres"
@@ -46,6 +47,12 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	}
 	defer updateResultsProducer.Close()
 
+	rolloutControllerClient, err := rollout_controller.NewClient(config.RolloutController, logger)
+	if err != nil {
+		return err
+	}
+	defer rolloutControllerClient.Close()
+
 	deviceRepo := postgres.NewDeviceRepo(db)
 	firmwareVersionRepo := postgres.NewFirmwareVersionRepo(db)
 	rolloutCampaignRepo := postgres.NewRolloutCampaignRepo(db)
@@ -56,7 +63,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	deviceSvc := device.NewService(deviceRepo, deviceCacheRepo)
 	updateSvc := update.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo, checkinsProducer, updateResultsProducer)
 	firmwareVersionSvc := firmware.NewService(firmwareVersionRepo)
-	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo, campaignCacheRepo)
+	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo, campaignCacheRepo, rolloutControllerClient)
 
 	err = rolloutCampaignSvc.WarmUpCache(ctx, logger)
 	if err != nil {

@@ -1,0 +1,82 @@
+package core_connect
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/config"
+)
+
+type zapLoggerWriter struct {
+	logger *zap.SugaredLogger
+}
+
+func (w *zapLoggerWriter) Write(p []byte) (n int, err error) {
+	msg := strings.TrimSpace(string(p))
+	w.logger.Errorw("HTTP server internal error", "source_err", msg)
+	return len(p), nil
+}
+
+type Server struct {
+	server  *http.Server
+	timeout time.Duration
+	logger  *zap.SugaredLogger
+}
+
+func NewServer(router http.Handler, config config.ServerConfig, logger *zap.SugaredLogger) *Server {
+	zapWriter := &zapLoggerWriter{logger: logger.Named("ServerErrorLog")}
+	stdLogger := log.New(zapWriter, "", 0)
+
+	server := &http.Server{
+		Addr:              net.JoinHostPort(config.Host, strconv.Itoa(int(config.Port))),
+		Handler:           router,
+		ErrorLog:          stdLogger,
+		ReadHeaderTimeout: 1 * time.Minute,
+		IdleTimeout:       1 * time.Minute,
+	}
+
+	return &Server{
+		server:  server,
+		timeout: config.Timeout,
+		logger:  logger,
+	}
+}
+
+func (s *Server) Run(ctx context.Context) error {
+	ch := make(chan error, 1)
+
+	go func() {
+		defer close(ch)
+		s.logger.Infof("Starting server on %s", s.server.Addr)
+
+		if err := s.server.ListenAndServe(); err != http.ErrServerClosed {
+			ch <- err
+		}
+	}()
+
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		s.logger.Warn("Shutting down server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.timeout)
+		defer cancel()
+
+		if err := s.server.Shutdown(shutdownCtx); err != nil {
+			_ = s.server.Close()
+			return fmt.Errorf("error during server graceful shutdown: %w", err)
+		}
+
+		s.logger.Info("Server was stopped")
+	}
+
+	return nil
+}

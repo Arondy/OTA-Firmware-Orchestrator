@@ -13,11 +13,16 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
+const RequestIDHeader = "x-request-id"
+
+type CtxKeyRequestID struct{}
+
 type Config struct {
-	HTTPServer HTTPServerConfig `koanf:",squash"`
-	DB         DBConfig         `koanf:",squash"`
-	Cache      CacheConfig      `koanf:",squash"`
-	Broker     BrokerConfig     `koanf:",squash"`
+	HTTPServer        HTTPServerConfig        `koanf:",squash"`
+	DB                DBConfig                `koanf:",squash"`
+	Cache             CacheConfig             `koanf:",squash"`
+	Broker            BrokerConfig            `koanf:",squash"`
+	RolloutController RolloutControllerConfig `koanf:",squash"`
 }
 
 type HTTPServerConfig struct {
@@ -82,6 +87,13 @@ type BrokerConfig struct {
 	BatchTimeout time.Duration `koanf:"BROKER_BATCH_TIMEOUT" validate:"required"`
 	Timeout      time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
 	BufferSize   int           `koanf:"BROKER_BUFFER_SIZE" validate:"required,min=1"`
+}
+
+type RolloutControllerConfig struct {
+	Scheme  string        `koanf:"ROLLOUT_CONTROLLER_SCHEME" validate:"required"`
+	Host    string        `koanf:"ROLLOUT_CONTROLLER_HOST" validate:"required"`
+	Port    int           `koanf:"ROLLOUT_CONTROLLER_PORT" validate:"required"`
+	Timeout time.Duration `koanf:"ROLLOUT_CONTROLLER_TIMEOUT" validate:"required"`
 }
 
 func LoadConfig() *Config {

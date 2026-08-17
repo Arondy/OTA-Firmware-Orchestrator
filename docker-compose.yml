@@ -90,10 +90,15 @@ services:
     entrypoint: [ "/bin/sh", "-c" ]
     command:
       - |
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
-          --topic device.checkins --partitions ${KAFKA_TOPIC_PARTITIONS:-3} --replication-factor 1 && \
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
-          --topic firmware.update-results --partitions ${KAFKA_TOPIC_PARTITIONS:-3} --replication-factor 1
+        set -e
+
+        for topic in device.checkins firmware.update-results firmware.update-results.dlq; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:9092 \
+            --create --if-not-exists --topic "$$topic" \
+            --partitions ${KAFKA_TOPIC_PARTITIONS:-3} \
+            --replication-factor 1
+        done
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2

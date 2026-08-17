@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package rollout.v1;
+
+option go_package = "github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout/v1;rolloutv1";
+
+service CampaignService {
+  rpc GetCampaignStats(GetCampaignStatsRequest) returns (GetCampaignStatsResponse);
+}
+
+message GetCampaignStatsRequest {
+  string campaign_id = 1;
+}
+
+message GetCampaignStatsResponse {
+  string active_stage_id = 1;
+  float success_rate = 2;
+  int32 sample_size = 3;
+}
