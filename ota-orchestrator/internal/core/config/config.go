@@ -13,6 +13,10 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
+const RequestIDHeader = "x-request-id"
+
+type CtxKeyRequestID struct{}
+
 type Config struct {
 	HTTPServer        HTTPServerConfig        `koanf:",squash"`
 	DB                DBConfig                `koanf:",squash"`
