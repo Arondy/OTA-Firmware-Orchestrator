@@ -10,6 +10,7 @@ import (
 	healthv1 "github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/health/v1"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/health/v1/healthv1connect"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout/v1/rolloutv1connect"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/clients/rollout-controller/interceptors"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"go.uber.org/zap"
 )
@@ -28,7 +29,9 @@ func NewClient(config config.RolloutControllerConfig, logger *zap.SugaredLogger)
 		return nil, err
 	}
 
-	client := rolloutv1connect.NewCampaignServiceClient(httpClient, baseURL)
+	interceptors := interceptors.NewInterceptorsOption()
+
+	client := rolloutv1connect.NewCampaignServiceClient(httpClient, baseURL, interceptors)
 	return &Client{campaignClient: client}, nil
 }
 
