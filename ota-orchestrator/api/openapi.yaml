@@ -236,6 +236,12 @@ paths:
       tags:
         - Rollout Campaigns
       summary: Get a rollout campaign by id
+      description: >
+        Returns the campaign from Postgres. When the Rollout Controller is reachable,
+        the response also includes live `stats` (success rate and sample size for the
+        active stage) computed by the controller from the `firmware.update-results`
+        stream. If the controller is unavailable, `stats` is omitted and the endpoint
+        still returns the Postgres data.
       operationId: getRolloutCampaign
       parameters:
         - $ref: "#/components/parameters/Id"
@@ -739,6 +745,31 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/RolloutStageResponse"
+            stats:
+              $ref: "#/components/schemas/RolloutCampaignStats"
+    RolloutCampaignStats:
+      type: object
+      description: Live rollout metrics from the Rollout Controller (Redis-based). Omitted when the controller is unavailable.
+      required:
+        - active_stage_id
+        - success_rate
+        - sample_size
+      properties:
+        active_stage_id:
+          type: string
+          format: uuid
+          description: Stage currently tracked by the controller
+        success_rate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Share of successful update attempts in the active stage (0..1)
+        sample_size:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Total number of (deduplicated) update attempts seen for the active stage
     CreateRolloutCampaignRequest:
       type: object
       required:
