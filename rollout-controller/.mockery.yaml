@@ -1,0 +1,11 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: "mocks"
+mockname: "Mock{{.InterfaceName}}"
+packages:
+  github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/service/results:
+    interfaces:
+      CampaignRepo: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/transport/connect/handlers:
+    interfaces:
+      CampaignStatsService: {}

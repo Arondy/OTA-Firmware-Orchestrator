@@ -74,10 +74,27 @@ func RolloutStageFromDomain(rs domain.RolloutStage) RolloutStageResponse {
 	}
 }
 
+type RolloutCampaignStats struct {
+	ActiveStageID uuid.UUID `json:"active_stage_id"`
+	SuccessRate   float32   `json:"success_rate"`
+	SampleSize    int       `json:"sample_size"`
+}
+
+func RolloutCampaignStatsFromDomain(s *domain.RolloutCampaignStats) *RolloutCampaignStats {
+	if s == nil {
+		return nil
+	}
+	return &RolloutCampaignStats{
+		ActiveStageID: s.ActiveStageID,
+		SuccessRate:   s.SuccessRate,
+		SampleSize:    s.SampleSize,
+	}
+}
+
 type RolloutCampaignResponse struct {
 	RolloutCampaignListItemResponse
-	RolloutStages []RolloutStageResponse       `json:"rollout_stages"`
-	Stats         *domain.RolloutCampaignStats `json:"stats,omitempty"`
+	RolloutStages []RolloutStageResponse `json:"rollout_stages"`
+	Stats         *RolloutCampaignStats  `json:"stats,omitempty"`
 }
 
 func RolloutCampaignFromDomain(rc domain.RolloutCampaign) RolloutCampaignResponse {
@@ -89,6 +106,6 @@ func RolloutCampaignFromDomain(rc domain.RolloutCampaign) RolloutCampaignRespons
 	return RolloutCampaignResponse{
 		RolloutCampaignListItemResponse: RolloutCampaignListItemFromDomain(rc),
 		RolloutStages:                   rolloutStages,
-		Stats:                           rc.Stats,
+		Stats:                           RolloutCampaignStatsFromDomain(rc.Stats),
 	}
 }

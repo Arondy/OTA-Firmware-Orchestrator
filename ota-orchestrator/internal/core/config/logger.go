@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"os"
+	"testing"
 	"time"
 
 	"go.uber.org/zap"
@@ -54,26 +55,31 @@ func setupEncoderConfig(useColors bool) zapcore.EncoderConfig {
 }
 
 func newLogger() *zap.SugaredLogger {
-	logsFileWriter = &lumberjack.Logger{
-		Filename:   LOGS_FILE,
-		MaxSize:    50,
-		MaxBackups: 1,
-		MaxAge:     28,
-		Compress:   true,
-	}
-
-	traceFileWriter = &lumberjack.Logger{
-		Filename:   TRACEBACK_FILE,
-		MaxSize:    50,
-		MaxBackups: 1,
-		MaxAge:     28,
-		Compress:   true,
-	}
-
 	cores := []zapcore.Core{
 		zapcore.NewCore(zapcore.NewConsoleEncoder(setupEncoderConfig(true)), zapcore.AddSync(os.Stdout), zap.DebugLevel),
-		zapcore.NewCore(zapcore.NewJSONEncoder(setupEncoderConfig(false)),  zapcore.AddSync(logsFileWriter), zap.InfoLevel),
-		zapcore.NewCore(zapcore.NewJSONEncoder(setupEncoderConfig(false)), zapcore.AddSync(traceFileWriter), zap.WarnLevel),
+	}
+
+	if !testing.Testing() {
+		logsFileWriter = &lumberjack.Logger{
+			Filename:   LOGS_FILE,
+			MaxSize:    50,
+			MaxBackups: 1,
+			MaxAge:     28,
+			Compress:   true,
+		}
+
+		traceFileWriter = &lumberjack.Logger{
+			Filename:   TRACEBACK_FILE,
+			MaxSize:    50,
+			MaxBackups: 1,
+			MaxAge:     28,
+			Compress:   true,
+		}
+
+		cores = append(cores,
+			zapcore.NewCore(zapcore.NewJSONEncoder(setupEncoderConfig(false)), zapcore.AddSync(logsFileWriter), zap.InfoLevel),
+			zapcore.NewCore(zapcore.NewJSONEncoder(setupEncoderConfig(false)), zapcore.AddSync(traceFileWriter), zap.WarnLevel),
+		)
 	}
 
 	return zap.New(
@@ -87,12 +93,12 @@ func GetLogger() *zap.SugaredLogger {
 }
 
 func CloseLoggerFiles() {
-    if logsFileWriter != nil {
-        _ = logsFileWriter.Close()
-    }
-    if traceFileWriter != nil {
-        _ = traceFileWriter.Close()
-    }
+	if logsFileWriter != nil {
+		_ = logsFileWriter.Close()
+	}
+	if traceFileWriter != nil {
+		_ = traceFileWriter.Close()
+	}
 }
 
 type loggerKey struct{}

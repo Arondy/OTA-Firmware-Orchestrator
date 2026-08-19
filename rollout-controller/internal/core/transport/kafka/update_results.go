@@ -15,9 +15,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const updateResultsTopic = "firmware.update-results"
-const updateResultsDLQTopic = updateResultsTopic + ".dlq"
-
 type UpdateResultsSvc interface {
 	UpdateStageResults(ctx context.Context, event domain.UpdateResultsEvent) (int, error)
 }
@@ -40,7 +37,7 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{addr},
 		GroupID:  config.GroupID,
-		Topic:    updateResultsTopic,
+		Topic:    config.Topic,
 		MinBytes: config.MinBytes,
 		MaxBytes: 1 << 20,
 		MaxWait:  1 * time.Second,
@@ -48,7 +45,7 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 
 	dlqWriter := &kafka.Writer{
 		Addr:         kafka.TCP(addr),
-		Topic:        updateResultsDLQTopic,
+		Topic:        config.Topic + ".dlq",
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireOne,
 		WriteTimeout: 5 * time.Second,
@@ -112,10 +109,15 @@ func (p *UpdateResultsConsumer) writeToDLQ(ctx context.Context, message kafka.Me
 		{Key: "x-error", Value: []byte(err.Error())},
 		{Key: "x-failed-at", Value: []byte(time.Now().Format(time.RFC3339))},
 	}
-	message.Headers = headers
 
-	err = p.dlqWriter.WriteMessages(ctx, message)
-	if err != nil {
+	dlqMessage := kafka.Message{
+		Key:     message.Key,
+		Value:   message.Value,
+		Time:    message.Time,
+		Headers: headers,
+	}
+
+	if err := p.dlqWriter.WriteMessages(ctx, dlqMessage); err != nil {
 		p.logger.Errorw("failed to send message to DLQ", "error", err, "event_time", message.Time, "event_offset", message.Offset)
 	}
 }

@@ -31,11 +31,17 @@ type CacheConfig struct {
 	CampaignEventIDSeenTTL time.Duration `koanf:"CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL" validate:"required"`
 }
 
+const (
+	// Kafka topic names are fixed in code, not sourced from .env.
+	UpdateResultsTopic = "firmware.update-results"
+)
+
 type BrokerConfig struct {
 	Host     string `koanf:"BROKER_HOST" validate:"required"`
 	Port     int    `koanf:"BROKER_PORT" validate:"required"`
 	GroupID  string `koanf:"BROKER_GROUP_ID" validate:"required"`
 	MinBytes int    `koanf:"BROKER_MIN_BYTES" validate:"required,min=1"`
+	Topic    string
 }
 
 func LoadConfig() *Config {

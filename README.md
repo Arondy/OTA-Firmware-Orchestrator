@@ -95,6 +95,22 @@ task run-controller                                           # запустит
 | `ROLLOUT_CONTROLLER_SCHEME`, `ROLLOUT_CONTROLLER_HOST`, `ROLLOUT_CONTROLLER_PORT`, `ROLLOUT_CONTROLLER_TIMEOUT` | подключение клиента к Rollout Controller через `GetCampaignStats`; при недоступности `GET /campaigns/{id}` отдаётся без `stats` |
 | `REQUEST_TIMEOUT` | таймаут одного запроса к БД |
 
+## Тестирование
+
+Проект покрыт unit-, integration- и e2e-тестами. Команды запускаются из папки соответствующего модуля (`ota-orchestrator/` или `rollout-controller/`).
+
+| Уровень | Команда | Требования |
+| --- | --- | --- |
+| Unit (сервисы и HTTP-обработчики, на моках) | `task test-unit` либо `cd ota-orchestrator && go test ./...` | не требуются |
+| Integration (`repository/postgres`, `repository/redis`, `repository/kafka`) | `task test-all` либо `go test -tags integration ./...` | запущенный **Docker** (testcontainers поднимает Postgres и Redis) |
+| e2e (сценарий canary-раскатки, `tests/e2e`) | `go test -tags e2e ./tests/e2e` | Docker; оба сервиса собираются локально через `replace` |
+
+> [!NOTE]
+> `task test-unit` и `task test-all` используют `gotestsum` и прогоняют тесты в обоих модулях. Без билд-тега выполняются только unit-тесты; integration и e2e изолированы тегами `integration` и `e2e` соответственно.
+
+> [!TIP]
+> Моки зависимостей в каталогах `*/mocks/` генерируются `mockery` по `.mockery.yaml` — править их вручную не нужно. CI в репозитории отсутствует.
+
 ## API
 
 Все маршруты, кроме health check, имеют префикс `/api/v1`. Полная спецификация — [`ota-orchestrator/api/openapi.yaml`](ota-orchestrator/api/openapi.yaml).
@@ -172,7 +188,7 @@ task run-controller                                           # запустит
 - Уточнения по структуре проекта
 - Проверка кода на баги и соответствие ТЗ
 - Генерация сообщений коммитов
-- Написание README (кроме этого раздела)
+- Написание README (кроме этого раздела), OpenAPI спецификации, тестов
 - Написание полностью однотипного кода:
   1. Этап 1:
      - структуры конфигов с тегами, JSON теги в DTO
@@ -186,3 +202,4 @@ task run-controller                                           # запустит
      - рефакторинг сервисного слоя устройств с вынесением сервиса обновления
   4. Этап 5:
      - рефакторинг транспортного слоя ota-orchestrator с объединением хэндлеров и DTO и разбиением на отдельные файлы
+     - небольшие правки для облегчения тестов

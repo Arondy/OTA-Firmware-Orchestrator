@@ -1,0 +1,38 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: "mocks"
+mockname: "Mock{{.InterfaceName}}"
+packages:
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/update:
+    interfaces:
+      DeviceRepo: {}
+      FirmwareVersionRepo: {}
+      RolloutCampaignRepo: {}
+      UpdateAttemptRepo: {}
+      DeviceCacheRepo: {}
+      CampaignCacheRepo: {}
+      CheckinProducer: {}
+      UpdateResultsProducer: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/device:
+    interfaces:
+      DeviceRepo: {}
+      DeviceCacheRepo: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/firmware:
+    interfaces:
+      FirmwareVersionRepo: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/campaign:
+    interfaces:
+      RolloutCampaignRepo: {}
+      FirmwareVersionRepo: {}
+      CampaignCacheRepo: {}
+      RolloutController: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/device:
+    interfaces:
+      DeviceService: {}
+      UpdateService: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/firmware_version:
+    interfaces:
+      FirmwareVersionService: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/rollout_campaign:
+    interfaces:
+      RolloutCampaignService: {}

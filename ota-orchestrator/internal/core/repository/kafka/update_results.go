@@ -14,8 +14,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const updateResultsTopic = "firmware.update-results"
-
 type UpdateResultsProducer struct {
 	writer  *kafka.Writer
 	timeout time.Duration
@@ -32,7 +30,7 @@ func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerCon
 
 	writer := &kafka.Writer{
 		Addr:         addr,
-		Topic:        updateResultsTopic,
+		Topic:        config.Topic,
 		Balancer:     &kafka.Hash{},
 		BatchTimeout: config.BatchTimeout,
 		RequiredAcks: kafka.RequireOne,

@@ -13,18 +13,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) error {
-	rdb, err := redis.NewRedisClient(ctx, config.Cache, logger)
+func Run(ctx context.Context, cfg *config.Config, logger *zap.SugaredLogger) error {
+	cfg.Broker.Topic = config.UpdateResultsTopic
+
+	rdb, err := redis.NewRedisClient(ctx, cfg.Cache, logger)
 	if err != nil {
 		return err
 	}
 	defer rdb.Close()
 
-	campaignCacheRepo := redis.NewCampaignCacheRepo(rdb, config.Cache)
+	campaignCacheRepo := redis.NewCampaignCacheRepo(rdb, cfg.Cache)
 
 	campaignStatsSvc := update_results.NewCampaignStatsService(campaignCacheRepo)
 
-	updateResultsConsumer, err := kafka.NewUpdateResultsConsumer(campaignStatsSvc, config.Broker, logger)
+	updateResultsConsumer, err := kafka.NewUpdateResultsConsumer(campaignStatsSvc, cfg.Broker, logger)
 	if err != nil {
 		return err
 	}
@@ -39,7 +41,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	campaignStatsHandler := handlers.NewCampaignStatsHandler(campaignStatsSvc)
 
 	router := core_connect.NewRouter(healthHandler, campaignStatsHandler, logger)
-	server := core_connect.NewServer(router, config.Server, logger.Named("Server"))
+	server := core_connect.NewServer(router, cfg.Server, logger.Named("Server"))
 
 	eg.Go(func() error {
 		return server.Run(egCtx)
@@ -47,7 +49,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 
 	<-egCtx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), config.ShutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	done := make(chan error, 1)

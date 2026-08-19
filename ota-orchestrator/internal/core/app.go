@@ -22,32 +22,37 @@ import (
 	"go.uber.org/zap"
 )
 
-func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) error {
-	db, err := postgres.NewDB(ctx, config.DB, logger)
+func Run(ctx context.Context, cfg *config.Config, logger *zap.SugaredLogger) error {
+	checkinsBroker := cfg.Broker
+	checkinsBroker.Topic = config.CheckinsTopic
+	updateResultsBroker := cfg.Broker
+	updateResultsBroker.Topic = config.UpdateResultsTopic
+
+	db, err := postgres.NewDB(ctx, cfg.DB, logger)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	rdb, err := redis.NewRedisClient(ctx, config.Cache, logger)
+	rdb, err := redis.NewRedisClient(ctx, cfg.Cache, logger)
 	if err != nil {
 		return err
 	}
 	defer rdb.Close()
 
-	checkinsProducer, err := kafka.NewCheckinsProducer(logger, config.Broker)
+	checkinsProducer, err := kafka.NewCheckinsProducer(logger, checkinsBroker)
 	if err != nil {
 		return err
 	}
 	defer checkinsProducer.Close()
 
-	updateResultsProducer, err := kafka.NewUpdateResultsProducer(logger, config.Broker)
+	updateResultsProducer, err := kafka.NewUpdateResultsProducer(logger, updateResultsBroker)
 	if err != nil {
 		return err
 	}
 	defer updateResultsProducer.Close()
 
-	rolloutControllerClient, err := rollout_controller.NewClient(config.RolloutController, logger)
+	rolloutControllerClient, err := rollout_controller.NewClient(cfg.RolloutController, logger)
 	if err != nil {
 		return err
 	}
@@ -57,7 +62,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 	firmwareVersionRepo := postgres.NewFirmwareVersionRepo(db)
 	rolloutCampaignRepo := postgres.NewRolloutCampaignRepo(db)
 	updateAttemptRepo := postgres.NewUpdateAttemptRepo(db)
-	deviceCacheRepo := redis.NewDeviceCacheRepo(rdb, config.Cache)
+	deviceCacheRepo := redis.NewDeviceCacheRepo(rdb, cfg.Cache)
 	campaignCacheRepo := redis.NewCampaignCacheRepo(rdb)
 
 	deviceSvc := device.NewService(deviceRepo, deviceCacheRepo)
@@ -77,7 +82,7 @@ func Run(ctx context.Context, config *config.Config, logger *zap.SugaredLogger) 
 
 	var router http.Handler = core_http.NewRouter(healthAPI, deviceAPI, firmwareVersionAPI, rolloutCampaignAPI)
 	router = middleware.WrapInMiddleware(router, logger)
-	server := core_http.NewServer(router, config.HTTPServer, logger.Named("Server"))
+	server := core_http.NewServer(router, cfg.HTTPServer, logger.Named("Server"))
 
 	if err := server.Run(ctx); err != nil {
 		return err
