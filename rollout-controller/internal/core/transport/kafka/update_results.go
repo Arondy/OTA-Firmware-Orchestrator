@@ -15,9 +15,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const updateResultsTopic = "firmware.update-results"
-const updateResultsDLQTopic = updateResultsTopic + ".dlq"
-
 type UpdateResultsSvc interface {
 	UpdateStageResults(ctx context.Context, event domain.UpdateResultsEvent) (int, error)
 }
@@ -40,7 +37,7 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{addr},
 		GroupID:  config.GroupID,
-		Topic:    updateResultsTopic,
+		Topic:    config.Topic,
 		MinBytes: config.MinBytes,
 		MaxBytes: 1 << 20,
 		MaxWait:  1 * time.Second,
@@ -48,7 +45,7 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 
 	dlqWriter := &kafka.Writer{
 		Addr:         kafka.TCP(addr),
-		Topic:        updateResultsDLQTopic,
+		Topic:        config.Topic + ".dlq",
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireOne,
 		WriteTimeout: 5 * time.Second,

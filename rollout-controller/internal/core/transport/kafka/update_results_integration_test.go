@@ -59,13 +59,16 @@ func (f *fakeUpdateResultsSvc) waitReceived(t *testing.T, n int, timeout time.Du
 	t.Fatalf("svc did not receive %d events within %s", n, timeout)
 }
 
-func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer, func()) {
+func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer, string, string, func()) {
 	t.Helper()
 
-	tkafka.DeleteTopic(updateResultsTopic)
-	tkafka.DeleteTopic(updateResultsDLQTopic)
-	createTopic(t, updateResultsTopic, 3)
-	createTopic(t, updateResultsDLQTopic, 3)
+	topic := uniqueTopic("update-results")
+	dlqTopic := topic + ".dlq"
+
+	tkafka.DeleteTopic(topic)
+	tkafka.DeleteTopic(dlqTopic)
+	createTopic(t, topic, 3)
+	createTopic(t, dlqTopic, 3)
 
 	host, port := brokerHostPort()
 	consumer, err := NewUpdateResultsConsumer(svc, config.BrokerConfig{
@@ -73,22 +76,24 @@ func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer
 		Port:     port,
 		GroupID:  "integration-consumer-group-" + uuid.New().String(),
 		MinBytes: 1,
+		Topic:    topic,
 	}, zap.NewNop().Sugar())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { _ = consumer.Run(ctx) }()
 
-	return consumer, func() {
+	return consumer, topic, dlqTopic, func() {
 		cancel()
 		consumer.Close()
 	}
 }
 
 func TestUpdateResultsConsumer_ProcessesEvent(t *testing.T) {
+	t.Parallel()
 
 	svc := &fakeUpdateResultsSvc{}
-	_, stop := newTestConsumer(t, svc)
+	_, topic, _, stop := newTestConsumer(t, svc)
 	defer stop()
 
 	event := domain.UpdateResultsEvent{
@@ -101,7 +106,7 @@ func TestUpdateResultsConsumer_ProcessesEvent(t *testing.T) {
 	}
 	value, err := json.Marshal(event)
 	require.NoError(t, err)
-	produceMessage(t, updateResultsTopic, event.CampaignID[:], value)
+	produceMessage(t, topic, event.CampaignID[:], value)
 
 	svc.waitReceived(t, 1, 30*time.Second)
 
@@ -116,9 +121,10 @@ func TestUpdateResultsConsumer_ProcessesEvent(t *testing.T) {
 }
 
 func TestUpdateResultsConsumer_DeadLetterOnServiceError(t *testing.T) {
+	t.Parallel()
 
 	svc := &fakeUpdateResultsSvc{err: errors.New("boom")}
-	_, stop := newTestConsumer(t, svc)
+	_, topic, dlqTopic, stop := newTestConsumer(t, svc)
 	defer stop()
 
 	event := domain.UpdateResultsEvent{
@@ -131,11 +137,11 @@ func TestUpdateResultsConsumer_DeadLetterOnServiceError(t *testing.T) {
 	}
 	value, err := json.Marshal(event)
 	require.NoError(t, err)
-	produceMessage(t, updateResultsTopic, event.CampaignID[:], value)
+	produceMessage(t, topic, event.CampaignID[:], value)
 
 	svc.waitReceived(t, 1, 30*time.Second)
 
-	msg, ok := readMatchingFromTopic(t, updateResultsDLQTopic, 20*time.Second, func(m kafka.Message) bool {
+	msg, ok := readMatchingFromTopic(t, dlqTopic, 20*time.Second, func(m kafka.Message) bool {
 		var got domain.UpdateResultsEvent
 		return json.Unmarshal(m.Value, &got) == nil && got.EventID == event.EventID
 	})
@@ -146,17 +152,18 @@ func TestUpdateResultsConsumer_DeadLetterOnServiceError(t *testing.T) {
 }
 
 func TestUpdateResultsConsumer_DeadLetterOnCorruptedMessage(t *testing.T) {
+	t.Parallel()
 
 	svc := &fakeUpdateResultsSvc{}
-	_, stop := newTestConsumer(t, svc)
+	_, topic, dlqTopic, stop := newTestConsumer(t, svc)
 	defer stop()
 
 	id := uuid.New()
 	key := id[:]
 	payload := []byte("not-json-at-all")
-	produceMessage(t, updateResultsTopic, key, payload)
+	produceMessage(t, topic, key, payload)
 
-	msg, ok := readMatchingFromTopic(t, updateResultsDLQTopic, 20*time.Second, func(m kafka.Message) bool {
+	msg, ok := readMatchingFromTopic(t, dlqTopic, 20*time.Second, func(m kafka.Message) bool {
 		return string(m.Value) == string(payload)
 	})
 	require.True(t, ok, "corrupted message must be written to DLQ")
@@ -165,4 +172,3 @@ func TestUpdateResultsConsumer_DeadLetterOnCorruptedMessage(t *testing.T) {
 
 	svc.assertNotReceived(t, 2*time.Second)
 }
-
