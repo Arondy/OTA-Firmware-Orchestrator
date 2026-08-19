@@ -5,6 +5,9 @@ version: "3"
 dotenv: [".env"]
 silent: true
 
+vars:
+  LISTPKG: '{{"{{"}}if or .TestGoFiles .XTestGoFiles{{"}}"}}{{"{{"}}.ImportPath{{"}}"}} {{"{{"}}end{{"}}"}}'
+
 tasks:
   run-orchestrator:
     aliases:
@@ -66,3 +69,18 @@ tasks:
     desc: Generate code from .proto
     cmds:
       - buf generate
+
+  test-unit:
+    desc: Run unit tests in both modules
+    cmds:
+      - cd ota-orchestrator && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
+      - cd rollout-controller && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
+
+  test-all:
+    desc: Run all tests in both modules
+    cmds:
+      - cd ota-orchestrator && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
+      - cd rollout-controller && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
+      - cd ota-orchestrator && gotestsum -- -tags integration $(go list -tags integration -f '{{.LISTPKG}}' ./...)
+      - cd rollout-controller && gotestsum -- -tags integration $(go list -tags integration -f '{{.LISTPKG}}' ./...)
+      - cd ota-orchestrator && gotestsum -- -tags e2e ./tests/e2e/

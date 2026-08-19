@@ -10,3 +10,4 @@
 *.env
 *.dat
 *.db
+print_project.py
