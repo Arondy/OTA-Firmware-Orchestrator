@@ -79,8 +79,5 @@ tasks:
   test-all:
     desc: Run all tests in both modules
     cmds:
-      - cd ota-orchestrator && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
-      - cd rollout-controller && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
-      - cd ota-orchestrator && gotestsum -- -tags integration $(go list -tags integration -f '{{.LISTPKG}}' ./...)
-      - cd rollout-controller && gotestsum -- -tags integration $(go list -tags integration -f '{{.LISTPKG}}' ./...)
-      - cd ota-orchestrator && gotestsum -- -tags e2e ./tests/e2e/
+      - cd ota-orchestrator && gotestsum -- -tags "integration,e2e" $(go list -tags "integration,e2e" -f '{{.LISTPKG}}' ./...)
+      - cd rollout-controller && gotestsum -- -tags "integration,e2e" $(go list -tags "integration,e2e" -f '{{.LISTPKG}}' ./...)
