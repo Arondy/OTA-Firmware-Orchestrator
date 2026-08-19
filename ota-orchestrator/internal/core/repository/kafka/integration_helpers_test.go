@@ -4,13 +4,19 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	tkafka "github.com/Arondy/OTA-Firmware-Orchestrator/testutil/kafka"
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
+
+func uniqueTopic(base string) string {
+	return fmt.Sprintf("%s-%s", base, uuid.NewString())
+}
 
 func TestMain(m *testing.M) {
 	tkafka.BrokerAddr()

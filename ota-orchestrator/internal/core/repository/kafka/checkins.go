@@ -13,8 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const checkinsTopic = "device.checkins"
-
 type CheckinsProducer struct {
 	writer  *kafka.Writer
 	buffer  chan domain.CheckinEvent
@@ -33,7 +31,7 @@ func NewCheckinsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) 
 
 	writer := &kafka.Writer{
 		Addr:         addr,
-		Topic:        checkinsTopic,
+		Topic:        config.Topic,
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireNone,
 	}

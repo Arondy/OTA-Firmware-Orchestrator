@@ -19,7 +19,8 @@ import (
 
 func TestUpdateResultsProducer_PublishesEvent(t *testing.T) {
 	t.Parallel()
-	createTopic(t, updateResultsTopic, 3)
+	topic := uniqueTopic("update-results")
+	createTopic(t, topic, 3)
 
 	host, port := brokerHostPort()
 	producer, err := NewUpdateResultsProducer(zap.NewNop().Sugar(), config.BrokerConfig{
@@ -28,6 +29,7 @@ func TestUpdateResultsProducer_PublishesEvent(t *testing.T) {
 		BatchTimeout: time.Second,
 		Timeout:      10 * time.Second,
 		BufferSize:   16,
+		Topic:        topic,
 	})
 	require.NoError(t, err)
 	defer producer.Close()
@@ -43,7 +45,7 @@ func TestUpdateResultsProducer_PublishesEvent(t *testing.T) {
 
 	require.NoError(t, producer.Produce(event))
 
-	msg, ok := readMatchingFromTopic(t, updateResultsTopic, 30*time.Second, func(m kafka.Message) bool {
+	msg, ok := readMatchingFromTopic(t, topic, 30*time.Second, func(m kafka.Message) bool {
 		return string(m.Key) == string(event.CampaignID[:])
 	})
 	require.True(t, ok, "produced event must be readable")
@@ -58,7 +60,9 @@ func TestUpdateResultsProducer_PublishesEvent(t *testing.T) {
 }
 
 func TestUpdateResultsProducer_Close(t *testing.T) {
-	createTopic(t, updateResultsTopic, 3)
+	t.Parallel()
+	topic := uniqueTopic("update-results")
+	createTopic(t, topic, 3)
 
 	host, port := brokerHostPort()
 	producer, err := NewUpdateResultsProducer(zap.NewNop().Sugar(), config.BrokerConfig{
@@ -67,6 +71,7 @@ func TestUpdateResultsProducer_Close(t *testing.T) {
 		BatchTimeout: time.Second,
 		Timeout:      10 * time.Second,
 		BufferSize:   16,
+		Topic:        topic,
 	})
 	require.NoError(t, err)
 
@@ -82,7 +87,7 @@ func TestUpdateResultsProducer_Close(t *testing.T) {
 
 	require.NotPanics(t, func() { producer.Close() })
 
-	reader := consumerReader(updateResultsTopic)
+	reader := consumerReader(topic)
 	defer reader.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

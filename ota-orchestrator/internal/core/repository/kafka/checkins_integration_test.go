@@ -20,7 +20,8 @@ import (
 
 func TestCheckinsProducer_PublishesEvent(t *testing.T) {
 	t.Parallel()
-	createTopic(t, checkinsTopic, 3)
+	topic := uniqueTopic("checkins")
+	createTopic(t, topic, 3)
 
 	host, port := brokerHostPort()
 	producer, err := NewCheckinsProducer(zap.NewNop().Sugar(), config.BrokerConfig{
@@ -29,6 +30,7 @@ func TestCheckinsProducer_PublishesEvent(t *testing.T) {
 		BatchTimeout: time.Second,
 		Timeout:      10 * time.Second,
 		BufferSize:   16,
+		Topic:        topic,
 	})
 	require.NoError(t, err)
 	defer producer.Close()
@@ -43,7 +45,7 @@ func TestCheckinsProducer_PublishesEvent(t *testing.T) {
 
 	producer.Produce(event)
 
-	msg, ok := readMatchingFromTopic(t, checkinsTopic, 30*time.Second, func(m kafka.Message) bool {
+	msg, ok := readMatchingFromTopic(t, topic, 30*time.Second, func(m kafka.Message) bool {
 		return string(m.Key) == string(event.DeviceID[:])
 	})
 	require.True(t, ok, "produced event must be readable")
@@ -59,7 +61,8 @@ func TestCheckinsProducer_PublishesEvent(t *testing.T) {
 
 func TestCheckinsProducer_BufferFull(t *testing.T) {
 	t.Parallel()
-	createTopic(t, checkinsTopic, 3)
+	topic := uniqueTopic("checkins")
+	createTopic(t, topic, 3)
 
 	core, logs := observer.New(zapcore.WarnLevel)
 	logger := zap.New(core).Sugar()
@@ -71,6 +74,7 @@ func TestCheckinsProducer_BufferFull(t *testing.T) {
 		BatchTimeout: time.Second,
 		Timeout:      10 * time.Second,
 		BufferSize:   4,
+		Topic:        topic,
 	})
 	require.NoError(t, err)
 
@@ -93,7 +97,7 @@ func TestCheckinsProducer_BufferFull(t *testing.T) {
 
 	producer.Close()
 
-	reader := consumerReader(checkinsTopic)
+	reader := consumerReader(topic)
 	defer reader.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -110,7 +114,8 @@ func TestCheckinsProducer_BufferFull(t *testing.T) {
 
 func TestCheckinsProducer_Close(t *testing.T) {
 	t.Parallel()
-	createTopic(t, checkinsTopic, 3)
+	topic := uniqueTopic("checkins")
+	createTopic(t, topic, 3)
 
 	host, port := brokerHostPort()
 	producer, err := NewCheckinsProducer(zap.NewNop().Sugar(), config.BrokerConfig{
@@ -119,6 +124,7 @@ func TestCheckinsProducer_Close(t *testing.T) {
 		BatchTimeout: time.Second,
 		Timeout:      10 * time.Second,
 		BufferSize:   16,
+		Topic:        topic,
 	})
 	require.NoError(t, err)
 
@@ -142,7 +148,7 @@ func TestCheckinsProducer_Close(t *testing.T) {
 		t.Fatal("Close blocked past timeout")
 	}
 
-	reader := consumerReader(checkinsTopic)
+	reader := consumerReader(topic)
 	defer reader.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
