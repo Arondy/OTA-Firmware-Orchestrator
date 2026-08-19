@@ -12,11 +12,13 @@ import (
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 
+	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
 func TestUpdateResultsProducer_PublishesEvent(t *testing.T) {
+	t.Parallel()
 	createTopic(t, updateResultsTopic, 3)
 
 	host, port := brokerHostPort()
@@ -41,15 +43,10 @@ func TestUpdateResultsProducer_PublishesEvent(t *testing.T) {
 
 	require.NoError(t, producer.Produce(event))
 
-	reader := consumerReader(updateResultsTopic)
-	defer reader.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	msg, err := reader.ReadMessage(ctx)
-	require.NoError(t, err)
-
+	msg, ok := readMatchingFromTopic(t, updateResultsTopic, 30*time.Second, func(m kafka.Message) bool {
+		return string(m.Key) == string(event.CampaignID[:])
+	})
+	require.True(t, ok, "produced event must be readable")
 	require.Equal(t, event.CampaignID[:], msg.Key)
 
 	var got domain.UpdateResultsEvent

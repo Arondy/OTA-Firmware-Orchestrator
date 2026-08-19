@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -25,14 +24,13 @@ import (
 	orchestratorcore "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core"
 	orchestratorconfig "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
+	tkafka "github.com/Arondy/OTA-Firmware-Orchestrator/testutil/kafka"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -43,22 +41,13 @@ const (
 	updateResultsDLQTopic = "firmware.update-results.dlq"
 
 	// Match docker-compose.yml image versions.
-	kafkaImage    = "apache/kafka:4.3.1"
 	postgresImage = "postgres:18-alpine"
 	redisImage    = "redis:8-alpine"
-	kafkaExtTCP   = "9093/tcp"
 
 	statsPollTimeout     = 90 * time.Second
 	readinessPollTimeout = 150 * time.Second
 	controllerGroupID    = "e2e-test-group"
 )
-
-// kafkaStarterScript is copied into the KRaft container once the mapped port is
-// known; the advertised listener must point at the host-reachable endpoint.
-const kafkaStarterScript = `#!/bin/bash
-export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://%s,BROKER://localhost:9092"
-echo "Starting Kafka KRaft mode (apache/kafka:4.3.1)"
-/etc/kafka/docker/run`
 
 var (
 	orchBaseURL     string
@@ -68,7 +57,6 @@ var (
 	testCtx         context.Context
 	cancelAll       context.CancelFunc
 	controllerCmd   *exec.Cmd
-	kafkaContainer  testcontainers.Container
 )
 
 // ---- response/request DTOs (mirrors the HTTP handlers) ----
@@ -147,11 +135,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to start redis: %v", err)
 	}
 
-	kafkaC, kafkaPort, err := startKafkaContainer(ctx)
-	if err != nil {
-		log.Fatalf("failed to start kafka: %v", err)
-	}
-	kafkaContainer = kafkaC
+	kafkaBrokerAddr = tkafka.BrokerAddr()
 
 	dbHost, err := pgC.Host(ctx)
 	if err != nil {
@@ -172,15 +156,16 @@ func TestMain(m *testing.M) {
 	}
 
 	kafkaHost := "127.0.0.1"
-	kafkaBrokerAddr = net.JoinHostPort(kafkaHost, strconv.Itoa(kafkaPort))
 
 	httpClient = &http.Client{Timeout: 20 * time.Second}
 
 	connStr := fmt.Sprintf("postgres://test:test@%s:%d/testdb?sslmode=disable", dbHost, dbPort)
 	applyMigrations(ctx, connStr)
-	createKafkaTopics(ctx, kafkaBrokerAddr)
-	waitForKafkaBroker(kafkaBrokerAddr)
+	for _, name := range []string{checkinsTopic, updateResultsTopic, updateResultsDLQTopic} {
+		tkafka.CreateTopic(name, 3)
+	}
 
+	_, kafkaPort := tkafka.BrokerHostPort()
 	ctrlPort := freePort()
 	ctrlBin := buildControllerBin()
 	ctrlCmd := exec.Command(ctrlBin)
@@ -251,79 +236,13 @@ func TestMain(m *testing.M) {
 		_ = controllerCmd.Process.Kill()
 		_, _ = controllerCmd.Process.Wait()
 	}
-	if kafkaContainer != nil {
-		_ = kafkaContainer.Terminate(context.Background())
-	}
+	tkafka.Terminate()
 	_ = pgC.Terminate(context.Background())
 	_ = redisC.Terminate(context.Background())
 	os.Exit(code)
 }
 
 // ---- infrastructure helpers ----
-
-// startKafkaContainer launches a single-node KRaft broker (apache/kafka:4.3.1)
-// and returns it together with the host-mapped external port. The advertised
-// listener is rewritten to the mapped endpoint so host processes can connect.
-func startKafkaContainer(ctx context.Context) (testcontainers.Container, int, error) {
-	req := testcontainers.ContainerRequest{
-		Image:        kafkaImage,
-		ExposedPorts: []string{kafkaExtTCP},
-		Env: map[string]string{
-			"CLUSTER_ID":                                     "5L6g3nShT-eMCtK--X86sw",
-			"KAFKA_NODE_ID":                                  "1",
-			"KAFKA_PROCESS_ROLES":                            "broker,controller",
-			"KAFKA_CONTROLLER_LISTENER_NAMES":                "CONTROLLER",
-			"KAFKA_CONTROLLER_QUORUM_VOTERS":                 "1@localhost:9094",
-			"KAFKA_LISTENERS":                                "PLAINTEXT://0.0.0.0:9093,BROKER://0.0.0.0:9092,CONTROLLER://0.0.0.0:9094",
-			"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP":           "PLAINTEXT:PLAINTEXT,BROKER:PLAINTEXT,CONTROLLER:PLAINTEXT",
-			"KAFKA_INTER_BROKER_LISTENER_NAME":               "BROKER",
-			"KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR":         "1",
-			"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
-			"KAFKA_TRANSACTION_STATE_LOG_MIN_ISR":            "1",
-			"KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS":         "0",
-			"KAFKA_NUM_PARTITIONS":                           "3",
-			"KAFKA_AUTO_CREATE_TOPICS_ENABLE":                "false",
-			"KAFKA_LOG_DIRS":                                 "/var/lib/kafka/data",
-		},
-		Cmd: []string{"sh", "-c", "while [ ! -f /tmp/kafka_start.sh ]; do sleep 0.1; done; bash /tmp/kafka_start.sh"},
-		LifecycleHooks: []testcontainers.ContainerLifecycleHooks{
-			{
-				PostStarts: []testcontainers.ContainerHook{
-					func(ctx context.Context, c testcontainers.Container) error {
-						if err := wait.ForMappedPort(kafkaExtTCP).WaitUntilReady(ctx, c); err != nil {
-							return err
-						}
-						endpoint, err := c.PortEndpoint(ctx, kafkaExtTCP, "")
-						if err != nil {
-							return err
-						}
-						script := fmt.Sprintf(kafkaStarterScript, endpoint)
-						return c.CopyToContainer(ctx, []byte(script), "/tmp/kafka_start.sh", 0o755)
-					},
-				},
-			},
-		},
-		WaitingFor: wait.ForLog("Kafka Server started"),
-	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-
-	port, err := container.MappedPort(ctx, kafkaExtTCP)
-	if err != nil {
-		return nil, 0, err
-	}
-	portInt, err := strconv.Atoi(port.Port())
-	if err != nil {
-		return nil, 0, err
-	}
-	return container, portInt, nil
-}
 
 func repoRoot() string {
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -433,95 +352,6 @@ func applyMigrations(ctx context.Context, connStr string) {
 	}
 }
 
-// createKafkaTopics creates each topic and blocks until its partition leaders
-// are elected, so producers/consumers observe stable metadata.
-func createKafkaTopics(ctx context.Context, broker string) {
-	client := &kafka.Client{Addr: kafka.TCP(broker)}
-	for _, name := range []string{checkinsTopic, updateResultsTopic, updateResultsDLQTopic} {
-		createOneTopic(ctx, client, name, 3)
-	}
-}
-
-func createOneTopic(ctx context.Context, client *kafka.Client, name string, partitions int) {
-	deadline := time.Now().Add(120 * time.Second)
-	var lastErr error
-	for time.Now().Before(deadline) {
-		_, err := client.CreateTopics(ctx, &kafka.CreateTopicsRequest{
-			Topics: []kafka.TopicConfig{{
-				Topic:             name,
-				NumPartitions:     partitions,
-				ReplicationFactor: 1,
-			}},
-		})
-		if err == nil || errors.Is(err, kafka.TopicAlreadyExists) {
-			if waitTopicLeaderReady(ctx, client, name, partitions) {
-				return
-			}
-		} else {
-			lastErr = err
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	if lastErr != nil {
-		log.Fatalf("failed to create kafka topic %q: %v", name, lastErr)
-	}
-}
-
-// waitTopicLeaderReady polls broker metadata until the topic reports the
-// expected partitions, each with an elected leader.
-func waitTopicLeaderReady(ctx context.Context, client *kafka.Client, name string, partitions int) bool {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	backoff := 100 * time.Millisecond
-	for {
-		select {
-		case <-ctx.Done():
-			return false
-		default:
-		}
-
-		res, err := client.Metadata(ctx, &kafka.MetadataRequest{Topics: []string{name}})
-		if err != nil {
-			time.Sleep(backoff)
-			if backoff < 2*time.Second {
-				backoff *= 2
-			}
-			continue
-		}
-
-		var topic *kafka.Topic
-		for i := range res.Topics {
-			if res.Topics[i].Name == name {
-				topic = &res.Topics[i]
-				break
-			}
-		}
-		if topic == nil || topic.Error != nil || len(topic.Partitions) != partitions {
-			time.Sleep(backoff)
-			if backoff < 2*time.Second {
-				backoff *= 2
-			}
-			continue
-		}
-
-		ready := true
-		for _, p := range topic.Partitions {
-			if p.Leader.ID < 0 {
-				ready = false
-				break
-			}
-		}
-		if ready {
-			return true
-		}
-		time.Sleep(backoff)
-		if backoff < 2*time.Second {
-			backoff *= 2
-		}
-	}
-}
-
 func waitForPort(addr string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -533,21 +363,6 @@ func waitForPort(addr string, timeout time.Duration) error {
 		time.Sleep(300 * time.Millisecond)
 	}
 	return fmt.Errorf("port %s not ready within %s", addr, timeout)
-}
-
-func waitForKafkaBroker(addr string) {
-	deadline := time.Now().Add(120 * time.Second)
-	var lastErr error
-	for time.Now().Before(deadline) {
-		conn, err := kafka.Dial("tcp", addr)
-		if err == nil {
-			_ = conn.Close()
-			return
-		}
-		lastErr = err
-		time.Sleep(500 * time.Millisecond)
-	}
-	log.Fatalf("kafka broker %s not reachable: %v", addr, lastErr)
 }
 
 func waitForHTTPReady(url string, timeout time.Duration) error {
@@ -742,6 +557,7 @@ func uniqueModel() string {
 }
 
 func TestE2E_FullCheckinReportStatsFlow(t *testing.T) {
+	t.Parallel()
 	model := uniqueModel()
 	deviceID := createDevice(t, model, "0.0.1")
 	fwID := createFirmware(t, model, "1.0.0", strings.Repeat("a", 64), "http://example.com/fw-1.0.0.bin")
@@ -779,6 +595,7 @@ func TestE2E_DecommissionedDevice_DoesNotReceiveUpdate(t *testing.T) {
 }
 
 func TestE2E_DuplicateReportEvent_DoesNotDoubleCount(t *testing.T) {
+	t.Parallel()
 	model := uniqueModel()
 	deviceID := createDevice(t, model, "0.0.1")
 	fwID := createFirmware(t, model, "1.0.0", strings.Repeat("c", 64), "http://example.com/fw-1.0.0.bin")

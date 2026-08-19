@@ -6,13 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/domain"
+	"github.com/google/uuid"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/config"
-	"github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/domain"
-	"github.com/google/uuid"
+	tkafka "github.com/Arondy/OTA-Firmware-Orchestrator/testutil/kafka"
 	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -61,6 +62,8 @@ func (f *fakeUpdateResultsSvc) waitReceived(t *testing.T, n int, timeout time.Du
 func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer, func()) {
 	t.Helper()
 
+	tkafka.DeleteTopic(updateResultsTopic)
+	tkafka.DeleteTopic(updateResultsDLQTopic)
 	createTopic(t, updateResultsTopic, 3)
 	createTopic(t, updateResultsDLQTopic, 3)
 
@@ -68,7 +71,7 @@ func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer
 	consumer, err := NewUpdateResultsConsumer(svc, config.BrokerConfig{
 		Host:     host,
 		Port:     port,
-		GroupID:  "integration-consumer-group",
+		GroupID:  "integration-consumer-group-" + uuid.New().String(),
 		MinBytes: 1,
 	}, zap.NewNop().Sugar())
 	require.NoError(t, err)
@@ -83,6 +86,7 @@ func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer
 }
 
 func TestUpdateResultsConsumer_ProcessesEvent(t *testing.T) {
+
 	svc := &fakeUpdateResultsSvc{}
 	_, stop := newTestConsumer(t, svc)
 	defer stop()
@@ -112,6 +116,7 @@ func TestUpdateResultsConsumer_ProcessesEvent(t *testing.T) {
 }
 
 func TestUpdateResultsConsumer_DeadLetterOnServiceError(t *testing.T) {
+
 	svc := &fakeUpdateResultsSvc{err: errors.New("boom")}
 	_, stop := newTestConsumer(t, svc)
 	defer stop()
@@ -141,6 +146,7 @@ func TestUpdateResultsConsumer_DeadLetterOnServiceError(t *testing.T) {
 }
 
 func TestUpdateResultsConsumer_DeadLetterOnCorruptedMessage(t *testing.T) {
+
 	svc := &fakeUpdateResultsSvc{}
 	_, stop := newTestConsumer(t, svc)
 	defer stop()
@@ -159,3 +165,4 @@ func TestUpdateResultsConsumer_DeadLetterOnCorruptedMessage(t *testing.T) {
 
 	svc.assertNotReceived(t, 2*time.Second)
 }
+
