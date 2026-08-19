@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	connectrpc.com/connect v1.20.0
 	github.com/Arondy/OTA-Firmware-Orchestrator/api/gen v0.0.1
+	github.com/Arondy/OTA-Firmware-Orchestrator/testutil v0.0.0
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/google/uuid v1.6.0
@@ -16,7 +17,6 @@ require (
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/stretchr/testify v1.12.0
-	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.40.0
 	go.uber.org/zap v1.28.0
@@ -74,10 +74,10 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
+	github.com/testcontainers/testcontainers-go v0.40.0 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -90,7 +90,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
@@ -105,3 +104,5 @@ require (
 replace github.com/Arondy/OTA-Firmware-Orchestrator/api/gen => ../api/gen
 
 replace github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller => ../rollout-controller
+
+replace github.com/Arondy/OTA-Firmware-Orchestrator/testutil => ../tests/testutil
