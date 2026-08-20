@@ -245,7 +245,7 @@ func NewReader(topic string) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{brokerAddr},
 		Topic:       topic,
-		GroupID:     "integration-" + topic + "-" + time.Now().Format("150405.000"),
+		GroupID:     fmt.Sprintf("integration-%s-%d", topic, time.Now().UnixNano()),
 		StartOffset: kafka.FirstOffset,
 	})
 }
