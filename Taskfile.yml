@@ -73,8 +73,8 @@ tasks:
   test-unit:
     desc: Run unit tests in both modules
     cmds:
-      - cd ota-orchestrator && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
-      - cd rollout-controller && gotestsum $(go list -f '{{.LISTPKG}}' ./...)
+      - cd ota-orchestrator && gotestsum -- -race $(go list -f '{{.LISTPKG}}' ./...)
+      - cd rollout-controller && gotestsum -- -race $(go list -f '{{.LISTPKG}}' ./...)
 
   test-all:
     desc: Run all tests in both modules
