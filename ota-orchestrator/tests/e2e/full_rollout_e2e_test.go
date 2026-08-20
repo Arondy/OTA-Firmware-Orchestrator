@@ -57,6 +57,9 @@ var (
 	testCtx         context.Context
 	cancelAll       context.CancelFunc
 	controllerCmd   *exec.Cmd
+	pgContainer     *postgres.PostgresContainer
+	redisContainer  *redis.RedisContainer
+	ctrlBinDir      string
 )
 
 // ---- response/request DTOs (mirrors the HTTP handlers) ----
@@ -115,7 +118,6 @@ type reportResp struct {
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancelAll = cancel
-	defer cancel()
 
 	testCtx = ctx
 	logger := newTestLogger()
@@ -127,32 +129,34 @@ func TestMain(m *testing.M) {
 		postgres.BasicWaitStrategies(),
 	)
 	if err != nil {
-		log.Fatalf("failed to start postgres: %v", err)
+		fail("failed to start postgres: %v", err)
 	}
+	pgContainer = pgC
 
 	redisC, err := redis.Run(ctx, redisImage)
 	if err != nil {
-		log.Fatalf("failed to start redis: %v", err)
+		fail("failed to start redis: %v", err)
 	}
+	redisContainer = redisC
 
 	kafkaBrokerAddr = tkafka.BrokerAddr()
 
 	dbHost, err := pgC.Host(ctx)
 	if err != nil {
-		log.Fatalf("postgres host: %v", err)
+		fail("postgres host: %v", err)
 	}
 	dbPort, err := mappedPortInt(pgC.MappedPort(ctx, "5432/tcp"))
 	if err != nil {
-		log.Fatalf("postgres port: %v", err)
+		fail("postgres port: %v", err)
 	}
 
 	redisHost, err := redisC.Host(ctx)
 	if err != nil {
-		log.Fatalf("redis host: %v", err)
+		fail("redis host: %v", err)
 	}
 	redisPort, err := mappedPortInt(redisC.MappedPort(ctx, "6379/tcp"))
 	if err != nil {
-		log.Fatalf("redis port: %v", err)
+		fail("redis port: %v", err)
 	}
 
 	kafkaHost := "127.0.0.1"
@@ -174,12 +178,12 @@ func TestMain(m *testing.M) {
 	ctrlCmd.Stdout = os.Stdout
 	ctrlCmd.Stderr = os.Stderr
 	if err := ctrlCmd.Start(); err != nil {
-		log.Fatalf("failed to start rollout-controller: %v", err)
+		fail("failed to start rollout-controller: %v", err)
 	}
 	controllerCmd = ctrlCmd
 	ctrlBaseURL = fmt.Sprintf("http://127.0.0.1:%d", ctrlPort)
 	if err := waitForConnectHealth(ctrlBaseURL, readinessPollTimeout); err != nil {
-		log.Fatalf("rollout-controller not ready: %v", err)
+		fail("rollout-controller not ready: %v", err)
 	}
 
 	orchPort := freePort()
@@ -224,22 +228,40 @@ func TestMain(m *testing.M) {
 	}()
 
 	orchBaseURL = fmt.Sprintf("http://127.0.0.1:%d", orchPort)
-	httpClient = &http.Client{Timeout: 20 * time.Second}
 	if err := waitForHTTPReady(orchBaseURL+"/healthz", readinessPollTimeout); err != nil {
-		log.Fatalf("ota-orchestrator not ready: %v", err)
+		fail("ota-orchestrator not ready: %v", err)
 	}
 
 	code := m.Run()
 
-	cancel()
+	shutdown()
+	os.Exit(code)
+}
+
+func fail(format string, args ...any) {
+	log.Printf("fatal: "+format, args...)
+	shutdown()
+	os.Exit(1)
+}
+
+func shutdown() {
+	if cancelAll != nil {
+		cancelAll()
+	}
 	if controllerCmd != nil && controllerCmd.Process != nil {
 		_ = controllerCmd.Process.Kill()
 		_, _ = controllerCmd.Process.Wait()
 	}
 	tkafka.Terminate()
-	_ = pgC.Terminate(context.Background())
-	_ = redisC.Terminate(context.Background())
-	os.Exit(code)
+	if pgContainer != nil {
+		_ = pgContainer.Terminate(context.Background())
+	}
+	if redisContainer != nil {
+		_ = redisContainer.Terminate(context.Background())
+	}
+	if ctrlBinDir != "" {
+		_ = os.RemoveAll(ctrlBinDir)
+	}
 }
 
 // ---- infrastructure helpers ----
@@ -247,7 +269,7 @@ func TestMain(m *testing.M) {
 func repoRoot() string {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		log.Fatal("failed to resolve current file path")
+		fail("failed to resolve current file path")
 	}
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
 }
@@ -255,14 +277,15 @@ func repoRoot() string {
 func buildControllerBin() string {
 	dir, err := os.MkdirTemp("", "e2e-controller")
 	if err != nil {
-		log.Fatalf("failed to create temp dir: %v", err)
+		fail("failed to create temp dir: %v", err)
 	}
+	ctrlBinDir = dir
 	bin := filepath.Join(dir, "rollout-controller.exe")
 	cmd := exec.Command("go", "build", "-o", bin, "./cmd/rollout-controller")
 	cmd.Dir = filepath.Join(repoRoot(), "rollout-controller")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("failed to build rollout-controller: %v\n%s", err, out)
+		fail("failed to build rollout-controller: %v\n%s", err, out)
 	}
 	return bin
 }
@@ -293,7 +316,7 @@ func mappedPortInt(p interface{ Port() string }, err error) (int, error) {
 func freePort() int {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		log.Fatalf("failed to allocate free port: %v", err)
+		fail("failed to allocate free port: %v", err)
 	}
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port
@@ -324,13 +347,13 @@ func applyMigrations(ctx context.Context, connStr string) {
 	// The migrations rely on a uuidv7() function; provide a self-contained
 	// implementation so the schema applies without the pg_uuidv7 extension.
 	if _, err := pool.Exec(ctx, `CREATE OR REPLACE FUNCTION uuidv7() RETURNS uuid LANGUAGE sql AS $$ SELECT gen_random_uuid(); $$;`); err != nil {
-		log.Fatalf("failed to create uuidv7 function: %v", err)
+		fail("failed to create uuidv7 function: %v", err)
 	}
 
 	dir := migrationsDirPath()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		log.Fatalf("failed to read migrations dir %s: %v", dir, err)
+		fail("failed to read migrations dir %s: %v", dir, err)
 	}
 
 	var upFiles []string
@@ -344,10 +367,10 @@ func applyMigrations(ctx context.Context, connStr string) {
 	for _, name := range upFiles {
 		content, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
-			log.Fatalf("failed to read migration %s: %v", name, err)
+			fail("failed to read migration %s: %v", name, err)
 		}
 		if _, err := pool.Exec(ctx, string(content)); err != nil {
-			log.Fatalf("migration %s failed: %v", name, err)
+			fail("migration %s failed: %v", name, err)
 		}
 	}
 }
@@ -581,6 +604,7 @@ func TestE2E_FullCheckinReportStatsFlow(t *testing.T) {
 }
 
 func TestE2E_DecommissionedDevice_DoesNotReceiveUpdate(t *testing.T) {
+	t.Parallel()
 	model := uniqueModel()
 	deviceID := createDevice(t, model, "0.0.1")
 	fwID := createFirmware(t, model, "1.0.0", strings.Repeat("b", 64), "http://example.com/fw-1.0.0.bin")
