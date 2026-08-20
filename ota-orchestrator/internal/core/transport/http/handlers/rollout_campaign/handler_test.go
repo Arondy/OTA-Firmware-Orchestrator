@@ -57,6 +57,7 @@ func invalidSequenceBody() string {
 // --- Create ---
 
 func TestCreateCampaign_ValidRequest_Returns201(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.RolloutCampaign{ID: uuid.New()}, nil)
 
@@ -66,6 +67,7 @@ func TestCreateCampaign_ValidRequest_Returns201(t *testing.T) {
 }
 
 func TestCreateCampaign_InvalidStagesSequence_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	w := httptest.NewRecorder()
 	h.Create(w, req(http.MethodPost, invalidSequenceBody()))
@@ -73,6 +75,7 @@ func TestCreateCampaign_InvalidStagesSequence_Returns400(t *testing.T) {
 }
 
 func TestCreateCampaign_FirmwareNotFound_Returns400(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.RolloutCampaign{}, domain.ErrFirmwareVersionNotFound)
 
@@ -82,6 +85,7 @@ func TestCreateCampaign_FirmwareNotFound_Returns400(t *testing.T) {
 }
 
 func TestCreateCampaign_StageAlreadyExists_Returns400(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.RolloutCampaign{}, domain.ErrRolloutStageAlreadyExists)
 
@@ -91,6 +95,7 @@ func TestCreateCampaign_StageAlreadyExists_Returns400(t *testing.T) {
 }
 
 func TestCreateCampaign_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.RolloutCampaign{}, errors.New("boom"))
 
@@ -102,6 +107,7 @@ func TestCreateCampaign_ServiceFails_Returns500(t *testing.T) {
 // --- Get ---
 
 func TestGetCampaign_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	r := req(http.MethodGet, "")
 	r.SetPathValue("id", "bad")
@@ -111,6 +117,7 @@ func TestGetCampaign_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestGetCampaign_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -121,6 +128,7 @@ func TestGetCampaign_NotFound_Returns404(t *testing.T) {
 }
 
 func TestGetCampaign_Success_Returns200WithStagesAndStats(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	stageID := uuid.New()
@@ -145,6 +153,7 @@ func TestGetCampaign_Success_Returns200WithStagesAndStats(t *testing.T) {
 // --- List ---
 
 func TestListCampaigns_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().List(mock.Anything).Return([]domain.RolloutCampaign{{ID: uuid.New()}}, nil)
 
@@ -154,6 +163,7 @@ func TestListCampaigns_Success_Returns200(t *testing.T) {
 }
 
 func TestListCampaigns_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().List(mock.Anything).Return(nil, errors.New("boom"))
 
@@ -165,6 +175,7 @@ func TestListCampaigns_ServiceFails_Returns500(t *testing.T) {
 // --- Start ---
 
 func TestStartCampaign_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	r := req(http.MethodPost, "")
 	r.SetPathValue("id", "bad")
@@ -174,6 +185,7 @@ func TestStartCampaign_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestStartCampaign_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Start(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -184,6 +196,7 @@ func TestStartCampaign_NotFound_Returns404(t *testing.T) {
 }
 
 func TestStartCampaign_AlreadyRunning_Returns409(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Start(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrCampaignAlreadyRunning)
@@ -194,6 +207,7 @@ func TestStartCampaign_AlreadyRunning_Returns409(t *testing.T) {
 }
 
 func TestStartCampaign_WrongStatus_Returns400(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Start(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignWrongStatus)
@@ -204,6 +218,7 @@ func TestStartCampaign_WrongStatus_Returns400(t *testing.T) {
 }
 
 func TestStartCampaign_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Start(mock.Anything, id).Return(domain.RolloutCampaign{ID: id, Status: domain.RolloutCampaignsStatusRunning}, nil)
@@ -216,6 +231,7 @@ func TestStartCampaign_Success_Returns200(t *testing.T) {
 // --- Pause ---
 
 func TestPauseCampaign_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	r := req(http.MethodPost, "")
 	r.SetPathValue("id", "bad")
@@ -225,6 +241,7 @@ func TestPauseCampaign_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestPauseCampaign_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Pause(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -235,6 +252,7 @@ func TestPauseCampaign_NotFound_Returns404(t *testing.T) {
 }
 
 func TestPauseCampaign_WrongStatus_Returns400(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Pause(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignWrongStatus)
@@ -245,6 +263,7 @@ func TestPauseCampaign_WrongStatus_Returns400(t *testing.T) {
 }
 
 func TestPauseCampaign_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Pause(mock.Anything, id).Return(domain.RolloutCampaign{ID: id, Status: domain.RolloutCampaignsStatusPaused}, nil)
@@ -257,6 +276,7 @@ func TestPauseCampaign_Success_Returns200(t *testing.T) {
 // --- Resume ---
 
 func TestResumeCampaign_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	r := req(http.MethodPost, "")
 	r.SetPathValue("id", "bad")
@@ -266,6 +286,7 @@ func TestResumeCampaign_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestResumeCampaign_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Resume(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -276,6 +297,7 @@ func TestResumeCampaign_NotFound_Returns404(t *testing.T) {
 }
 
 func TestResumeCampaign_AlreadyRunning_Returns409(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Resume(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrCampaignAlreadyRunning)
@@ -286,6 +308,7 @@ func TestResumeCampaign_AlreadyRunning_Returns409(t *testing.T) {
 }
 
 func TestResumeCampaign_WrongStatus_Returns400(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Resume(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignWrongStatus)
@@ -296,6 +319,7 @@ func TestResumeCampaign_WrongStatus_Returns400(t *testing.T) {
 }
 
 func TestResumeCampaign_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Resume(mock.Anything, id).Return(domain.RolloutCampaign{ID: id, Status: domain.RolloutCampaignsStatusRunning}, nil)
@@ -308,6 +332,7 @@ func TestResumeCampaign_Success_Returns200(t *testing.T) {
 // --- AdvanceStage ---
 
 func TestAdvanceStage_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	r := req(http.MethodPost, "")
 	r.SetPathValue("id", "bad")
@@ -317,6 +342,7 @@ func TestAdvanceStage_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestAdvanceStage_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().AdvanceStage(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -327,6 +353,7 @@ func TestAdvanceStage_NotFound_Returns404(t *testing.T) {
 }
 
 func TestAdvanceStage_WrongStatus_Returns400(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().AdvanceStage(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignWrongStatus)
@@ -337,6 +364,7 @@ func TestAdvanceStage_WrongStatus_Returns400(t *testing.T) {
 }
 
 func TestAdvanceStage_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	id := uuid.New()
 	svc.EXPECT().AdvanceStage(mock.Anything, id).Return(domain.RolloutCampaign{ID: id, Status: domain.RolloutCampaignsStatusRunning}, nil)

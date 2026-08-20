@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -15,6 +16,7 @@ import (
 )
 
 func TestGetCampaignStats_InvalidUUID_ReturnsInvalidArgument(t *testing.T) {
+	t.Parallel()
 	svc := mocks.NewMockCampaignStatsService(t)
 	h := NewCampaignStatsHandler(svc)
 
@@ -25,6 +27,7 @@ func TestGetCampaignStats_InvalidUUID_ReturnsInvalidArgument(t *testing.T) {
 }
 
 func TestGetCampaignStats_CurrentStageNotFound_ReturnsNotFound(t *testing.T) {
+	t.Parallel()
 	svc := mocks.NewMockCampaignStatsService(t)
 	h := NewCampaignStatsHandler(svc)
 	id := uuid.New()
@@ -37,6 +40,7 @@ func TestGetCampaignStats_CurrentStageNotFound_ReturnsNotFound(t *testing.T) {
 }
 
 func TestGetCampaignStats_InternalError_ReturnsInternal(t *testing.T) {
+	t.Parallel()
 	svc := mocks.NewMockCampaignStatsService(t)
 	h := NewCampaignStatsHandler(svc)
 	id := uuid.New()
@@ -49,6 +53,7 @@ func TestGetCampaignStats_InternalError_ReturnsInternal(t *testing.T) {
 }
 
 func TestGetCampaignStats_Success_ReturnsStats(t *testing.T) {
+	t.Parallel()
 	svc := mocks.NewMockCampaignStatsService(t)
 	h := NewCampaignStatsHandler(svc)
 	id := uuid.New()
@@ -62,5 +67,5 @@ func TestGetCampaignStats_Success_ReturnsStats(t *testing.T) {
 }
 
 func assertStatsErr() error {
-	return context.DeadlineExceeded
+	return errors.New("boom")
 }
