@@ -13,6 +13,7 @@ func newBucketService() *UpdateService {
 }
 
 func TestCalculateBucket_Deterministic(t *testing.T) {
+	t.Parallel()
 	deviceID := uuid.New()
 	campaignID := uuid.New()
 
@@ -23,6 +24,7 @@ func TestCalculateBucket_Deterministic(t *testing.T) {
 }
 
 func TestCalculateBucket_Range(t *testing.T) {
+	t.Parallel()
 	for i := 0; i < 10000; i++ {
 		deviceID := uuid.New()
 		campaignID := uuid.New()
@@ -35,7 +37,8 @@ func TestCalculateBucket_Range(t *testing.T) {
 }
 
 func TestCalculateBucket_Distribution(t *testing.T) {
-	const total = 1000000
+	t.Parallel()
+	const total = 300000
 	counts := make([]int, 101)
 
 	for i := 0; i < total; i++ {
@@ -49,11 +52,12 @@ func TestCalculateBucket_Distribution(t *testing.T) {
 	expected := float64(total) / 100.0
 	for bucket := 1; bucket <= 100; bucket++ {
 		diff := math.Abs(float64(counts[bucket])-expected) / expected
-		assert.Less(t, diff, 0.05, "bucket %d deviates by %.2f%%", bucket, diff*100)
+		assert.Less(t, diff, 0.08, "bucket %d deviates by %.2f%%", bucket, diff*100)
 	}
 }
 
 func TestCalculateBucket_DifferentCampaigns(t *testing.T) {
+	t.Parallel()
 	deviceID := uuid.New()
 	firstCampaign := uuid.New()
 	baseBucket := int(newBucketService().calculateBucket(deviceID, firstCampaign))

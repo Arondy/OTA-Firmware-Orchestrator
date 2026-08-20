@@ -14,6 +14,7 @@ import (
 )
 
 func TestUpdateStageResults_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	repo := mocks.NewMockCampaignRepo(t)
 	event := domain.UpdateResultsEvent{
 		EventID:    uuid.New(),
@@ -30,6 +31,7 @@ func TestUpdateStageResults_DelegatesToRepo(t *testing.T) {
 }
 
 func TestGetCampaignStats_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	repo := mocks.NewMockCampaignRepo(t)
 	id := uuid.New()
 	stats := domain.CampaignStats{ActiveStageID: uuid.New(), SuccessRate: 0.5, SampleSize: 2}

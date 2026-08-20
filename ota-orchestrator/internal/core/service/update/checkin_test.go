@@ -98,6 +98,7 @@ func expectCacheWrites(m *checkinMocks) {
 }
 
 func TestCheckin_DeviceNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 
@@ -109,6 +110,7 @@ func TestCheckin_DeviceNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestCheckin_DeviceDecommissioned_ReturnsNoUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	dev := activeDevice(deviceID)
@@ -122,6 +124,7 @@ func TestCheckin_DeviceDecommissioned_ReturnsNoUpdate(t *testing.T) {
 }
 
 func TestCheckin_NoRunningCampaign_ReturnsNoUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	dev := activeDevice(deviceID)
@@ -136,6 +139,7 @@ func TestCheckin_NoRunningCampaign_ReturnsNoUpdate(t *testing.T) {
 }
 
 func TestCheckin_CampaignWrongStatus_ReturnsNoUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	dev := activeDevice(deviceID)
@@ -150,6 +154,7 @@ func TestCheckin_CampaignWrongStatus_ReturnsNoUpdate(t *testing.T) {
 }
 
 func TestCheckin_CacheSetFails_StillContinues(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -174,6 +179,7 @@ func TestCheckin_CacheSetFails_StillContinues(t *testing.T) {
 }
 
 func TestCheckin_ProducesEvent_WhenRunningCampaignExists(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -202,6 +208,7 @@ func TestCheckin_ProducesEvent_WhenRunningCampaignExists(t *testing.T) {
 }
 
 func TestCheckin_FirmwareNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -220,6 +227,7 @@ func TestCheckin_FirmwareNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestCheckin_VersionEqualOrGreater_ReturnsNoUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -241,6 +249,7 @@ func TestCheckin_VersionEqualOrGreater_ReturnsNoUpdate(t *testing.T) {
 }
 
 func TestCheckin_CacheGetStageFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -261,6 +270,7 @@ func TestCheckin_CacheGetStageFails_ReturnsError(t *testing.T) {
 }
 
 func TestCheckin_CacheGetTargetPercentFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -283,6 +293,7 @@ func TestCheckin_CacheGetTargetPercentFails_ReturnsError(t *testing.T) {
 }
 
 func TestCheckin_BucketAboveTargetPercent_ReturnsNoUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -312,6 +323,7 @@ func TestCheckin_BucketAboveTargetPercent_ReturnsNoUpdate(t *testing.T) {
 }
 
 func TestCheckin_BucketWithinTargetPercent_ReturnsUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()
@@ -341,6 +353,7 @@ func TestCheckin_BucketWithinTargetPercent_ReturnsUpdate(t *testing.T) {
 }
 
 func TestCheckin_TargetPercent100_AllDevicesGetUpdate(t *testing.T) {
+	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
 	campaignID := uuid.New()

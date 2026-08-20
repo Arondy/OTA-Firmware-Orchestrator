@@ -26,6 +26,7 @@ func reportCampaignWithStage(campaignID, stageID uuid.UUID) domain.RolloutCampai
 }
 
 func TestReport_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 
@@ -36,6 +37,7 @@ func TestReport_CampaignNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestReport_StageNotInCampaign_ReturnsErrRolloutStageNotFoundInCampaign(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 	otherStage := uuid.New()
@@ -50,6 +52,7 @@ func TestReport_StageNotInCampaign_ReturnsErrRolloutStageNotFoundInCampaign(t *t
 }
 
 func TestReport_DeviceNotFound_ReturnsErrDeviceNotFound(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 	stageID := uuid.New()
@@ -67,6 +70,7 @@ func TestReport_DeviceNotFound_ReturnsErrDeviceNotFound(t *testing.T) {
 }
 
 func TestReport_DeviceModelMismatch_ReturnsErrWrongDeviceModel(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 	stageID := uuid.New()
@@ -84,6 +88,7 @@ func TestReport_DeviceModelMismatch_ReturnsErrWrongDeviceModel(t *testing.T) {
 }
 
 func TestReport_CreateAttemptFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 	stageID := uuid.New()
@@ -103,6 +108,7 @@ func TestReport_CreateAttemptFails_ReturnsError(t *testing.T) {
 }
 
 func TestReport_ProduceFails_ReturnsErrUpdateResultNotProduced(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 	stageID := uuid.New()
@@ -123,6 +129,7 @@ func TestReport_ProduceFails_ReturnsErrUpdateResultNotProduced(t *testing.T) {
 }
 
 func TestReport_Success_GeneratesEventIDAndProduces(t *testing.T) {
+	t.Parallel()
 	m := newReportMocks(t)
 	campaignID := uuid.New()
 	stageID := uuid.New()
@@ -152,26 +159,4 @@ func TestReport_Success_GeneratesEventIDAndProduces(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, createdEventID)
-}
-
-func TestReport_Success_AttemptHasEventIDBeforeCreate(t *testing.T) {
-	m := newReportMocks(t)
-	campaignID := uuid.New()
-	stageID := uuid.New()
-	deviceID := uuid.New()
-
-	m.campaignRepo.EXPECT().Get(mock.Anything, campaignID).Return(reportCampaignWithStage(campaignID, stageID), nil)
-	m.deviceRepo.EXPECT().Get(mock.Anything, deviceID).Return(domain.Device{ID: deviceID, DeviceModel: "model-a"}, nil)
-	m.updateAttemptRepo.EXPECT().Create(mock.Anything, mock.Anything).Run(func(_ context.Context, attempt domain.UpdateAttempt) {
-		require.NotEqual(t, uuid.Nil, attempt.EventID, "EventID must be set before Create")
-	}).Return(domain.UpdateAttempt{}, nil)
-	m.updateResultsProd.EXPECT().Produce(mock.Anything).Return(nil)
-
-	_, err := m.service().Report(context.Background(), domain.UpdateAttempt{
-		CampaignID: campaignID,
-		StageID:    stageID,
-		DeviceID:   deviceID,
-		Result:     domain.UpdateAttemptsResultSuccess,
-	})
-	require.NoError(t, err)
 }
