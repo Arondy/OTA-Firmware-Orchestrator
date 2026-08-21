@@ -12,6 +12,7 @@ import (
 	tkafka "github.com/Arondy/OTA-Firmware-Orchestrator/testutil/kafka"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/goleak"
 )
 
 func uniqueTopic(base string) string {
@@ -24,6 +25,16 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	tkafka.Terminate()
+
+	if code == 0 {
+		if err := goleak.Find(
+			goleak.IgnoreAnyFunction("github.com/Microsoft/go-winio.ioCompletionProcessor"),
+		); err != nil {
+			fmt.Fprintf(os.Stderr, "goleak: Errors on successful test run: %v\n", err)
+			code = 1
+		}
+	}
+
 	os.Exit(code)
 }
 

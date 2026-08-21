@@ -273,4 +273,9 @@ func Terminate() {
 	if brokerContainer != nil {
 		_ = brokerContainer.Terminate(context.Background())
 	}
+	// The broker is gone: release the shared kafka-go pool so its background
+	// conn/discover goroutines do not outlive the test process (goleak).
+	if t, ok := kafka.DefaultTransport.(*kafka.Transport); ok {
+		t.CloseIdleConnections()
+	}
 }
