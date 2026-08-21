@@ -13,17 +13,17 @@ type CampaignRepo interface {
 }
 
 type CampaignStatsService struct {
-	campaingRepo CampaignRepo
+	campaignRepo CampaignRepo
 }
 
-func NewCampaignStatsService(campaingRepo CampaignRepo) *CampaignStatsService {
-	return &CampaignStatsService{campaingRepo: campaingRepo}
+func NewCampaignStatsService(campaignRepo CampaignRepo) *CampaignStatsService {
+	return &CampaignStatsService{campaignRepo: campaignRepo}
 }
 
 func (s *CampaignStatsService) UpdateStageResults(ctx context.Context, event domain.UpdateResultsEvent) (int, error) {
-	return s.campaingRepo.UpdateStageResults(ctx, event)
+	return s.campaignRepo.UpdateStageResults(ctx, event)
 }
 
 func (s *CampaignStatsService) GetCampaignStats(ctx context.Context, id uuid.UUID) (domain.CampaignStats, error) {
-	return s.campaingRepo.GetCampaignStats(ctx, id)
+	return s.campaignRepo.GetCampaignStats(ctx, id)
 }
