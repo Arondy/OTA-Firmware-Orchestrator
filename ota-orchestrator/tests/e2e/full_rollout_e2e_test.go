@@ -340,7 +340,7 @@ func migrationsDirPath() string {
 func applyMigrations(ctx context.Context, connStr string) {
 	pool, err := pgxpool.New(ctx, connStr)
 	if err != nil {
-		log.Fatalf("failed to create migration pool: %v", err)
+		fail("failed to create migration pool: %v", err)
 	}
 	defer pool.Close()
 
