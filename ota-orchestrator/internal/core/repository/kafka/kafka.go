@@ -11,9 +11,9 @@ func Ping(address string) error {
 	const attempts = 15
 	const pause = time.Second
 	var lastErr error
+	dialer := &kafka.Dialer{Timeout: 5 * time.Second}
 
 	for i := range attempts {
-		dialer := &kafka.Dialer{Timeout: 5 * time.Second}
 		conn, err := dialer.Dial("tcp", address)
 		if err != nil {
 			return fmt.Errorf("connection to kafka address failed: %w", err)
