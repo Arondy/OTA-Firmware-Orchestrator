@@ -141,6 +141,7 @@ func TestReport_Success_GeneratesEventIDAndProduces(t *testing.T) {
 	m.deviceRepo.EXPECT().Get(mock.Anything, deviceID).Return(domain.Device{ID: deviceID, DeviceModel: "model-a"}, nil)
 	m.updateAttemptRepo.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, attempt domain.UpdateAttempt) (domain.UpdateAttempt, error) {
 		require.NotEqual(t, uuid.Nil, attempt.EventID)
+		require.Equal(t, uuid.Version(7), attempt.EventID.Version())
 		createdEventID = attempt.EventID
 		return attempt, nil
 	})
