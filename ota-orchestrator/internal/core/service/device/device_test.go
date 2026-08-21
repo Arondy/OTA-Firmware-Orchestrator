@@ -24,6 +24,7 @@ func newService(repo *mocks.MockDeviceRepo, cache *mocks.MockDeviceCacheRepo) *d
 }
 
 func TestList_RepoFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
 	repo.EXPECT().List(mock.Anything).Return(nil, errors.New("boom"))
 
@@ -32,6 +33,7 @@ func TestList_RepoFails_ReturnsError(t *testing.T) {
 }
 
 func TestList_NoCacheData_ReturnsPostgresValues(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
 	id := uuid.New()
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
@@ -47,6 +49,7 @@ func TestList_NoCacheData_ReturnsPostgresValues(t *testing.T) {
 }
 
 func TestList_CacheHasBothFields_OverridesPostgres(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
 	id := uuid.New()
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
@@ -66,6 +69,7 @@ func TestList_CacheHasBothFields_OverridesPostgres(t *testing.T) {
 }
 
 func TestList_CacheHasVersionOnly_KeepsPostgresValues(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
 	id := uuid.New()
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
@@ -81,10 +85,9 @@ func TestList_CacheHasVersionOnly_KeepsPostgresValues(t *testing.T) {
 	assert.Nil(t, devices[0].LastSeen)
 }
 
-func TestList_CacheHasLastSeenOnly_KeepsPostgresValues(t *testing.T) {
+func TestList_CacheVersionMiss_KeepsPostgresValuesAndSkipsLastSeenLookup(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
-	id := uuid.New()
-	_ = id
 	pgDevice := domain.Device{ID: uuid.New(), DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
 	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
@@ -93,11 +96,12 @@ func TestList_CacheHasLastSeenOnly_KeepsPostgresValues(t *testing.T) {
 	devices, err := newService(repo, cache).List(context.Background())
 	require.NoError(t, err)
 	require.Len(t, devices, 1)
-	assert.Equal(t, "1.0.0", devices[0].CurrentVersion, "neither field should be overridden")
+	assert.Equal(t, "1.0.0", devices[0].CurrentVersion, "version miss must keep postgres value")
 	assert.Nil(t, devices[0].LastSeen)
 }
 
 func TestCreate_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
 	in := domain.Device{DeviceModel: "m", CurrentVersion: "1.0.0"}
 
@@ -112,6 +116,7 @@ func TestCreate_DelegatesToRepo(t *testing.T) {
 }
 
 func TestDecommission_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	repo, cache := newDeviceMocks(t)
 	id := uuid.New()
 

@@ -23,12 +23,14 @@ type updateAttemptResultWrapper struct {
 }
 
 func TestValidateRolloutStages_Empty_ReturnsTrue(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	err := Validate.Struct(w)
 	assert.NoError(t, err)
 }
 
 func TestValidateRolloutStages_SingleZero_ReturnsTrue(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	w.Stages = append(w.Stages, struct{ OrderIndex int }{OrderIndex: 0})
 	err := Validate.Struct(w)
@@ -36,6 +38,7 @@ func TestValidateRolloutStages_SingleZero_ReturnsTrue(t *testing.T) {
 }
 
 func TestValidateRolloutStages_Sequential_ReturnsTrue(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	w.Stages = append(w.Stages,
 		struct{ OrderIndex int }{OrderIndex: 0},
@@ -47,6 +50,7 @@ func TestValidateRolloutStages_Sequential_ReturnsTrue(t *testing.T) {
 }
 
 func TestValidateRolloutStages_Gap_ReturnsFalse(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	w.Stages = append(w.Stages,
 		struct{ OrderIndex int }{OrderIndex: 0},
@@ -57,6 +61,7 @@ func TestValidateRolloutStages_Gap_ReturnsFalse(t *testing.T) {
 }
 
 func TestValidateRolloutStages_Duplicate_ReturnsFalse(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	w.Stages = append(w.Stages,
 		struct{ OrderIndex int }{OrderIndex: 0},
@@ -68,6 +73,7 @@ func TestValidateRolloutStages_Duplicate_ReturnsFalse(t *testing.T) {
 }
 
 func TestValidateRolloutStages_StartsNotFromZero_ReturnsFalse(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	w.Stages = append(w.Stages,
 		struct{ OrderIndex int }{OrderIndex: 1},
@@ -78,6 +84,7 @@ func TestValidateRolloutStages_StartsNotFromZero_ReturnsFalse(t *testing.T) {
 }
 
 func TestValidateRolloutStages_Unordered_ReturnsTrue(t *testing.T) {
+	t.Parallel()
 	w := rolloutStagesWrapper{}
 	w.Stages = append(w.Stages,
 		struct{ OrderIndex int }{OrderIndex: 2},
@@ -89,6 +96,7 @@ func TestValidateRolloutStages_Unordered_ReturnsTrue(t *testing.T) {
 }
 
 func TestValidateSemver_Valid(t *testing.T) {
+	t.Parallel()
 	valid := []string{"1.2.3", "0.0.1", "10.20.30", "1.0.0-alpha", "1.0.0+build.1"}
 	for _, v := range valid {
 		w := semverWrapper{V: v}
@@ -97,6 +105,7 @@ func TestValidateSemver_Valid(t *testing.T) {
 }
 
 func TestValidateSemver_Invalid(t *testing.T) {
+	t.Parallel()
 	invalid := []string{"1.2", "v1.2.3", "1.2.3.4", "", "abc", "1.2.3-"}
 	for _, v := range invalid {
 		w := semverWrapper{V: v}
@@ -105,6 +114,7 @@ func TestValidateSemver_Invalid(t *testing.T) {
 }
 
 func TestValidateUpdateAttemptResult_Valid(t *testing.T) {
+	t.Parallel()
 	valid := []domain.UpdateAttemptsResult{
 		domain.UpdateAttemptsResultSuccess,
 		domain.UpdateAttemptsResultFailure,
@@ -117,6 +127,7 @@ func TestValidateUpdateAttemptResult_Valid(t *testing.T) {
 }
 
 func TestValidateUpdateAttemptResult_Invalid(t *testing.T) {
+	t.Parallel()
 	invalid := []domain.UpdateAttemptsResult{"", "Success", "unknown", "timeout "}
 	for _, r := range invalid {
 		w := updateAttemptResultWrapper{R: r}

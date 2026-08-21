@@ -11,6 +11,7 @@ import (
 )
 
 func TestDeviceFromDomain_AllFieldsCopied(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	lastSeen := now.Add(-time.Hour)
 
@@ -45,6 +46,7 @@ func TestDeviceFromDomain_AllFieldsCopied(t *testing.T) {
 }
 
 func TestCheckinResponseFromDomain_UpdateAvailableTrue(t *testing.T) {
+	t.Parallel()
 	stageID := uuid.New()
 	result := domain.CheckinResult{
 		UpdateAvailable: true,
@@ -62,6 +64,7 @@ func TestCheckinResponseFromDomain_UpdateAvailableTrue(t *testing.T) {
 }
 
 func TestCheckinResponseFromDomain_UpdateAvailableFalse(t *testing.T) {
+	t.Parallel()
 	result := domain.CheckinResult{
 		UpdateAvailable: false,
 		StageID:         nil,
@@ -77,6 +80,7 @@ func TestCheckinResponseFromDomain_UpdateAvailableFalse(t *testing.T) {
 }
 
 func TestReportResponseFromDomain_AllFieldsCopied(t *testing.T) {
+	t.Parallel()
 	id := uuid.New()
 	deviceID := uuid.New()
 	campaignID := uuid.New()

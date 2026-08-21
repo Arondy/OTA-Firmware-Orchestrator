@@ -29,6 +29,7 @@ func req(method, body string) *http.Request {
 }
 
 func TestCreateFirmware_ValidRequest_Returns201(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	body, _ := json.Marshal(map[string]string{
 		"device_model": "model-a", "fw_version": "1.0.0",
@@ -43,6 +44,7 @@ func TestCreateFirmware_ValidRequest_Returns201(t *testing.T) {
 }
 
 func TestCreateFirmware_ValidationFails_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _ := newHandler(t)
 	body, _ := json.Marshal(map[string]string{
 		"device_model": "a", "fw_version": "not-semver",
@@ -54,6 +56,7 @@ func TestCreateFirmware_ValidationFails_Returns400(t *testing.T) {
 }
 
 func TestCreateFirmware_AlreadyExists_Returns409(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	body, _ := json.Marshal(map[string]string{
 		"device_model": "model-a", "fw_version": "1.0.0",
@@ -68,6 +71,7 @@ func TestCreateFirmware_AlreadyExists_Returns409(t *testing.T) {
 }
 
 func TestCreateFirmware_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	body, _ := json.Marshal(map[string]string{
 		"device_model": "model-a", "fw_version": "1.0.0",
@@ -82,6 +86,7 @@ func TestCreateFirmware_ServiceFails_Returns500(t *testing.T) {
 }
 
 func TestListFirmware_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().List(mock.Anything).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
 
@@ -91,6 +96,7 @@ func TestListFirmware_Success_Returns200(t *testing.T) {
 }
 
 func TestListFirmware_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc := newHandler(t)
 	svc.EXPECT().List(mock.Anything).Return(nil, assertFwErr())
 

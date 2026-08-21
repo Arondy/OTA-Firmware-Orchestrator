@@ -11,6 +11,7 @@ import (
 )
 
 func TestHealthHandler_HTTP_ReturnsOK(t *testing.T) {
+	t.Parallel()
 	h := NewHealthHandler()
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)

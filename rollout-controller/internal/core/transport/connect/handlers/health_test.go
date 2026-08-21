@@ -11,6 +11,7 @@ import (
 )
 
 func TestHealthHandler_Connect_ReturnsOK(t *testing.T) {
+	t.Parallel()
 	h := NewHealthHandler()
 	req := connect.NewRequest(&healthv1.CheckHealthRequest{})
 

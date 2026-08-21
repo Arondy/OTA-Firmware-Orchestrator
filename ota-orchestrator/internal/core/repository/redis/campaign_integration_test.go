@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func campaignStageKey(id, stageID uuid.UUID) string {
+func campaignStageKey(id uuid.UUID) string {
 	return fmt.Sprintf("campaign:%s:current_stage", id)
 }
 
@@ -105,7 +105,7 @@ func TestCampaignCacheRepo_KeysHaveNoTTL(t *testing.T) {
 	require.NoError(t, repo.SetCurrentStage(ctx, id, stageID))
 	require.NoError(t, repo.SetCurrentTargetPercent(ctx, id, 10))
 
-	ttlStage, err := testRDB.TTL(ctx, campaignStageKey(id, stageID)).Result()
+	ttlStage, err := testRDB.TTL(ctx, campaignStageKey(id)).Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(-1), int64(ttlStage))
 

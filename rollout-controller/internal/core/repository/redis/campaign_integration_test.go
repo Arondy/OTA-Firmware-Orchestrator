@@ -120,10 +120,10 @@ func TestCampaignCacheRepo_UpdateStageResults_SeenKeyExpires(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, first)
 
-	require.Eventually(t, func() bool {
-		_, err := repo.UpdateStageResults(ctx, event)
-		return err == nil
-	}, 5*time.Second, 100*time.Millisecond)
+	// while the seen-key is alive the same event id must be deduplicated
+	second, err := repo.UpdateStageResults(ctx, event)
+	require.NoError(t, err)
+	assert.Equal(t, 0, second)
 
 	// after the seen-key TTL passes, the same event id is allowed to increment again
 	require.Eventually(t, func() bool {

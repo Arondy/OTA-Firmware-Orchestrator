@@ -13,6 +13,7 @@ import (
 )
 
 func TestList_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	repo := mocks.NewMockFirmwareVersionRepo(t)
 	repo.EXPECT().List(mock.Anything).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
 
@@ -22,6 +23,7 @@ func TestList_DelegatesToRepo(t *testing.T) {
 }
 
 func TestCreate_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	repo := mocks.NewMockFirmwareVersionRepo(t)
 	in := domain.FirmwareVersion{DeviceModel: "m", FWVersion: "1.0.0"}
 

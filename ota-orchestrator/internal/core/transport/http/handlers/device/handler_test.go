@@ -1,9 +1,9 @@
 package device_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -42,6 +42,7 @@ func withID(req *http.Request, id uuid.UUID) *http.Request {
 // --- Create ---
 
 func TestCreateDevice_ValidRequest_Returns201(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	body, _ := json.Marshal(map[string]string{"device_model": "model-a", "current_version": "1.0.0"})
 	svc.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.Device{ID: uuid.New()}, nil)
@@ -52,6 +53,7 @@ func TestCreateDevice_ValidRequest_Returns201(t *testing.T) {
 }
 
 func TestCreateDevice_InvalidJSON_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	w := httptest.NewRecorder()
 	h.Create(w, newReq(http.MethodPost, "{not json"))
@@ -59,6 +61,7 @@ func TestCreateDevice_InvalidJSON_Returns400(t *testing.T) {
 }
 
 func TestCreateDevice_UnknownField_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	body, _ := json.Marshal(map[string]string{"device_model": "model-a", "current_version": "1.0.0", "unknown": "x"})
 	w := httptest.NewRecorder()
@@ -67,6 +70,7 @@ func TestCreateDevice_UnknownField_Returns400(t *testing.T) {
 }
 
 func TestCreateDevice_EmptyBody_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	w := httptest.NewRecorder()
 	h.Create(w, newReq(http.MethodPost, ""))
@@ -74,6 +78,7 @@ func TestCreateDevice_EmptyBody_Returns400(t *testing.T) {
 }
 
 func TestCreateDevice_BodyTooLarge_Returns413(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	huge := `{"device_model":"` + strings.Repeat("x", 1<<20) + `","current_version":"1.0.0"}`
 	w := httptest.NewRecorder()
@@ -82,6 +87,7 @@ func TestCreateDevice_BodyTooLarge_Returns413(t *testing.T) {
 }
 
 func TestCreateDevice_ValidationFails_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	body, _ := json.Marshal(map[string]string{"device_model": "a", "current_version": "not-semver"})
 	w := httptest.NewRecorder()
@@ -90,6 +96,7 @@ func TestCreateDevice_ValidationFails_Returns400(t *testing.T) {
 }
 
 func TestCreateDevice_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	body, _ := json.Marshal(map[string]string{"device_model": "model-a", "current_version": "1.0.0"})
 	svc.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.Device{}, assertErr())
@@ -102,6 +109,7 @@ func TestCreateDevice_ServiceFails_Returns500(t *testing.T) {
 // --- List ---
 
 func TestListDevices_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	svc.EXPECT().List(mock.Anything).Return([]domain.Device{{ID: uuid.New()}}, nil)
 
@@ -111,6 +119,7 @@ func TestListDevices_Success_Returns200(t *testing.T) {
 }
 
 func TestListDevices_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	svc.EXPECT().List(mock.Anything).Return(nil, assertErr())
 
@@ -122,6 +131,7 @@ func TestListDevices_ServiceFails_Returns500(t *testing.T) {
 // --- Decommission ---
 
 func TestDecommission_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	req := newReq(http.MethodPost, "")
 	req.SetPathValue("id", "not-a-uuid")
@@ -131,6 +141,7 @@ func TestDecommission_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestDecommission_DeviceNotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Decommission(mock.Anything, id).Return(domain.Device{}, domain.ErrDeviceNotFound)
@@ -141,6 +152,7 @@ func TestDecommission_DeviceNotFound_Returns404(t *testing.T) {
 }
 
 func TestDecommission_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Decommission(mock.Anything, id).Return(domain.Device{}, assertErr())
@@ -151,6 +163,7 @@ func TestDecommission_ServiceFails_Returns500(t *testing.T) {
 }
 
 func TestDecommission_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
 	id := uuid.New()
 	svc.EXPECT().Decommission(mock.Anything, id).Return(domain.Device{ID: id, Status: domain.DeviceStatusDecommissioned}, nil)
@@ -163,6 +176,7 @@ func TestDecommission_Success_Returns200(t *testing.T) {
 // --- Checkin ---
 
 func TestCheckin_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	req := newReq(http.MethodPost, `{"current_version":"1.0.0"}`)
 	req.SetPathValue("id", "bad")
@@ -172,6 +186,7 @@ func TestCheckin_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestCheckin_InvalidBody_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	id := uuid.New()
 	w := httptest.NewRecorder()
@@ -180,6 +195,7 @@ func TestCheckin_InvalidBody_Returns400(t *testing.T) {
 }
 
 func TestCheckin_DeviceNotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	upd.EXPECT().Checkin(mock.Anything, mock.Anything).Return(domain.CheckinResult{}, domain.ErrDeviceNotFound)
@@ -190,6 +206,7 @@ func TestCheckin_DeviceNotFound_Returns404(t *testing.T) {
 }
 
 func TestCheckin_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	upd.EXPECT().Checkin(mock.Anything, mock.Anything).Return(domain.CheckinResult{}, assertErr())
@@ -200,6 +217,7 @@ func TestCheckin_ServiceFails_Returns500(t *testing.T) {
 }
 
 func TestCheckin_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	stageID := uuid.New()
@@ -214,6 +232,7 @@ func TestCheckin_Success_Returns200(t *testing.T) {
 }
 
 func TestCheckin_NoUpdate_Returns200WithFalse(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	upd.EXPECT().Checkin(mock.Anything, mock.Anything).Return(domain.CheckinResult{UpdateAvailable: false}, nil)
@@ -227,6 +246,7 @@ func TestCheckin_NoUpdate_Returns200WithFalse(t *testing.T) {
 // --- Report ---
 
 func TestReport_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	req := newReq(http.MethodPost, `{"campaign_id":"x","stage_id":"y","result":"success"}`)
 	req.SetPathValue("id", "bad")
@@ -236,6 +256,7 @@ func TestReport_InvalidUUID_Returns400(t *testing.T) {
 }
 
 func TestReport_InvalidBody_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, _ := newDeviceHandler(t)
 	id := uuid.New()
 	w := httptest.NewRecorder()
@@ -244,6 +265,7 @@ func TestReport_InvalidBody_Returns400(t *testing.T) {
 }
 
 func TestReport_DeviceNotFound_Returns404(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
@@ -255,6 +277,7 @@ func TestReport_DeviceNotFound_Returns404(t *testing.T) {
 }
 
 func TestReport_CampaignNotFound_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
@@ -266,6 +289,7 @@ func TestReport_CampaignNotFound_Returns400(t *testing.T) {
 }
 
 func TestReport_StageNotInCampaign_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
@@ -277,6 +301,7 @@ func TestReport_StageNotInCampaign_Returns400(t *testing.T) {
 }
 
 func TestReport_WrongDeviceModel_Returns400(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
@@ -288,6 +313,7 @@ func TestReport_WrongDeviceModel_Returns400(t *testing.T) {
 }
 
 func TestReport_ProduceFailed_Returns503(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
@@ -299,6 +325,7 @@ func TestReport_ProduceFailed_Returns503(t *testing.T) {
 }
 
 func TestReport_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
 	id := uuid.New()
 	body, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
@@ -310,23 +337,22 @@ func TestReport_ServiceFails_Returns500(t *testing.T) {
 }
 
 func TestReport_Success_Returns200(t *testing.T) {
+	t.Parallel()
 	h, _, upd := newDeviceHandler(t)
-	id := uuid.New()
+	deviceID := uuid.New()
 	campaignID := uuid.New()
 	stageID := uuid.New()
-	attempt := domain.UpdateAttempt{ID: uuid.New(), DeviceID: id, CampaignID: campaignID, StageID: stageID, Result: domain.UpdateAttemptsResultSuccess}
-	upd.EXPECT().Report(mock.Anything, mock.Anything).Return(attempt, nil)
+	body, _ := json.Marshal(map[string]string{"campaign_id": campaignID.String(), "stage_id": stageID.String(), "result": "success"})
+	attempt := domain.UpdateAttempt{ID: uuid.New(), DeviceID: deviceID, CampaignID: campaignID, StageID: stageID, Result: domain.UpdateAttemptsResultSuccess}
+	upd.EXPECT().Report(mock.Anything, mock.MatchedBy(func(a domain.UpdateAttempt) bool {
+		return a.DeviceID == deviceID && a.CampaignID == campaignID && a.StageID == stageID && a.Result == domain.UpdateAttemptsResultSuccess
+	})).Return(attempt, nil)
 
 	w := httptest.NewRecorder()
-	h.Report(w, withID(newReq(http.MethodPost, string(body2())), id))
+	h.Report(w, withID(newReq(http.MethodPost, string(body)), deviceID))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func body2() []byte {
-	b, _ := json.Marshal(map[string]string{"campaign_id": uuid.New().String(), "stage_id": uuid.New().String(), "result": "success"})
-	return b
-}
-
 func assertErr() error {
-	return bytes.ErrTooLarge
+	return errors.New("boom")
 }

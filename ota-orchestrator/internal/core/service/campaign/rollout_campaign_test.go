@@ -54,6 +54,7 @@ func twoStages(campaignID uuid.UUID) []domain.RolloutStage {
 // --- Create ---
 
 func TestCreate_FirmwareNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	fwID := uuid.New()
 
@@ -64,6 +65,7 @@ func TestCreate_FirmwareNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestCreate_Success_SetsDeviceModelFromFirmware(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	fwID := uuid.New()
 	fw := domain.FirmwareVersion{ID: fwID, DeviceModel: "model-x"}
@@ -83,6 +85,7 @@ func TestCreate_Success_SetsDeviceModelFromFirmware(t *testing.T) {
 // --- Start ---
 
 func TestStart_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -92,6 +95,7 @@ func TestStart_CampaignNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestStart_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
@@ -101,6 +105,7 @@ func TestStart_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
 }
 
 func TestStart_RepoStartFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusDraft, nil), nil)
@@ -111,6 +116,7 @@ func TestStart_RepoStartFails_ReturnsError(t *testing.T) {
 }
 
 func TestStart_NoStages_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusDraft, nil), nil)
@@ -121,6 +127,7 @@ func TestStart_NoStages_ReturnsError(t *testing.T) {
 }
 
 func TestStart_Success_SetsCacheForFirstStage(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -137,6 +144,7 @@ func TestStart_Success_SetsCacheForFirstStage(t *testing.T) {
 }
 
 func TestStart_CacheSetFails_StillReturnsCampaign(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -155,6 +163,7 @@ func TestStart_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 // --- Pause ---
 
 func TestPause_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -164,6 +173,7 @@ func TestPause_CampaignNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestPause_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusDraft, nil), nil)
@@ -173,6 +183,7 @@ func TestPause_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
 }
 
 func TestPause_Success(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
@@ -186,6 +197,7 @@ func TestPause_Success(t *testing.T) {
 // --- Resume ---
 
 func TestResume_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -195,6 +207,7 @@ func TestResume_CampaignNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestResume_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
@@ -204,6 +217,7 @@ func TestResume_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
 }
 
 func TestResume_RepoResumeFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
@@ -214,6 +228,7 @@ func TestResume_RepoResumeFails_ReturnsError(t *testing.T) {
 }
 
 func TestResume_NoActiveStage_ReturnsCampaignWithoutCacheWrite(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := []domain.RolloutStage{{ID: uuid.New(), CampaignID: id, OrderIndex: 0, Status: domain.RolloutStagesStatusPassed}}
@@ -228,6 +243,7 @@ func TestResume_NoActiveStage_ReturnsCampaignWithoutCacheWrite(t *testing.T) {
 }
 
 func TestResume_Success_SetsCacheForActiveStage(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -244,6 +260,7 @@ func TestResume_Success_SetsCacheForActiveStage(t *testing.T) {
 }
 
 func TestResume_CacheSetFails_StillReturnsCampaign(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -262,6 +279,7 @@ func TestResume_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 // --- AdvanceStage ---
 
 func TestAdvanceStage_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -271,6 +289,7 @@ func TestAdvanceStage_CampaignNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestAdvanceStage_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
@@ -280,6 +299,7 @@ func TestAdvanceStage_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testin
 }
 
 func TestAdvanceStage_RepoAdvanceFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
@@ -290,6 +310,7 @@ func TestAdvanceStage_RepoAdvanceFails_ReturnsError(t *testing.T) {
 }
 
 func TestAdvanceStage_Completed_DeletesCacheKeys(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	completed := campaignWithStages(id, domain.RolloutCampaignsStatusCompleted, nil)
@@ -305,15 +326,18 @@ func TestAdvanceStage_Completed_DeletesCacheKeys(t *testing.T) {
 }
 
 func TestAdvanceStage_NextStageActive_SetsCacheForNewStage(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
+	stages[0].Status = domain.RolloutStagesStatusPassed
+	stages[1].Status = domain.RolloutStagesStatusActive
 	advanced := campaignWithStages(id, domain.RolloutCampaignsStatusRunning, stages)
 
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id).Return(advanced, nil)
-	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
-	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
+	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
 
 	result, err := m.service().AdvanceStage(context.Background(), id)
 	require.NoError(t, err)
@@ -321,6 +345,7 @@ func TestAdvanceStage_NextStageActive_SetsCacheForNewStage(t *testing.T) {
 }
 
 func TestAdvanceStage_NoActiveStageAfterAdvance_ReturnsCampaignWithoutCacheWrite(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := []domain.RolloutStage{{ID: uuid.New(), CampaignID: id, OrderIndex: 0, Status: domain.RolloutStagesStatusPassed}}
@@ -335,6 +360,7 @@ func TestAdvanceStage_NoActiveStageAfterAdvance_ReturnsCampaignWithoutCacheWrite
 }
 
 func TestAdvanceStage_CacheFails_StillReturnsCampaign(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -353,6 +379,7 @@ func TestAdvanceStage_CacheFails_StillReturnsCampaign(t *testing.T) {
 // --- Get ---
 
 func TestGet_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
@@ -362,6 +389,7 @@ func TestGet_CampaignNotFound_ReturnsError(t *testing.T) {
 }
 
 func TestGet_ControllerFails_ReturnsCampaignWithoutStats(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
@@ -372,18 +400,8 @@ func TestGet_ControllerFails_ReturnsCampaignWithoutStats(t *testing.T) {
 	assert.Nil(t, result.Stats)
 }
 
-func TestGet_ControllerReturnsInvalidUUID_ReturnsCampaignWithoutStats(t *testing.T) {
-	m := newCampaignMocks(t)
-	id := uuid.New()
-	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
-	m.controller.EXPECT().GetCampaignStats(mock.Anything, id).Return(domain.RolloutCampaignStats{}, errors.New("invalid uuid"))
-
-	result, err := m.service().Get(context.Background(), id)
-	require.NoError(t, err)
-	assert.Nil(t, result.Stats)
-}
-
 func TestGet_Success_ReturnsCampaignWithStats(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stats := domain.RolloutCampaignStats{ActiveStageID: uuid.New(), SuccessRate: 0.5, SampleSize: 2}
@@ -397,6 +415,7 @@ func TestGet_Success_ReturnsCampaignWithStats(t *testing.T) {
 }
 
 func TestList_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().List(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
@@ -409,6 +428,7 @@ func TestList_DelegatesToRepo(t *testing.T) {
 // --- WarmUpCache ---
 
 func TestWarmUpCache_ListRunningFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return(nil, someCampaignErr())
 
@@ -417,6 +437,7 @@ func TestWarmUpCache_ListRunningFails_ReturnsError(t *testing.T) {
 }
 
 func TestWarmUpCache_FindActiveStagesFails_ReturnsError(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
@@ -427,6 +448,7 @@ func TestWarmUpCache_FindActiveStagesFails_ReturnsError(t *testing.T) {
 }
 
 func TestWarmUpCache_Success_SetsCacheForAllActiveStages(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -442,6 +464,7 @@ func TestWarmUpCache_Success_SetsCacheForAllActiveStages(t *testing.T) {
 }
 
 func TestWarmUpCache_PartialCacheFailure_ContinuesProcessing(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
@@ -457,6 +480,7 @@ func TestWarmUpCache_PartialCacheFailure_ContinuesProcessing(t *testing.T) {
 }
 
 func TestWarmUpCache_NoRunningCampaigns_NoCacheWrites(t *testing.T) {
+	t.Parallel()
 	m := newCampaignMocks(t)
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{}, nil)
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(nil, nil)

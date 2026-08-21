@@ -145,6 +145,9 @@ func CreateTopic(name string, partitions int) {
 		time.Sleep(time.Second)
 	}
 	if lastErr != nil {
+		// The broker is useless without its topics; stop it explicitly so the
+		// fatal exit does not rely on the best-effort reaper.
+		Terminate()
 		log.Fatalf("createTopic %q: %v", name, lastErr)
 	}
 }
@@ -245,7 +248,7 @@ func NewReader(topic string) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{brokerAddr},
 		Topic:       topic,
-		GroupID:     "integration-" + topic + "-" + time.Now().Format("150405.000"),
+		GroupID:     fmt.Sprintf("integration-%s-%d", topic, time.Now().UnixNano()),
 		StartOffset: kafka.FirstOffset,
 	})
 }
@@ -269,5 +272,10 @@ func Terminate() {
 	defer mu.Unlock()
 	if brokerContainer != nil {
 		_ = brokerContainer.Terminate(context.Background())
+	}
+	// The broker is gone: release the shared kafka-go pool so its background
+	// conn/discover goroutines do not outlive the test process (goleak).
+	if t, ok := kafka.DefaultTransport.(*kafka.Transport); ok {
+		t.CloseIdleConnections()
 	}
 }
