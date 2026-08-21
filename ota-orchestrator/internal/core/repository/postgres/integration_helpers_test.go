@@ -18,7 +18,19 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-var testDB *DB
+var (
+	testDB      *DB
+	pgContainer *tcpostgres.PostgresContainer
+)
+
+// terminateAndFatal stops the already-started container before exiting, so a
+// failed startup does not leak it (the testcontainers reaper is best-effort).
+func terminateAndFatal(format string, args ...any) {
+	if pgContainer != nil {
+		_ = pgContainer.Terminate(context.Background())
+	}
+	log.Fatalf(format, args...)
+}
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -33,25 +45,26 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("failed to start postgres container: %v", err)
 	}
+	pgContainer = container
 
 	connStr, err := container.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
-		log.Fatalf("failed to get connection string: %v", err)
+		terminateAndFatal("failed to get connection string: %v", err)
 	}
 
 	pgxConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		log.Fatalf("failed to parse pool config: %v", err)
+		terminateAndFatal("failed to parse pool config: %v", err)
 	}
 	pgxConfig.MaxConns = 10
 
 	pool, err := pgxpool.NewWithConfig(ctx, pgxConfig)
 	if err != nil {
-		log.Fatalf("failed to create pool: %v", err)
+		terminateAndFatal("failed to create pool: %v", err)
 	}
 
 	if err := applyMigrations(context.Background(), pool); err != nil {
-		log.Fatalf("failed to apply migrations: %v", err)
+		terminateAndFatal("failed to apply migrations: %v", err)
 	}
 
 	testDB = &DB{pool: pool, requestTimeout: 10 * time.Second}

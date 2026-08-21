@@ -145,6 +145,9 @@ func CreateTopic(name string, partitions int) {
 		time.Sleep(time.Second)
 	}
 	if lastErr != nil {
+		// The broker is useless without its topics; stop it explicitly so the
+		// fatal exit does not rely on the best-effort reaper.
+		Terminate()
 		log.Fatalf("createTopic %q: %v", name, lastErr)
 	}
 }

@@ -16,7 +16,19 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-var testRDB *redis.Client
+var (
+	testRDB        *redis.Client
+	redisContainer *tcredis.RedisContainer
+)
+
+// terminateAndFatal stops the already-started container before exiting, so a
+// failed startup does not leak it (the testcontainers reaper is best-effort).
+func terminateAndFatal(format string, args ...any) {
+	if redisContainer != nil {
+		_ = redisContainer.Terminate(context.Background())
+	}
+	log.Fatalf(format, args...)
+}
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -25,14 +37,15 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("failed to start redis container: %v", err)
 	}
+	redisContainer = container
 
 	host, err := container.Host(ctx)
 	if err != nil {
-		log.Fatalf("failed to get redis host: %v", err)
+		terminateAndFatal("failed to get redis host: %v", err)
 	}
 	port, err := container.MappedPort(ctx, "6379/tcp")
 	if err != nil {
-		log.Fatalf("failed to get redis port: %v", err)
+		terminateAndFatal("failed to get redis port: %v", err)
 	}
 
 	testRDB = redis.NewClient(&redis.Options{
@@ -42,7 +55,7 @@ func TestMain(m *testing.M) {
 	})
 
 	if err := testRDB.Ping(ctx).Err(); err != nil {
-		log.Fatalf("failed to ping redis: %v", err)
+		terminateAndFatal("failed to ping redis: %v", err)
 	}
 
 	code := m.Run()
