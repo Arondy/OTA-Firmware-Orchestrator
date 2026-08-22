@@ -1,31 +1,34 @@
-with-expecter: true
-dir: "{{.InterfaceDir}}/mocks"
-outpkg: "mocks"
-mockname: "Mock{{.InterfaceName}}"
+dir: '{{.InterfaceDir}}/mocks'
+filename: "mock_{{.InterfaceName}}.go"
+structname: Mock{{.InterfaceName}}
+pkgname: mocks
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/campaign:
+    interfaces:
+      CampaignCacheRepo: {}
+      FirmwareVersionRepo: {}
+      RolloutCampaignRepo: {}
+      RolloutController: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/device:
+    interfaces:
+      DeviceCacheRepo: {}
+      DeviceRepo: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/firmware:
+    interfaces:
+      FirmwareVersionRepo: {}
   github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/update:
     interfaces:
+      CampaignCacheRepo: {}
+      CheckinProducer: {}
+      DeviceCacheRepo: {}
       DeviceRepo: {}
       FirmwareVersionRepo: {}
       RolloutCampaignRepo: {}
       UpdateAttemptRepo: {}
-      DeviceCacheRepo: {}
-      CampaignCacheRepo: {}
-      CheckinProducer: {}
       UpdateResultsProducer: {}
-  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/device:
-    interfaces:
-      DeviceRepo: {}
-      DeviceCacheRepo: {}
-  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/firmware:
-    interfaces:
-      FirmwareVersionRepo: {}
-  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/campaign:
-    interfaces:
-      RolloutCampaignRepo: {}
-      FirmwareVersionRepo: {}
-      CampaignCacheRepo: {}
-      RolloutController: {}
   github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/device:
     interfaces:
       DeviceService: {}
