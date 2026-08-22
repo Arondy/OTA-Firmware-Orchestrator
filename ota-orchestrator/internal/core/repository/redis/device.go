@@ -11,7 +11,7 @@ import (
 )
 
 type DeviceCacheRepo struct {
-	*redis.Client
+	client            *redis.Client
 	key               string
 	lastSeenTTL       time.Duration
 	currentVersionTTL time.Duration
@@ -19,7 +19,7 @@ type DeviceCacheRepo struct {
 
 func NewDeviceCacheRepo(rdb *redis.Client, config config.CacheConfig) *DeviceCacheRepo {
 	return &DeviceCacheRepo{
-		Client:            rdb,
+		client:            rdb,
 		key:               "device",
 		lastSeenTTL:       config.DeviceLastSeenTTL,
 		currentVersionTTL: config.DeviceCurrentVersionTTL,
@@ -39,7 +39,7 @@ func (r *DeviceCacheRepo) ListDeviceCheckinData(ctx context.Context, ids []uuid.
 		allKeys[i+len(ids)] = fmt.Sprintf("%s:%s:last_seen", r.key, id)
 	}
 
-	res, err := r.MGet(ctx, allKeys...).Result()
+	res, err := r.client.MGet(ctx, allKeys...).Result()
 	if err != nil {
 		return nil, nil, fmt.Errorf("redis mget failed: %w", err)
 	}
@@ -68,10 +68,10 @@ func (r *DeviceCacheRepo) ListDeviceCheckinData(ctx context.Context, ids []uuid.
 
 func (r *DeviceCacheRepo) SetCurrentVersion(ctx context.Context, id uuid.UUID, currentVersion string) error {
 	key := fmt.Sprintf("%s:%s:current_version", r.key, id)
-	return r.Set(ctx, key, currentVersion, r.currentVersionTTL).Err()
+	return r.client.Set(ctx, key, currentVersion, r.currentVersionTTL).Err()
 }
 
 func (r *DeviceCacheRepo) SetLastSeen(ctx context.Context, id uuid.UUID, lastSeen time.Time) error {
 	key := fmt.Sprintf("%s:%s:last_seen", r.key, id)
-	return r.Set(ctx, key, lastSeen, r.lastSeenTTL).Err()
+	return r.client.Set(ctx, key, lastSeen, r.lastSeenTTL).Err()
 }

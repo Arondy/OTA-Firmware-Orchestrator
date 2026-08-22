@@ -14,14 +14,14 @@ import (
 )
 
 type CampaignCacheRepo struct {
-	*redis.Client
+	client                 *redis.Client
 	key                    string
 	campaignEventIDSeenTTL time.Duration
 }
 
 func NewCampaignCacheRepo(rdb *redis.Client, config config.CacheConfig) *CampaignCacheRepo {
 	return &CampaignCacheRepo{
-		Client:                 rdb,
+		client:                 rdb,
 		key:                    "campaign",
 		campaignEventIDSeenTTL: config.CampaignEventIDSeenTTL,
 	}
@@ -33,7 +33,7 @@ func (r *CampaignCacheRepo) UpdateStageResults(ctx context.Context, event domain
 	keys := []string{eventSeenKey, stageResultsKey}
 	ttl := int64(r.campaignEventIDSeenTTL.Seconds())
 
-	return updateResultScript.Run(ctx, r.Client, keys, ttl).Int()
+	return updateResultScript.Run(ctx, r.client, keys, ttl).Int()
 }
 
 func (r *CampaignCacheRepo) GetCampaignStats(ctx context.Context, id uuid.UUID) (domain.CampaignStats, error) {
@@ -45,7 +45,7 @@ func (r *CampaignCacheRepo) GetCampaignStats(ctx context.Context, id uuid.UUID) 
 	successKey := fmt.Sprintf("%s:%s:stage:%s:%s", r.key, id, stageID, domain.UpdateAttemptsResultSuccess)
 	failureKey := fmt.Sprintf("%s:%s:stage:%s:%s", r.key, id, stageID, domain.UpdateAttemptsResultFailure)
 	timeoutKey := fmt.Sprintf("%s:%s:stage:%s:%s", r.key, id, stageID, domain.UpdateAttemptsResultTimeout)
-	vals, err := r.MGet(ctx, successKey, failureKey, timeoutKey).Result()
+	vals, err := r.client.MGet(ctx, successKey, failureKey, timeoutKey).Result()
 	if err != nil {
 		return domain.CampaignStats{}, fmt.Errorf("failed to get stats: %w", err)
 	}
@@ -88,7 +88,7 @@ func (r *CampaignCacheRepo) GetCampaignStats(ctx context.Context, id uuid.UUID) 
 
 func (r *CampaignCacheRepo) getCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	key := fmt.Sprintf("%s:%s:current_stage", r.key, id)
-	value, err := r.Get(ctx, key).Bytes()
+	value, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
 		return uuid.UUID{}, domain.ErrCurrentStageNotFound
 	} else if err != nil {
