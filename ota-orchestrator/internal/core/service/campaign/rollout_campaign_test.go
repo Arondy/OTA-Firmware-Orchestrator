@@ -476,7 +476,8 @@ func TestWarmUpCache_PartialCacheFailure_ContinuesProcessing(t *testing.T) {
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
 
 	err := m.service().WarmUpCache(context.Background(), zap.NewNop().Sugar())
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "boom")
 }
 
 func TestWarmUpCache_NoRunningCampaigns_NoCacheWrites(t *testing.T) {

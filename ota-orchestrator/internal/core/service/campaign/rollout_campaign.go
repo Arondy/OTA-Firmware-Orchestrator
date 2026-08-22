@@ -2,6 +2,7 @@ package campaign
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
@@ -246,17 +247,21 @@ func (s *RolloutCampaignService) WarmUpCache(ctx context.Context, logger *zap.Su
 		return err
 	}
 
+	var joinedErr error
+
 	for _, stage := range stages {
 		err = s.cache.SetCurrentStage(ctx, stage.CampaignID, stage.ID)
 		if err != nil {
 			logger.Warnw("warmup: failed to set campaign current stage", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
+			joinedErr = errors.Join(joinedErr, err)
 		}
 		err = s.cache.SetCurrentTargetPercent(ctx, stage.CampaignID, stage.TargetPercent)
 		if err != nil {
 			logger.Warnw("warmup: failed to set campaign current target percent", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
+			joinedErr = errors.Join(joinedErr, err)
 		}
 	}
 
 	logger.Infow("finished cache warmup", "campaigns_processed", len(campaigns))
-	return err
+	return joinedErr
 }
