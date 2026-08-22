@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 )
 
@@ -16,8 +17,7 @@ type DeviceRepo interface {
 }
 
 type DeviceCacheRepo interface {
-	GetCurrentVersion(ctx context.Context, id uuid.UUID) (string, error)
-	GetLastSeen(ctx context.Context, id uuid.UUID) (time.Time, error)
+	ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (versions map[uuid.UUID]string, lastSeen map[uuid.UUID]time.Time, err error)
 }
 
 type DeviceService struct {
@@ -34,22 +34,32 @@ func NewService(repo DeviceRepo, cache DeviceCacheRepo) *DeviceService {
 
 func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
 	devices, err := s.repo.List(ctx)
-	for i, device := range devices {
-		currentVersion, err := s.cache.GetCurrentVersion(ctx, device.ID)
-		if err != nil {
-			continue
-		}
-
-		lastSeen, err := s.cache.GetLastSeen(ctx, device.ID)
-		if err != nil {
-			continue
-		}
-
-		devices[i].CurrentVersion = currentVersion
-		devices[i].LastSeen = &lastSeen
+	if err != nil {
+		return nil, err
 	}
 
-	return devices, err
+	ids := make([]uuid.UUID, len(devices))
+	for i, device := range devices {
+		ids[i] = device.ID
+	}
+
+	versions, lastSeen, err := s.cache.ListDeviceCheckinData(ctx, ids)
+	if err != nil {
+		logger := config.LoggerFromContext(ctx)
+		logger.Errorw("failed to list device checkin data", "error", err)
+		return devices, nil
+	}
+
+	for i, device := range devices {
+		if version, exists := versions[device.ID]; exists {
+			devices[i].CurrentVersion = version
+		}
+		if seen, exists := lastSeen[device.ID]; exists {
+			devices[i].LastSeen = &seen
+		}
+	}
+
+	return devices, nil
 }
 
 func (s *DeviceService) Create(ctx context.Context, device domain.Device) (domain.Device, error) {
