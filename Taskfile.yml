@@ -70,6 +70,14 @@ tasks:
     cmds:
       - buf generate
 
+  mock:
+    desc: Regenerate mocks
+    env:
+      GOTOOLCHAIN: go1.26.0
+    cmds:
+      - cd ota-orchestrator && mockery
+      - cd rollout-controller && mockery
+
   test-unit:
     desc: Run unit tests in both modules
     cmds:
