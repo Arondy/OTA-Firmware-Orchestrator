@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
@@ -19,6 +20,9 @@ type CheckinsProducer struct {
 	done    chan struct{}
 	timeout time.Duration
 	logger  *zap.SugaredLogger
+
+	mu     sync.RWMutex
+	closed bool
 }
 
 func NewCheckinsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) (*CheckinsProducer, error) {
@@ -72,6 +76,14 @@ func (p *CheckinsProducer) run() {
 }
 
 func (p *CheckinsProducer) Produce(event domain.CheckinEvent) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.closed {
+		p.logger.Warnw("producer is closed, discarding event", "device_id", event.DeviceID, "campaign_id", event.CampaignID)
+		return
+	}
+
 	select {
 	case p.buffer <- event:
 	default:
@@ -80,7 +92,18 @@ func (p *CheckinsProducer) Produce(event domain.CheckinEvent) {
 }
 
 func (p *CheckinsProducer) Close() {
+	p.mu.Lock()
+
+	if p.closed {
+		p.logger.Warn("repeated close on CheckinsProducer")
+		p.mu.Unlock()
+		return
+	}
+
+	p.closed = true
 	close(p.buffer)
+	p.mu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 	defer cancel()
 
