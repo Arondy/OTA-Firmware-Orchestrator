@@ -61,8 +61,8 @@ const (
 	UpdateAttemptsResultTimeout UpdateAttemptsResult = "timeout"
 )
 
-func (s UpdateAttemptsResult) IsValid() bool {
-	switch s {
+func (r UpdateAttemptsResult) IsValid() bool {
+	switch r {
 	case UpdateAttemptsResultSuccess, UpdateAttemptsResultFailure,
 		UpdateAttemptsResultTimeout:
 		return true
@@ -76,4 +76,19 @@ func GetAllValidUpdateAttemptsResults() []UpdateAttemptsResult {
 		UpdateAttemptsResultFailure,
 		UpdateAttemptsResultTimeout,
 	}
+}
+
+type DecisionType string
+
+const (
+	DecisionTypeAdvance  DecisionType = "advance_stage"
+	DecisionTypeRollback DecisionType = "rollback"
+)
+
+func (t DecisionType) IsValid() bool {
+	switch t {
+	case DecisionTypeAdvance, DecisionTypeRollback:
+		return true
+	}
+	return false
 }

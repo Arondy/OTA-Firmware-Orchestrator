@@ -14,3 +14,11 @@ type UpdateResultsEvent struct {
 	Result     UpdateAttemptsResult `json:"result"`
 	Timestamp  time.Time            `json:"timestamp"`
 }
+
+type DecisionEvent struct {
+	DecisionID      uuid.UUID    `json:"decision_id"`
+	CampaignID      uuid.UUID    `json:"campaign_id"`
+	DecisionType    DecisionType `json:"decision_type"`
+	PreviousStageID uuid.UUID    `json:"previous_stage_id"`
+	Timestamp       time.Time    `json:"timestamp"`
+}

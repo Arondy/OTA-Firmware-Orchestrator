@@ -56,3 +56,10 @@ type UpdateAttempt struct {
 	EventID    uuid.UUID
 	ReportedAt time.Time
 }
+
+type AppliedDecision struct {
+	DecisionID   uuid.UUID
+	CampaignID   uuid.UUID
+	DecisionType DecisionType
+	AppliedAt    time.Time
+}
