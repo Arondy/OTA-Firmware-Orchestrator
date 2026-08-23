@@ -92,7 +92,14 @@ services:
       - |
         set -e
 
-        for topic in device.checkins firmware.update-results firmware.update-results.dlq; do
+        topics=(
+          "device.checkins"
+          "firmware.update-results"
+          "firmware.update-results.dlq"
+          "rollout.decisions"
+        )
+
+        for topic in "${topics[@]}"; do
           /opt/kafka/bin/kafka-topics.sh \
             --bootstrap-server kafka:9092 \
             --create --if-not-exists --topic "$$topic" \
