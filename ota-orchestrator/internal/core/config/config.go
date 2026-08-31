@@ -18,6 +18,7 @@ const RequestIDHeader = "x-request-id"
 type CtxKeyRequestID struct{}
 
 type Config struct {
+	ShutdownTimeout   time.Duration           `koanf:"SHUTDOWN_TIMEOUT" validate:"required"`
 	HTTPServer        HTTPServerConfig        `koanf:",squash"`
 	DB                DBConfig                `koanf:",squash"`
 	Cache             CacheConfig             `koanf:",squash"`
@@ -82,8 +83,9 @@ type CacheConfig struct {
 }
 
 const (
-	UpdateResultsTopic = "firmware.update-results"
-	CheckinsTopic      = "device.checkins"
+	UpdateResultsTopic   = "firmware.update-results"
+	CheckinsTopic        = "device.checkins"
+	RolloutDecisionTopic = "rollout.decisions"
 )
 
 type BrokerConfig struct {
@@ -92,6 +94,8 @@ type BrokerConfig struct {
 	BatchTimeout time.Duration `koanf:"BROKER_BATCH_TIMEOUT" validate:"required"`
 	Timeout      time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
 	BufferSize   int           `koanf:"BROKER_BUFFER_SIZE" validate:"required,min=1"`
+	GroupID      string        `koanf:"BROKER_GROUP_ID" validate:"required"`
+	MinBytes     int           `koanf:"BROKER_MIN_BYTES" validate:"required,min=1"`
 	Topic        string
 }
 
