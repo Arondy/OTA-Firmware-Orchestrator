@@ -63,3 +63,12 @@ type AppliedDecision struct {
 	DecisionType DecisionType
 	AppliedAt    time.Time
 }
+
+func AppliedDecisionFromEvent(event DecisionEvent) AppliedDecision {
+	return AppliedDecision{
+		DecisionID:   event.DecisionID,
+		CampaignID:   event.CampaignID,
+		DecisionType: event.DecisionType,
+		AppliedAt:    event.Timestamp,
+	}
+}
