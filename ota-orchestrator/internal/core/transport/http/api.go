@@ -26,5 +26,4 @@ type RolloutCampaignAPI interface {
 	Start(w http.ResponseWriter, r *http.Request)
 	Pause(w http.ResponseWriter, r *http.Request)
 	Resume(w http.ResponseWriter, r *http.Request)
-	AdvanceStage(w http.ResponseWriter, r *http.Request)
 }
