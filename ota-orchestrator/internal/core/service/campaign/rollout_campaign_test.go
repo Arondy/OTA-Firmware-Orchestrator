@@ -456,6 +456,176 @@ func TestApplyDecision_Advance_CacheFails_StillReturnsNil(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestApplyDecision_DuplicateDecision_NoOp(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	decision := advanceDecision(uuid.New(), uuid.New())
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{DecisionID: decision.DecisionID}, nil)
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+func TestApplyDecision_GetFails_ReturnsError(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	decision := advanceDecision(uuid.New(), uuid.New())
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, someCampaignErr())
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "boom")
+}
+
+func TestApplyDecision_CreateFails_ReturnsError(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	decision := advanceDecision(uuid.New(), uuid.New())
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, someCampaignErr())
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "boom")
+}
+
+func TestApplyDecision_Advance_StaleStageWrongStatus_RecordsDecisionNoCache(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	decision := advanceDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
+	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(domain.RolloutCampaign{}, fmt.Errorf("%w: can't advance from passed stage", domain.ErrRolloutStageWrongStatus))
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+func TestApplyDecision_Advance_StaleCampaignWrongStatus_RecordsDecision(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	decision := advanceDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusCompleted, nil), nil)
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+// --- Rollback ---
+
+func TestApplyDecision_Rollback_Success_DeletesCache(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	rolled := campaignWithStages(id, domain.RolloutCampaignsStatusRolledBack, nil)
+	decision := rollbackDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
+	m.campaignRepo.EXPECT().Rollback(mock.Anything, id, prevStageID).Return(rolled, nil)
+	m.cache.EXPECT().DeleteCurrentStage(mock.Anything, id).Return(nil)
+	m.cache.EXPECT().DeleteCurrentTargetPercent(mock.Anything, id).Return(nil)
+	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(nil)
+	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(nil)
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+func TestApplyDecision_Rollback_StaleWrongStatus_RecordsDecisionNoCache(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	decision := rollbackDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
+	m.campaignRepo.EXPECT().Rollback(mock.Anything, id, prevStageID).Return(domain.RolloutCampaign{}, fmt.Errorf("%w: can't rollback from passed stage", domain.ErrRolloutStageWrongStatus))
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+func TestApplyDecision_Rollback_RepoFails_ReturnsError(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	decision := rollbackDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
+	m.campaignRepo.EXPECT().Rollback(mock.Anything, id, prevStageID).Return(domain.RolloutCampaign{}, someCampaignErr())
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.Error(t, err)
+}
+
+func TestApplyDecision_Rollback_CampaignNotFound_ReturnsError(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	decision := rollbackDecision(id, uuid.New())
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	assert.ErrorIs(t, err, domain.ErrRolloutCampaignNotFound)
+}
+
+func TestApplyDecision_Rollback_WrongCampaignStatus_NoOp(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	decision := rollbackDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+func TestApplyDecision_Rollback_CacheFails_StillReturnsNil(t *testing.T) {
+	t.Parallel()
+	m := newCampaignMocks(t)
+	id := uuid.New()
+	prevStageID := uuid.New()
+	rolled := campaignWithStages(id, domain.RolloutCampaignsStatusRolledBack, nil)
+	decision := rollbackDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
+	m.campaignRepo.EXPECT().Rollback(mock.Anything, id, prevStageID).Return(rolled, nil)
+	m.cache.EXPECT().DeleteCurrentStage(mock.Anything, id).Return(someCampaignErr())
+	m.cache.EXPECT().DeleteCurrentTargetPercent(mock.Anything, id).Return(someCampaignErr())
+	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(someCampaignErr())
+	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(someCampaignErr())
+
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
+}
+
+
 // --- Get ---
 
 
