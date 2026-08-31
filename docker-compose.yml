@@ -91,15 +91,12 @@ services:
     command:
       - |
         set -e
-
-        topics=(
-          "device.checkins"
-          "firmware.update-results"
-          "firmware.update-results.dlq"
-          "rollout.decisions"
-        )
-
-        for topic in "${topics[@]}"; do
+        for topic in \
+          "device.checkins" \
+          "firmware.update-results" \
+          "firmware.update-results.dlq" \
+          "rollout.decisions" \
+          "rollout.decisions.dlq"; do
           /opt/kafka/bin/kafka-topics.sh \
             --bootstrap-server kafka:9092 \
             --create --if-not-exists --topic "$$topic" \
