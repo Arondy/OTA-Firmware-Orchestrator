@@ -3,7 +3,9 @@ package campaign_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/campaign"
@@ -18,21 +20,55 @@ import (
 type campaignMocks struct {
 	campaignRepo *mocks.MockRolloutCampaignRepo
 	firmwareRepo *mocks.MockFirmwareVersionRepo
+	decisionRepo *mocks.MockAppliedDecisionRepo
 	cache        *mocks.MockCampaignCacheRepo
+	stageCache   *mocks.MockStageCacheRepo
 	controller   *mocks.MockRolloutController
+}
+
+type stubTxManager struct{}
+
+func (s *stubTxManager) Do(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 
 func newCampaignMocks(t *testing.T) *campaignMocks {
 	return &campaignMocks{
 		campaignRepo: mocks.NewMockRolloutCampaignRepo(t),
 		firmwareRepo: mocks.NewMockFirmwareVersionRepo(t),
+		decisionRepo: mocks.NewMockAppliedDecisionRepo(t),
 		cache:        mocks.NewMockCampaignCacheRepo(t),
+		stageCache:   mocks.NewMockStageCacheRepo(t),
 		controller:   mocks.NewMockRolloutController(t),
 	}
 }
 
 func (m *campaignMocks) service() *campaign.RolloutCampaignService {
-	return campaign.NewService(m.campaignRepo, m.firmwareRepo, m.cache, m.controller)
+	return campaign.NewService(m.campaignRepo, m.firmwareRepo, m.decisionRepo, &stubTxManager{}, m.cache, m.stageCache, m.controller)
+}
+
+func (m *campaignMocks) serviceWithTx(tx campaign.TxManager) *campaign.RolloutCampaignService {
+	return campaign.NewService(m.campaignRepo, m.firmwareRepo, m.decisionRepo, tx, m.cache, m.stageCache, m.controller)
+}
+
+func advanceDecision(campaignID, prevStageID uuid.UUID) domain.DecisionEvent {
+	return domain.DecisionEvent{
+		DecisionID:      uuid.New(),
+		CampaignID:      campaignID,
+		DecisionType:    domain.DecisionTypeAdvance,
+		PreviousStageID: prevStageID,
+		Timestamp:       time.Now(),
+	}
+}
+
+func rollbackDecision(campaignID, prevStageID uuid.UUID) domain.DecisionEvent {
+	return domain.DecisionEvent{
+		DecisionID:      uuid.New(),
+		CampaignID:      campaignID,
+		DecisionType:    domain.DecisionTypeRollback,
+		PreviousStageID: prevStageID,
+		Timestamp:       time.Now(),
+	}
 }
 
 func campaignWithStages(id uuid.UUID, status domain.RolloutCampaignsStatus, stages []domain.RolloutStage) domain.RolloutCampaign {
@@ -46,8 +82,8 @@ func campaignWithStages(id uuid.UUID, status domain.RolloutCampaignsStatus, stag
 
 func twoStages(campaignID uuid.UUID) []domain.RolloutStage {
 	return []domain.RolloutStage{
-		{ID: uuid.New(), CampaignID: campaignID, OrderIndex: 0, TargetPercent: 50, Status: domain.RolloutStagesStatusActive},
-		{ID: uuid.New(), CampaignID: campaignID, OrderIndex: 1, TargetPercent: 100, Status: domain.RolloutStagesStatusPending},
+		{ID: uuid.New(), CampaignID: campaignID, OrderIndex: 0, TargetPercent: 50, MinSampleSize: 10, SuccessThreshold: 0.9, Status: domain.RolloutStagesStatusActive},
+		{ID: uuid.New(), CampaignID: campaignID, OrderIndex: 1, TargetPercent: 100, MinSampleSize: 20, SuccessThreshold: 0.95, Status: domain.RolloutStagesStatusPending},
 	}
 }
 
@@ -137,6 +173,8 @@ func TestStart_Success_SetsCacheForFirstStage(t *testing.T) {
 	m.campaignRepo.EXPECT().Start(mock.Anything, id).Return(started, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(nil)
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(nil)
 
 	result, err := m.service().Start(context.Background(), id)
 	require.NoError(t, err)
@@ -154,6 +192,8 @@ func TestStart_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 	m.campaignRepo.EXPECT().Start(mock.Anything, id).Return(started, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 
 	result, err := m.service().Start(context.Background(), id)
 	require.NoError(t, err)
@@ -253,6 +293,8 @@ func TestResume_Success_SetsCacheForActiveStage(t *testing.T) {
 	m.campaignRepo.EXPECT().Resume(mock.Anything, id).Return(resumed, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(nil)
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(nil)
 
 	result, err := m.service().Resume(context.Background(), id)
 	require.NoError(t, err)
@@ -270,113 +312,152 @@ func TestResume_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 	m.campaignRepo.EXPECT().Resume(mock.Anything, id).Return(resumed, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 
 	result, err := m.service().Resume(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, domain.RolloutCampaignsStatusRunning, result.Status)
 }
 
-// --- AdvanceStage ---
+// --- ApplyDecision (advance_stage) ---
 
-func TestAdvanceStage_CampaignNotFound_ReturnsError(t *testing.T) {
+func TestApplyDecision_Advance_CampaignNotFound_ReturnsError(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
+	decision := advanceDecision(id, uuid.New())
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(domain.RolloutCampaign{}, domain.ErrRolloutCampaignNotFound)
 
-	_, err := m.service().AdvanceStage(context.Background(), id)
+	err := m.service().ApplyDecision(context.Background(), decision)
 	assert.ErrorIs(t, err, domain.ErrRolloutCampaignNotFound)
 }
 
-func TestAdvanceStage_WrongStatus_ReturnsErrRolloutCampaignWrongStatus(t *testing.T) {
+func TestApplyDecision_Advance_WrongStatus_NoOpReturnsNil(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
+	prevStageID := uuid.New()
+	decision := advanceDecision(id, prevStageID)
+
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
 
-	_, err := m.service().AdvanceStage(context.Background(), id)
-	assert.ErrorIs(t, err, domain.ErrRolloutCampaignWrongStatus)
+	err := m.service().ApplyDecision(context.Background(), decision)
+	require.NoError(t, err)
 }
 
-func TestAdvanceStage_RepoAdvanceFails_ReturnsError(t *testing.T) {
+func TestApplyDecision_Advance_RepoAdvanceFails_ReturnsError(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
-	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
-	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id).Return(domain.RolloutCampaign{}, someCampaignErr())
+	prevStageID := uuid.New()
+	decision := advanceDecision(id, prevStageID)
 
-	_, err := m.service().AdvanceStage(context.Background(), id)
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
+	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
+	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(domain.RolloutCampaign{}, someCampaignErr())
+
+	err := m.service().ApplyDecision(context.Background(), decision)
 	require.Error(t, err)
 }
 
-func TestAdvanceStage_Completed_DeletesCacheKeys(t *testing.T) {
+func TestApplyDecision_Advance_Completed_DeletesCacheKeys(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
+	prevStageID := uuid.New()
 	completed := campaignWithStages(id, domain.RolloutCampaignsStatusCompleted, nil)
+	decision := advanceDecision(id, prevStageID)
 
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
-	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id).Return(completed, nil)
+	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(completed, nil)
 	m.cache.EXPECT().DeleteCurrentStage(mock.Anything, id).Return(nil)
 	m.cache.EXPECT().DeleteCurrentTargetPercent(mock.Anything, id).Return(nil)
+	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(nil)
+	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(nil)
 
-	result, err := m.service().AdvanceStage(context.Background(), id)
+	err := m.service().ApplyDecision(context.Background(), decision)
 	require.NoError(t, err)
-	assert.Equal(t, domain.RolloutCampaignsStatusCompleted, result.Status)
 }
 
-func TestAdvanceStage_NextStageActive_SetsCacheForNewStage(t *testing.T) {
+func TestApplyDecision_Advance_NextStageActive_SetsCacheForNewStage(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
+	prevStageID := stages[0].ID
 	stages[0].Status = domain.RolloutStagesStatusPassed
 	stages[1].Status = domain.RolloutStagesStatusActive
 	advanced := campaignWithStages(id, domain.RolloutCampaignsStatusRunning, stages)
+	decision := advanceDecision(id, prevStageID)
 
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
-	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id).Return(advanced, nil)
+	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(advanced, nil)
+	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(nil)
+	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[1].ID, stages[1].MinSampleSize).Return(nil)
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[1].ID, stages[1].SuccessThreshold).Return(nil)
 
-	result, err := m.service().AdvanceStage(context.Background(), id)
+	err := m.service().ApplyDecision(context.Background(), decision)
 	require.NoError(t, err)
-	assert.Equal(t, domain.RolloutCampaignsStatusRunning, result.Status)
 }
 
-func TestAdvanceStage_NoActiveStageAfterAdvance_ReturnsCampaignWithoutCacheWrite(t *testing.T) {
+func TestApplyDecision_Advance_NoActiveStageAfterAdvance_ReturnsNil(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
+	prevStageID := uuid.New()
 	stages := []domain.RolloutStage{{ID: uuid.New(), CampaignID: id, OrderIndex: 0, Status: domain.RolloutStagesStatusPassed}}
 	advanced := campaignWithStages(id, domain.RolloutCampaignsStatusRunning, stages)
+	decision := advanceDecision(id, prevStageID)
 
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
-	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id).Return(advanced, nil)
+	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(advanced, nil)
 
-	result, err := m.service().AdvanceStage(context.Background(), id)
+	err := m.service().ApplyDecision(context.Background(), decision)
 	require.NoError(t, err)
-	assert.Equal(t, domain.RolloutCampaignsStatusRunning, result.Status)
 }
 
-func TestAdvanceStage_CacheFails_StillReturnsCampaign(t *testing.T) {
+func TestApplyDecision_Advance_CacheFails_StillReturnsNil(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
 	stages := twoStages(id)
+	prevStageID := stages[0].ID
 	advanced := campaignWithStages(id, domain.RolloutCampaignsStatusRunning, stages)
+	decision := advanceDecision(id, prevStageID)
 
+	m.decisionRepo.EXPECT().Get(mock.Anything, decision.DecisionID).Return(domain.AppliedDecision{}, domain.ErrAppliedDecisionNotFound)
+	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
-	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id).Return(advanced, nil)
+	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(advanced, nil)
+	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(someCampaignErr())
+	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 
-	result, err := m.service().AdvanceStage(context.Background(), id)
+	err := m.service().ApplyDecision(context.Background(), decision)
 	require.NoError(t, err)
-	assert.Equal(t, domain.RolloutCampaignsStatusRunning, result.Status)
 }
 
 // --- Get ---
+
 
 func TestGet_CampaignNotFound_ReturnsError(t *testing.T) {
 	t.Parallel()
@@ -456,8 +537,12 @@ func TestWarmUpCache_Success_SetsCacheForAllActiveStages(t *testing.T) {
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(stages, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(nil)
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[1].ID, stages[1].MinSampleSize).Return(nil)
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[1].ID, stages[1].SuccessThreshold).Return(nil)
 
 	err := m.service().WarmUpCache(context.Background(), zap.NewNop().Sugar())
 	require.NoError(t, err)
@@ -472,8 +557,12 @@ func TestWarmUpCache_PartialCacheFailure_ContinuesProcessing(t *testing.T) {
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(stages, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
+	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[1].ID, stages[1].MinSampleSize).Return(nil)
+	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[1].ID, stages[1].SuccessThreshold).Return(nil)
 
 	err := m.service().WarmUpCache(context.Background(), zap.NewNop().Sugar())
 	require.Error(t, err)
