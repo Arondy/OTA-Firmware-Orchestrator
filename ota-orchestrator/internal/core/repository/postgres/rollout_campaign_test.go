@@ -160,19 +160,19 @@ func TestCampaignAdvanceStages(t *testing.T) {
 	_, err := repo.Start(context.Background(), c.ID)
 	require.NoError(t, err)
 
-	adv, err := repo.AdvanceStage(context.Background(), c.ID)
+	adv, err := repo.AdvanceStage(context.Background(), c.ID, c.RolloutStages[0].ID)
 	require.NoError(t, err)
 	require.Equal(t, domain.RolloutCampaignsStatusRunning, adv.Status)
 	require.Len(t, adv.RolloutStages, 2)
 	require.Equal(t, domain.RolloutStagesStatusPassed, adv.RolloutStages[0].Status)
 	require.Equal(t, domain.RolloutStagesStatusActive, adv.RolloutStages[1].Status)
 
-	adv, err = repo.AdvanceStage(context.Background(), c.ID)
+	adv, err = repo.AdvanceStage(context.Background(), c.ID, adv.RolloutStages[1].ID)
 	require.NoError(t, err)
 	require.Equal(t, domain.RolloutCampaignsStatusCompleted, adv.Status)
 	require.NotNil(t, adv.CompletedAt)
 
-	_, err = repo.AdvanceStage(context.Background(), c.ID)
+	_, err = repo.AdvanceStage(context.Background(), c.ID, c.RolloutStages[0].ID)
 	require.ErrorIs(t, err, domain.ErrRolloutCampaignWrongStatus)
 }
 
@@ -183,7 +183,7 @@ func TestCampaignAdvanceNoActiveStage(t *testing.T) {
 	c := createCampaign(t, repo, fw.ID, "model-a", 1)
 
 	// draft campaign has no active stage
-	_, err := repo.AdvanceStage(context.Background(), c.ID)
+	_, err := repo.AdvanceStage(context.Background(), c.ID, c.RolloutStages[0].ID)
 	require.ErrorIs(t, err, domain.ErrRolloutCampaignWrongStatus)
 }
 
@@ -237,4 +237,91 @@ func TestCampaignFindActiveStages(t *testing.T) {
 	require.Len(t, active, 1)
 	require.Equal(t, domain.RolloutStagesStatusActive, active[0].Status)
 	require.Equal(t, c.ID, active[0].CampaignID)
+}
+
+func TestCampaignRollbackSuccess(t *testing.T) {
+	resetDB(t)
+	fw := newFirmware(t, "model-a")
+	repo := NewRolloutCampaignRepo(testDB)
+	c := createCampaign(t, repo, fw.ID, "model-a", 2)
+
+	_, err := repo.Start(context.Background(), c.ID)
+	require.NoError(t, err)
+
+	rolled, err := repo.Rollback(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.RolloutCampaignsStatusRolledBack, rolled.Status)
+	require.NotNil(t, rolled.CompletedAt)
+	require.Len(t, rolled.RolloutStages, 2)
+	require.Equal(t, domain.RolloutStagesStatusFailed, rolled.RolloutStages[0].Status)
+	require.Equal(t, domain.RolloutStagesStatusPending, rolled.RolloutStages[1].Status)
+}
+
+func TestCampaignRollbackStaleStage(t *testing.T) {
+	resetDB(t)
+	fw := newFirmware(t, "model-a")
+	repo := NewRolloutCampaignRepo(testDB)
+	c := createCampaign(t, repo, fw.ID, "model-a", 2)
+
+	_, err := repo.Start(context.Background(), c.ID)
+	require.NoError(t, err)
+
+	_, err = repo.AdvanceStage(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.NoError(t, err)
+
+	_, err = repo.Rollback(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.ErrorIs(t, err, domain.ErrRolloutStageWrongStatus)
+
+	_, err = repo.AdvanceStage(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.ErrorIs(t, err, domain.ErrRolloutStageWrongStatus)
+}
+
+func TestCampaignRollbackWrongCampaignStatus(t *testing.T) {
+	resetDB(t)
+	fw := newFirmware(t, "model-a")
+	repo := NewRolloutCampaignRepo(testDB)
+	c := createCampaign(t, repo, fw.ID, "model-a", 1)
+
+	_, err := repo.Rollback(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.ErrorIs(t, err, domain.ErrRolloutCampaignWrongStatus)
+
+	_, err = repo.Start(context.Background(), c.ID)
+	require.NoError(t, err)
+
+	_, err = repo.Pause(context.Background(), c.ID)
+	require.NoError(t, err)
+
+	_, err = repo.Rollback(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.ErrorIs(t, err, domain.ErrRolloutCampaignWrongStatus)
+}
+
+func TestAppliedDecision_Idempotency(t *testing.T) {
+	resetDB(t)
+	fw := newFirmware(t, "model-a")
+	campaignRepo := NewRolloutCampaignRepo(testDB)
+	c := createCampaign(t, campaignRepo, fw.ID, "model-a", 1)
+
+	repo := NewAppliedDecisionRepo(testDB)
+	decisionID := uuid.New()
+	decision := domain.AppliedDecision{
+		DecisionID:   decisionID,
+		CampaignID:   c.ID,
+		DecisionType: domain.DecisionTypeAdvance,
+	}
+
+	created, err := repo.Create(context.Background(), decision)
+	require.NoError(t, err)
+	require.Equal(t, decisionID, created.DecisionID)
+
+	got, err := repo.Get(context.Background(), decisionID)
+	require.NoError(t, err)
+	require.Equal(t, decisionID, got.DecisionID)
+
+	// second create with same decision_id must not error due to ON CONFLICT DO UPDATE
+	again, err := repo.Create(context.Background(), decision)
+	require.NoError(t, err)
+	require.Equal(t, decisionID, again.DecisionID)
+
+	_, err = repo.Get(context.Background(), uuid.New())
+	require.ErrorIs(t, err, domain.ErrAppliedDecisionNotFound)
 }
