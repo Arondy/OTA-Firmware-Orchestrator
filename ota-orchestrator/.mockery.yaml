@@ -8,10 +8,12 @@ template-data:
 packages:
   github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/campaign:
     interfaces:
+      AppliedDecisionRepo: {}
       CampaignCacheRepo: {}
       FirmwareVersionRepo: {}
       RolloutCampaignRepo: {}
       RolloutController: {}
+      StageCacheRepo: {}
   github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/device:
     interfaces:
       DeviceCacheRepo: {}

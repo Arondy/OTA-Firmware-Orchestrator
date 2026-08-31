@@ -18,13 +18,23 @@ type RolloutCampaignRepo interface {
 	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	AdvanceStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutCampaign, error)
+	AdvanceStage(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error)
+	Rollback(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error)
 	ListRunning(ctx context.Context) ([]domain.RolloutCampaign, error)
 	FindActiveStages(ctx context.Context, campaignIDs []uuid.UUID) ([]domain.RolloutStage, error)
 }
 
 type FirmwareVersionRepo interface {
 	Get(ctx context.Context, id uuid.UUID) (domain.FirmwareVersion, error)
+}
+
+type AppliedDecisionRepo interface {
+	Get(ctx context.Context, decisionID uuid.UUID) (domain.AppliedDecision, error)
+	Create(ctx context.Context, decision domain.AppliedDecision) (domain.AppliedDecision, error)
+}
+
+type TxManager interface {
+	Do(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type CampaignCacheRepo interface {
@@ -34,23 +44,36 @@ type CampaignCacheRepo interface {
 	DeleteCurrentTargetPercent(ctx context.Context, id uuid.UUID) error
 }
 
+type StageCacheRepo interface {
+	SetMinSampleSize(ctx context.Context, id uuid.UUID, size int) error
+	DeleteMinSampleSize(ctx context.Context, id uuid.UUID) error
+	SetSuccessThreshold(ctx context.Context, id uuid.UUID, threshold float32) error
+	DeleteSuccessThreshold(ctx context.Context, id uuid.UUID) error
+}
+
 type RolloutController interface {
 	GetCampaignStats(ctx context.Context, id uuid.UUID) (domain.RolloutCampaignStats, error)
 }
 
 type RolloutCampaignService struct {
-	campaignRepo RolloutCampaignRepo
-	firmwareRepo FirmwareVersionRepo
-	cache        CampaignCacheRepo
-	controller   RolloutController
+	campaignRepo  RolloutCampaignRepo
+	firmwareRepo  FirmwareVersionRepo
+	decisionRepo  AppliedDecisionRepo
+	txManager     TxManager
+	campaignCache CampaignCacheRepo
+	stageCache    StageCacheRepo
+	controller    RolloutController
 }
 
-func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRepo, cache CampaignCacheRepo, controller RolloutController) *RolloutCampaignService {
+func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRepo, decisionRepo AppliedDecisionRepo, txManager TxManager, campaignCache CampaignCacheRepo, stageCache StageCacheRepo, controller RolloutController) *RolloutCampaignService {
 	return &RolloutCampaignService{
-		campaignRepo: campaignRepo,
-		firmwareRepo: firmwareRepo,
-		cache:        cache,
-		controller:   controller,
+		campaignRepo:  campaignRepo,
+		firmwareRepo:  firmwareRepo,
+		decisionRepo:  decisionRepo,
+		txManager:     txManager,
+		campaignCache: campaignCache,
+		stageCache:    stageCache,
+		controller:    controller,
 	}
 }
 
@@ -100,22 +123,12 @@ func (s *RolloutCampaignService) Start(ctx context.Context, id uuid.UUID) (domai
 		return domain.RolloutCampaign{}, err
 	}
 
-	logger := config.LoggerFromContext(ctx)
-
 	// не должно быть возможным
 	if len(startedCampaign.RolloutStages) == 0 {
 		return startedCampaign, fmt.Errorf("campaign %s has no stages to start", id)
 	}
 
-	err = s.cache.SetCurrentStage(ctx, id, startedCampaign.RolloutStages[0].ID)
-	if err != nil {
-		logger.Warnw("failed to put current stage in cache", "error", err, "campaign_id", id)
-	}
-
-	err = s.cache.SetCurrentTargetPercent(ctx, id, startedCampaign.RolloutStages[0].TargetPercent)
-	if err != nil {
-		logger.Warnw("failed to put current target percent in cache", "error", err, "campaign_id", id)
-	}
+	s.setCampaignStageCache(ctx, startedCampaign.RolloutStages[0])
 
 	return startedCampaign, nil
 }
@@ -160,75 +173,13 @@ func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (doma
 		}
 	}
 	if !found {
-		logger.Warnw("resume: failed to find active stage to put in cache", "campaign_id", id)
+		logger.Warnw("resume: failed to find active stage to put in campaignCache", "campaign_id", id)
 		return campaign, nil
 	}
 
-	if err = s.cache.SetCurrentStage(ctx, id, activeStage.ID); err != nil {
-		logger.Warnw("resume: failed to put current stage in cache", "error", err, "campaign_id", id)
-	}
-	if err = s.cache.SetCurrentTargetPercent(ctx, id, activeStage.TargetPercent); err != nil {
-		logger.Warnw("resume: failed to put current target percent in cache", "error", err, "campaign_id", id)
-	}
+	s.setCampaignStageCache(ctx, activeStage)
 
 	return campaign, nil
-}
-
-func (s *RolloutCampaignService) AdvanceStage(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
-	campaign, err := s.campaignRepo.Get(ctx, id)
-	if err != nil {
-		return domain.RolloutCampaign{}, err
-	}
-
-	if campaign.Status != domain.RolloutCampaignsStatusRunning {
-		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't advance %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
-	}
-
-	advancedCampaign, err := s.campaignRepo.AdvanceStage(ctx, id)
-	if err != nil {
-		return domain.RolloutCampaign{}, err
-	}
-
-	logger := config.LoggerFromContext(ctx)
-
-	if advancedCampaign.Status == domain.RolloutCampaignsStatusCompleted {
-		err = s.cache.DeleteCurrentStage(ctx, id)
-		if err != nil {
-			logger.Warnw("failed to delete current stage from cache", "error", err, "campaign_id", id)
-		}
-
-		err = s.cache.DeleteCurrentTargetPercent(ctx, id)
-		if err != nil {
-			logger.Warnw("failed to delete current target percent from cache", "error", err, "campaign_id", id)
-		}
-	} else {
-		var activeStage domain.RolloutStage
-		var found bool
-		for _, stage := range advancedCampaign.RolloutStages {
-			if stage.Status == domain.RolloutStagesStatusActive {
-				activeStage = stage
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			logger.Warnw("failed to find active stage to put in cache", "campaign_id", id)
-			return advancedCampaign, nil
-		}
-
-		err = s.cache.SetCurrentStage(ctx, id, activeStage.ID)
-		if err != nil {
-			logger.Warnw("failed to put current stage in cache", "error", err, "campaign_id", id)
-		}
-
-		err = s.cache.SetCurrentTargetPercent(ctx, id, activeStage.TargetPercent)
-		if err != nil {
-			logger.Warnw("failed to put current target percent in cache", "error", err, "campaign_id", id)
-		}
-	}
-
-	return advancedCampaign, nil
 }
 
 func (s *RolloutCampaignService) WarmUpCache(ctx context.Context, logger *zap.SugaredLogger) error {
@@ -250,14 +201,27 @@ func (s *RolloutCampaignService) WarmUpCache(ctx context.Context, logger *zap.Su
 	var joinedErr error
 
 	for _, stage := range stages {
-		err = s.cache.SetCurrentStage(ctx, stage.CampaignID, stage.ID)
+		err = s.campaignCache.SetCurrentStage(ctx, stage.CampaignID, stage.ID)
 		if err != nil {
 			logger.Warnw("warmup: failed to set campaign current stage", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
 			joinedErr = errors.Join(joinedErr, err)
 		}
-		err = s.cache.SetCurrentTargetPercent(ctx, stage.CampaignID, stage.TargetPercent)
+
+		err = s.campaignCache.SetCurrentTargetPercent(ctx, stage.CampaignID, stage.TargetPercent)
 		if err != nil {
 			logger.Warnw("warmup: failed to set campaign current target percent", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
+			joinedErr = errors.Join(joinedErr, err)
+		}
+
+		err = s.stageCache.SetMinSampleSize(ctx, stage.ID, stage.MinSampleSize)
+		if err != nil {
+			logger.Warnw("warmup: failed to set stage min sample size", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
+			joinedErr = errors.Join(joinedErr, err)
+		}
+
+		err = s.stageCache.SetSuccessThreshold(ctx, stage.ID, stage.SuccessThreshold)
+		if err != nil {
+			logger.Warnw("warmup: failed to set stage success threshold", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
 			joinedErr = errors.Join(joinedErr, err)
 		}
 	}

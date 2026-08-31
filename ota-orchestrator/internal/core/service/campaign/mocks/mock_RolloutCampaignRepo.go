@@ -40,8 +40,8 @@ func (_m *MockRolloutCampaignRepo) EXPECT() *MockRolloutCampaignRepo_Expecter {
 }
 
 // AdvanceStage provides a mock function for the type MockRolloutCampaignRepo
-func (_mock *MockRolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.UUID) (domain.RolloutCampaign, error) {
-	ret := _mock.Called(ctx, campaignID)
+func (_mock *MockRolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error) {
+	ret := _mock.Called(ctx, campaignID, prevStageID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AdvanceStage")
@@ -49,16 +49,16 @@ func (_mock *MockRolloutCampaignRepo) AdvanceStage(ctx context.Context, campaign
 
 	var r0 domain.RolloutCampaign
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (domain.RolloutCampaign, error)); ok {
-		return returnFunc(ctx, campaignID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (domain.RolloutCampaign, error)); ok {
+		return returnFunc(ctx, campaignID, prevStageID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) domain.RolloutCampaign); ok {
-		r0 = returnFunc(ctx, campaignID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) domain.RolloutCampaign); ok {
+		r0 = returnFunc(ctx, campaignID, prevStageID)
 	} else {
 		r0 = ret.Get(0).(domain.RolloutCampaign)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, campaignID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, campaignID, prevStageID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -73,11 +73,12 @@ type MockRolloutCampaignRepo_AdvanceStage_Call struct {
 // AdvanceStage is a helper method to define mock.On call
 //   - ctx context.Context
 //   - campaignID uuid.UUID
-func (_e *MockRolloutCampaignRepo_Expecter) AdvanceStage(ctx any, campaignID any) *MockRolloutCampaignRepo_AdvanceStage_Call {
-	return &MockRolloutCampaignRepo_AdvanceStage_Call{Call: _e.mock.On("AdvanceStage", ctx, campaignID)}
+//   - prevStageID uuid.UUID
+func (_e *MockRolloutCampaignRepo_Expecter) AdvanceStage(ctx any, campaignID any, prevStageID any) *MockRolloutCampaignRepo_AdvanceStage_Call {
+	return &MockRolloutCampaignRepo_AdvanceStage_Call{Call: _e.mock.On("AdvanceStage", ctx, campaignID, prevStageID)}
 }
 
-func (_c *MockRolloutCampaignRepo_AdvanceStage_Call) Run(run func(ctx context.Context, campaignID uuid.UUID)) *MockRolloutCampaignRepo_AdvanceStage_Call {
+func (_c *MockRolloutCampaignRepo_AdvanceStage_Call) Run(run func(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID)) *MockRolloutCampaignRepo_AdvanceStage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -87,9 +88,14 @@ func (_c *MockRolloutCampaignRepo_AdvanceStage_Call) Run(run func(ctx context.Co
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -100,7 +106,7 @@ func (_c *MockRolloutCampaignRepo_AdvanceStage_Call) Return(rolloutCampaign doma
 	return _c
 }
 
-func (_c *MockRolloutCampaignRepo_AdvanceStage_Call) RunAndReturn(run func(ctx context.Context, campaignID uuid.UUID) (domain.RolloutCampaign, error)) *MockRolloutCampaignRepo_AdvanceStage_Call {
+func (_c *MockRolloutCampaignRepo_AdvanceStage_Call) RunAndReturn(run func(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error)) *MockRolloutCampaignRepo_AdvanceStage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -557,6 +563,78 @@ func (_c *MockRolloutCampaignRepo_Resume_Call) Return(rolloutCampaign domain.Rol
 }
 
 func (_c *MockRolloutCampaignRepo_Resume_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)) *MockRolloutCampaignRepo_Resume_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Rollback provides a mock function for the type MockRolloutCampaignRepo
+func (_mock *MockRolloutCampaignRepo) Rollback(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error) {
+	ret := _mock.Called(ctx, campaignID, prevStageID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Rollback")
+	}
+
+	var r0 domain.RolloutCampaign
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (domain.RolloutCampaign, error)); ok {
+		return returnFunc(ctx, campaignID, prevStageID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) domain.RolloutCampaign); ok {
+		r0 = returnFunc(ctx, campaignID, prevStageID)
+	} else {
+		r0 = ret.Get(0).(domain.RolloutCampaign)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, campaignID, prevStageID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRolloutCampaignRepo_Rollback_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Rollback'
+type MockRolloutCampaignRepo_Rollback_Call struct {
+	*mock.Call
+}
+
+// Rollback is a helper method to define mock.On call
+//   - ctx context.Context
+//   - campaignID uuid.UUID
+//   - prevStageID uuid.UUID
+func (_e *MockRolloutCampaignRepo_Expecter) Rollback(ctx any, campaignID any, prevStageID any) *MockRolloutCampaignRepo_Rollback_Call {
+	return &MockRolloutCampaignRepo_Rollback_Call{Call: _e.mock.On("Rollback", ctx, campaignID, prevStageID)}
+}
+
+func (_c *MockRolloutCampaignRepo_Rollback_Call) Run(run func(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID)) *MockRolloutCampaignRepo_Rollback_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRolloutCampaignRepo_Rollback_Call) Return(rolloutCampaign domain.RolloutCampaign, err error) *MockRolloutCampaignRepo_Rollback_Call {
+	_c.Call.Return(rolloutCampaign, err)
+	return _c
+}
+
+func (_c *MockRolloutCampaignRepo_Rollback_Call) RunAndReturn(run func(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error)) *MockRolloutCampaignRepo_Rollback_Call {
 	_c.Call.Return(run)
 	return _c
 }
