@@ -19,13 +19,15 @@ func (r *UpdateAttemptRepo) Create(ctx context.Context, updateAttempt domain.Upd
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	INSERT INTO update_attempts (device_id, campaign_id, stage_id, result, event_id)
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING id, device_id, campaign_id, stage_id, result, event_id, reported_at
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, updateAttempt.DeviceID, updateAttempt.CampaignID, updateAttempt.StageID, updateAttempt.Result, updateAttempt.EventID)
+	row := exec.QueryRow(reqCtx, query, updateAttempt.DeviceID, updateAttempt.CampaignID, updateAttempt.StageID, updateAttempt.Result, updateAttempt.EventID)
 
 	var createdUpdateAttempt domain.UpdateAttempt
 	err := row.Scan(

@@ -21,14 +21,15 @@ func (r *DeviceRepo) List(ctx context.Context) ([]domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	SELECT id, device_model, current_version, status, last_seen, created_at
 	FROM devices
 	ORDER BY created_at DESC
 	`
 
-	rows, err := r.pool.Query(reqCtx, query)
-
+	rows, err := exec.Query(reqCtx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list devices: %w", err)
 	}
@@ -62,12 +63,15 @@ func (r *DeviceRepo) Get(ctx context.Context, id uuid.UUID) (domain.Device, erro
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
-	SELECT id, device_model, current_version, status, last_seen, created_at FROM devices
+	SELECT id, device_model, current_version, status, last_seen, created_at
+	FROM devices
 	WHERE id = $1
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, id)
+	row := exec.QueryRow(reqCtx, query, id)
 
 	var device domain.Device
 	err := row.Scan(
@@ -92,13 +96,15 @@ func (r *DeviceRepo) Create(ctx context.Context, device domain.Device) (domain.D
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	INSERT INTO devices (device_model, current_version)
 	VALUES ($1, $2)
 	RETURNING id, device_model, current_version, status, last_seen, created_at
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, device.DeviceModel, device.CurrentVersion)
+	row := exec.QueryRow(reqCtx, query, device.DeviceModel, device.CurrentVersion)
 
 	var createdDevice domain.Device
 	err := row.Scan(
@@ -120,13 +126,15 @@ func (r *DeviceRepo) Decommission(ctx context.Context, id uuid.UUID) (domain.Dev
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	UPDATE devices SET status = 'decommissioned'
 	WHERE id = $1
 	RETURNING id, device_model, current_version, status, last_seen, created_at
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, id)
+	row := exec.QueryRow(reqCtx, query, id)
 
 	var device domain.Device
 	err := row.Scan(

@@ -6,12 +6,21 @@ import (
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
 
+type executor interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 type DB struct {
 	pool           *pgxpool.Pool
+	tm             *TxManager
 	requestTimeout time.Duration
 }
 
@@ -35,10 +44,24 @@ func NewDB(ctx context.Context, config config.DBConfig, logger *zap.SugaredLogge
 
 	return &DB{
 		pool:           pool,
+		tm:             NewTxManager(pool),
 		requestTimeout: config.RequestTimeout,
 	}, nil
 }
 
-func (r *DB) Close() {
-	r.pool.Close()
+func (d *DB) exec(ctx context.Context) executor {
+	tx, ok := txFromContext(ctx)
+	if ok {
+		return tx
+	}
+
+	return d.pool
+}
+
+func (d *DB) TxManager() *TxManager {
+	return d.tm
+}
+
+func (d *DB) Close() {
+	d.pool.Close()
 }
