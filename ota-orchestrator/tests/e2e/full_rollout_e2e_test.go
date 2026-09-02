@@ -36,9 +36,11 @@ import (
 )
 
 const (
-	updateResultsTopic    = "firmware.update-results"
-	checkinsTopic         = "device.checkins"
-	updateResultsDLQTopic = "firmware.update-results.dlq"
+	updateResultsTopic       = "firmware.update-results"
+	checkinsTopic            = "device.checkins"
+	updateResultsDLQTopic    = "firmware.update-results.dlq"
+	rolloutDecisionsTopic    = "rollout.decisions"
+	rolloutDecisionsDLQTopic = "rollout.decisions.dlq"
 
 	// Match docker-compose.yml image versions.
 	postgresImage = "postgres:18-alpine"
@@ -165,7 +167,7 @@ func TestMain(m *testing.M) {
 
 	connStr := fmt.Sprintf("postgres://test:test@%s:%d/testdb?sslmode=disable", dbHost, dbPort)
 	applyMigrations(ctx, connStr)
-	for _, name := range []string{checkinsTopic, updateResultsTopic, updateResultsDLQTopic} {
+	for _, name := range []string{checkinsTopic, updateResultsTopic, updateResultsDLQTopic, rolloutDecisionsTopic, rolloutDecisionsDLQTopic} {
 		tkafka.CreateTopic(name, 3)
 	}
 
@@ -305,6 +307,8 @@ func controllerEnv(port int, redisHost string, redisPort int, kafkaHost string, 
 		"BROKER_TIMEOUT=10s",
 		"BROKER_GROUP_ID=" + controllerGroupID,
 		"BROKER_MIN_BYTES=1",
+		"EVALUATOR_FREQUENCY=1s",
+		"EVALUATOR_REQUIRED_STABLE_CYCLES=100",
 	}
 }
 
