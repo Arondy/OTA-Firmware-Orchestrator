@@ -1,4 +1,4 @@
-package kafka
+package core_kafka
 
 import (
 	"fmt"

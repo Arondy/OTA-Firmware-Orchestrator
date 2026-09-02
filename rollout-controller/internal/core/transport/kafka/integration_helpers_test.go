@@ -1,6 +1,6 @@
 //go:build integration
 
-package kafka
+package core_kafka
 
 import (
 	"context"
