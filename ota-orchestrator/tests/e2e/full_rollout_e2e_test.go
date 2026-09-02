@@ -301,6 +301,8 @@ func controllerEnv(port int, redisHost string, redisPort int, kafkaHost string, 
 		"CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL=10m",
 		"BROKER_HOST=127.0.0.1",
 		fmt.Sprintf("BROKER_PORT=%d", kafkaPort),
+		"BROKER_BATCH_TIMEOUT=100ms",
+		"BROKER_TIMEOUT=10s",
 		"BROKER_GROUP_ID=" + controllerGroupID,
 		"BROKER_MIN_BYTES=1",
 	}

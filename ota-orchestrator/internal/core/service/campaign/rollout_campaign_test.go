@@ -173,6 +173,7 @@ func TestStart_Success_SetsCacheForFirstStage(t *testing.T) {
 	m.campaignRepo.EXPECT().Start(mock.Anything, id).Return(started, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(nil)
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(nil)
 
@@ -192,6 +193,7 @@ func TestStart_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 	m.campaignRepo.EXPECT().Start(mock.Anything, id).Return(started, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 
@@ -228,6 +230,7 @@ func TestPause_Success(t *testing.T) {
 	id := uuid.New()
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().Pause(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
+	m.cache.EXPECT().RemoveRunningCampaigns(mock.Anything, id).Return(nil)
 
 	result, err := m.service().Pause(context.Background(), id)
 	require.NoError(t, err)
@@ -293,6 +296,7 @@ func TestResume_Success_SetsCacheForActiveStage(t *testing.T) {
 	m.campaignRepo.EXPECT().Resume(mock.Anything, id).Return(resumed, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(nil)
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(nil)
 
@@ -312,6 +316,7 @@ func TestResume_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 	m.campaignRepo.EXPECT().Resume(mock.Anything, id).Return(resumed, nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 
@@ -379,6 +384,7 @@ func TestApplyDecision_Advance_Completed_DeletesCacheKeys(t *testing.T) {
 	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(completed, nil)
+	m.cache.EXPECT().RemoveRunningCampaigns(mock.Anything, id).Return(nil)
 	m.cache.EXPECT().DeleteCurrentStage(mock.Anything, id).Return(nil)
 	m.cache.EXPECT().DeleteCurrentTargetPercent(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(nil)
@@ -407,6 +413,7 @@ func TestApplyDecision_Advance_NextStageActive_SetsCacheForNewStage(t *testing.T
 	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[1].ID, stages[1].MinSampleSize).Return(nil)
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[1].ID, stages[1].SuccessThreshold).Return(nil)
 
@@ -449,6 +456,7 @@ func TestApplyDecision_Advance_CacheFails_StillReturnsNil(t *testing.T) {
 	m.stageCache.EXPECT().DeleteSuccessThreshold(mock.Anything, prevStageID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 
@@ -534,6 +542,7 @@ func TestApplyDecision_Rollback_Success_DeletesCache(t *testing.T) {
 	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().Rollback(mock.Anything, id, prevStageID).Return(rolled, nil)
+	m.cache.EXPECT().RemoveRunningCampaigns(mock.Anything, id).Return(nil)
 	m.cache.EXPECT().DeleteCurrentStage(mock.Anything, id).Return(nil)
 	m.cache.EXPECT().DeleteCurrentTargetPercent(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(nil)
@@ -616,6 +625,7 @@ func TestApplyDecision_Rollback_CacheFails_StillReturnsNil(t *testing.T) {
 	m.decisionRepo.EXPECT().Create(mock.Anything, mock.Anything).Return(domain.AppliedDecision{}, nil)
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().Rollback(mock.Anything, id, prevStageID).Return(rolled, nil)
+	m.cache.EXPECT().RemoveRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.cache.EXPECT().DeleteCurrentStage(mock.Anything, id).Return(someCampaignErr())
 	m.cache.EXPECT().DeleteCurrentTargetPercent(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().DeleteMinSampleSize(mock.Anything, prevStageID).Return(someCampaignErr())
@@ -625,9 +635,7 @@ func TestApplyDecision_Rollback_CacheFails_StillReturnsNil(t *testing.T) {
 	require.NoError(t, err)
 }
 
-
 // --- Get ---
-
 
 func TestGet_CampaignNotFound_ReturnsError(t *testing.T) {
 	t.Parallel()
@@ -705,12 +713,15 @@ func TestWarmUpCache_Success_SetsCacheForAllActiveStages(t *testing.T) {
 	stages := twoStages(id)
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(stages, nil)
+	m.cache.EXPECT().DeleteAllRunningCampaigns(mock.Anything).Return(nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(nil)
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(nil)
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[1].ID, stages[1].MinSampleSize).Return(nil)
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[1].ID, stages[1].SuccessThreshold).Return(nil)
 
@@ -725,12 +736,15 @@ func TestWarmUpCache_PartialCacheFailure_ContinuesProcessing(t *testing.T) {
 	stages := twoStages(id)
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(stages, nil)
+	m.cache.EXPECT().DeleteAllRunningCampaigns(mock.Anything).Return(nil)
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[0].ID).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[0].TargetPercent).Return(someCampaignErr())
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[0].ID, stages[0].MinSampleSize).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[0].ID, stages[0].SuccessThreshold).Return(someCampaignErr())
 	m.cache.EXPECT().SetCurrentStage(mock.Anything, id, stages[1].ID).Return(nil)
 	m.cache.EXPECT().SetCurrentTargetPercent(mock.Anything, id, stages[1].TargetPercent).Return(nil)
+	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetMinSampleSize(mock.Anything, stages[1].ID, stages[1].MinSampleSize).Return(nil)
 	m.stageCache.EXPECT().SetSuccessThreshold(mock.Anything, stages[1].ID, stages[1].SuccessThreshold).Return(nil)
 
@@ -744,6 +758,7 @@ func TestWarmUpCache_NoRunningCampaigns_NoCacheWrites(t *testing.T) {
 	m := newCampaignMocks(t)
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{}, nil)
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(nil, nil)
+	m.cache.EXPECT().DeleteAllRunningCampaigns(mock.Anything).Return(nil)
 
 	err := m.service().WarmUpCache(context.Background(), zap.NewNop().Sugar())
 	require.NoError(t, err)
