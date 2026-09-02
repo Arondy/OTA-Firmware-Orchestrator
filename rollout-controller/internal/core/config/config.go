@@ -13,10 +13,11 @@ import (
 )
 
 type Config struct {
-	ShutdownTimeout time.Duration `koanf:"SHUTDOWN_TIMEOUT" validate:"required"`
-	Server          ServerConfig  `koanf:",squash"`
-	Cache           CacheConfig   `koanf:",squash"`
-	Broker          BrokerConfig  `koanf:",squash"`
+	ShutdownTimeout time.Duration   `koanf:"SHUTDOWN_TIMEOUT" validate:"required"`
+	Server          ServerConfig    `koanf:",squash"`
+	Cache           CacheConfig     `koanf:",squash"`
+	Broker          BrokerConfig    `koanf:",squash"`
+	Evaluator       EvaluatorConfig `koanf:",squash"`
 }
 
 type ServerConfig struct {
@@ -32,16 +33,23 @@ type CacheConfig struct {
 }
 
 const (
-	// Kafka topic names are fixed in code, not sourced from .env.
-	UpdateResultsTopic = "firmware.update-results"
+	UpdateResultsTopic   = "firmware.update-results"
+	RolloutDecisionTopic = "rollout.decisions"
 )
 
 type BrokerConfig struct {
-	Host     string `koanf:"BROKER_HOST" validate:"required"`
-	Port     int    `koanf:"BROKER_PORT" validate:"required"`
-	GroupID  string `koanf:"BROKER_GROUP_ID" validate:"required"`
-	MinBytes int    `koanf:"BROKER_MIN_BYTES" validate:"required,min=1"`
-	Topic    string
+	Host         string        `koanf:"BROKER_HOST" validate:"required"`
+	Port         int           `koanf:"BROKER_PORT" validate:"required"`
+	BatchTimeout time.Duration `koanf:"BROKER_BATCH_TIMEOUT" validate:"required"`
+	Timeout      time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
+	GroupID      string        `koanf:"BROKER_GROUP_ID" validate:"required"`
+	MinBytes     int           `koanf:"BROKER_MIN_BYTES" validate:"required,min=1"`
+	Topic        string
+}
+
+type EvaluatorConfig struct {
+	Frequency            time.Duration `koanf:"EVALUATOR_FREQUENCY" validate:"required"`
+	RequiredStableCycles int64         `koanf:"EVALUATOR_REQUIRED_STABLE_CYCLES" validate:"required"`
 }
 
 func LoadConfig() *Config {
