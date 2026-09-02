@@ -66,6 +66,7 @@ func (s *RolloutCampaignService) ApplyDecision(ctx context.Context, decision dom
 			s.handleAdvanceCache(ctx, *committedCampaign, decision.PreviousStageID)
 		}
 	} else {
+		s.campaignCache.RemoveRunningCampaigns(ctx, decision.CampaignID)
 		s.deleteCampaignCache(ctx, decision.CampaignID, decision.PreviousStageID)
 		s.deleteStageCache(ctx, decision.CampaignID, decision.PreviousStageID)
 	}
@@ -101,6 +102,7 @@ func (s *RolloutCampaignService) rollbackStage(ctx context.Context, campaignID u
 
 func (s *RolloutCampaignService) handleAdvanceCache(ctx context.Context, campaign domain.RolloutCampaign, prevStageID uuid.UUID) {
 	if campaign.Status == domain.RolloutCampaignsStatusCompleted {
+		s.campaignCache.RemoveRunningCampaigns(ctx, campaign.ID)
 		s.deleteStageCache(ctx, campaign.ID, prevStageID)
 		s.deleteCampaignCache(ctx, campaign.ID, prevStageID)
 		return

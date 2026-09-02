@@ -42,6 +42,9 @@ type CampaignCacheRepo interface {
 	DeleteCurrentStage(ctx context.Context, id uuid.UUID) error
 	SetCurrentTargetPercent(ctx context.Context, id uuid.UUID, percent int) error
 	DeleteCurrentTargetPercent(ctx context.Context, id uuid.UUID) error
+	AddRunningCampaigns(ctx context.Context, ids ...uuid.UUID) error
+	RemoveRunningCampaigns(ctx context.Context, ids ...uuid.UUID) error
+	DeleteAllRunningCampaigns(ctx context.Context) error
 }
 
 type StageCacheRepo interface {
@@ -143,7 +146,15 @@ func (s *RolloutCampaignService) Pause(ctx context.Context, id uuid.UUID) (domai
 		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't pause %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 
-	return s.campaignRepo.Pause(ctx, id)
+	pausedCampaign, err := s.campaignRepo.Pause(ctx, id)
+	if err != nil {
+		return domain.RolloutCampaign{}, err
+	}
+
+	// нет очистки остального кэша т.к. считаем что кампании не будут "забрасываться"
+	s.campaignCache.RemoveRunningCampaigns(ctx, id)
+
+	return pausedCampaign, nil
 }
 
 func (s *RolloutCampaignService) Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
@@ -200,30 +211,12 @@ func (s *RolloutCampaignService) WarmUpCache(ctx context.Context, logger *zap.Su
 
 	var joinedErr error
 
+	err = s.campaignCache.DeleteAllRunningCampaigns(ctx)
+	joinedErr = errors.Join(joinedErr, err)
+
 	for _, stage := range stages {
-		err = s.campaignCache.SetCurrentStage(ctx, stage.CampaignID, stage.ID)
-		if err != nil {
-			logger.Warnw("warmup: failed to set campaign current stage", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
-			joinedErr = errors.Join(joinedErr, err)
-		}
-
-		err = s.campaignCache.SetCurrentTargetPercent(ctx, stage.CampaignID, stage.TargetPercent)
-		if err != nil {
-			logger.Warnw("warmup: failed to set campaign current target percent", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
-			joinedErr = errors.Join(joinedErr, err)
-		}
-
-		err = s.stageCache.SetMinSampleSize(ctx, stage.ID, stage.MinSampleSize)
-		if err != nil {
-			logger.Warnw("warmup: failed to set stage min sample size", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
-			joinedErr = errors.Join(joinedErr, err)
-		}
-
-		err = s.stageCache.SetSuccessThreshold(ctx, stage.ID, stage.SuccessThreshold)
-		if err != nil {
-			logger.Warnw("warmup: failed to set stage success threshold", "error", err, "campaign_id", stage.CampaignID, "stage_id", stage.ID)
-			joinedErr = errors.Join(joinedErr, err)
-		}
+		err = s.setCampaignStageCache(ctx, stage)
+		joinedErr = errors.Join(joinedErr, err)
 	}
 
 	logger.Infow("finished cache warmup", "campaigns_processed", len(campaigns))
