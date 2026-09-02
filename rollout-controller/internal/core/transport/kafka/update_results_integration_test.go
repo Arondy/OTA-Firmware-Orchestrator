@@ -1,6 +1,6 @@
 //go:build integration
 
-package kafka
+package core_kafka
 
 import (
 	"context"
@@ -72,11 +72,13 @@ func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer
 
 	host, port := brokerHostPort()
 	consumer, err := NewUpdateResultsConsumer(svc, config.BrokerConfig{
-		Host:     host,
-		Port:     port,
-		GroupID:  "integration-consumer-group-" + uuid.New().String(),
-		MinBytes: 1,
-		Topic:    topic,
+		Host:         host,
+		Port:         port,
+		BatchTimeout: 100 * time.Millisecond,
+		Timeout:      10 * time.Second,
+		GroupID:      "integration-consumer-group-" + uuid.New().String(),
+		MinBytes:     1,
+		Topic:        topic,
 	}, zap.NewNop().Sugar())
 	require.NoError(t, err)
 
