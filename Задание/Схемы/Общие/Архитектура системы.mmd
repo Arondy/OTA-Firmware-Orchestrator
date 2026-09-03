@@ -1,0 +1,46 @@
+flowchart TB
+    DEV["Устройство"]
+    ADM["Администратор"]
+
+    subgraph MAIN["OTA Orchestrator (main service)"]
+        REST["REST API: Devices, Firmware, Campaigns"]
+        CC["Connect-клиент"]
+        CONS["Consumer: rollout.decisions"]
+        PA["Async Producer: device.checkins"]
+        PS["Sync Producer: firmware.update-results"]
+    end
+
+    subgraph CTRL["Rollout Controller"]
+        SRV["Connect-сервер: CampaignService.GetCampaignStats, HealthService.CheckHealth"]
+        EV["Periodic Evaluator"]
+        PD["Producer: rollout.decisions"]
+        CU["Consumer: firmware.update-results"]
+    end
+
+    PG[("PostgreSQL")]
+    RD[("Redis")]
+    KF["Kafka"]
+
+    DEV -- "REST" --> REST
+    ADM -- "REST" --> REST
+
+    REST -- "Async (fire-and-forget)" --> PA
+    REST -- "Sync (wait for ack)" --> PS
+    PA --> KF
+    PS --> KF
+
+    REST --> PG
+    REST --> RD
+
+    KF --> CONS
+    CONS --> PG
+
+    KF --> CU
+    CU --> RD
+
+    EV --> RD
+    EV --> PD
+    PD --> KF
+
+    CC -- "Connect-RPC GetCampaignStats (HTTP/JSON)" --> SRV
+    SRV --> RD

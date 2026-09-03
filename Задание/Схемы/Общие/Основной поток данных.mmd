@@ -1,0 +1,56 @@
+sequenceDiagram
+    participant Dev as Устройство
+    participant M as OTA Orchestrator
+    participant PG as PostgreSQL
+    participant R as Redis
+    participant K as Kafka
+    participant C as Rollout Controller
+
+    Dev->>M: POST /checkin (current_version)
+    M->>PG: Поиск running-кампании по device_model
+    PG-->>M: campaign_id
+    M->>R: Чтение current_stage, current_target_percent
+    R-->>M: stage_id, target_percent
+
+    Note over M: bucket = hash(device_id + campaign_id), обновление если bucket ≤ target_percent и версия ниже целевой
+
+    alt Попадает и версия отличается
+        M-->>Dev: update_available (binary_url, checksum, stage_id)
+    else Не попадает или версия та же
+        M-->>Dev: no_update
+    end
+
+    M->>R: Запись last_seen, current_version (TTL 24h)
+    M->>K: Публикация device.checkins (async, неблокирующая)
+
+    Dev->>M: POST /report (campaign_id, stage_id, result)
+
+    Note over M: Генерация event_id (uuidv7)
+
+    M->>PG: INSERT into update_attempts
+    M->>K: Публикация firmware.update-results (sync, ждём ack)
+
+    alt Брокер недоступен
+        M-->>Dev: 503, запись в БД уже сделана
+    else Ack получен
+        M-->>Dev: 200 OK
+    end
+
+    K->>C: Консьюм firmware.update-results
+    C->>R: SETNX seen:{event_id} с TTL (дедупликация)
+
+    alt Ключа не было (новое событие)
+        C->>R: INCR success, failure или timeout
+    end
+
+    loop Периодическая оценка (Evaluator)
+        C->>R: Чтение метрик (success, failure, timeout, пороги стадии)
+
+        alt Решение стабильно N циклов
+            C->>K: Публикация rollout.decisions
+        end
+    end
+
+    K->>M: Консьюм rollout.decisions
+    M->>PG: TxManager.Do: check applied_decisions, stale-check previous_stage_id=active, UPDATE campaigns/stages, INSERT applied_decisions
+    M->>R: Обновление проекции активной стадии после коммита

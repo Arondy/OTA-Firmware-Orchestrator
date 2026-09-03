@@ -1,0 +1,16 @@
+stateDiagram-v2
+    state "Статус кампании: RolloutCampaign" as CAMP {
+        [*] --> draft
+        draft --> running : POST /start
+        running --> paused : POST /pause
+        paused --> running : POST /resume
+        running --> completed : advance_stage на последней стадии
+        running --> rolled_back : rollback через applied_decisions
+    }
+
+    state "Статус стадии: RolloutStage" as STG {
+        [*] --> pending
+        pending --> active : Активация при старте или advance
+        active --> passed : advance_stage
+        active --> failed : rollback
+    }

@@ -1,0 +1,42 @@
+erDiagram
+    firmware_versions ||--o{ rollout_campaigns : "применима к"
+    rollout_campaigns ||--o{ rollout_stages : "содержит"
+
+    devices {
+        UUID id PK
+        string device_model
+        string current_version
+        DEVICE_STATUS status
+        timestamp last_seen
+        timestamp created_at
+    }
+
+    firmware_versions {
+        UUID id PK
+        string device_model
+        string fw_version
+        string fw_checksum
+        string binary_url
+        timestamp created_at
+    }
+
+    rollout_campaigns {
+        UUID id PK
+        UUID firmware_version_id FK
+        string device_model
+        ROLLOUT_CAMPAIGNS_STATUS status
+        timestamp created_at
+        timestamp started_at
+        timestamp completed_at
+    }
+
+    rollout_stages {
+        UUID id PK
+        UUID campaign_id FK
+        int order_index
+        int target_percent
+        int min_sample_size
+        float success_threshold
+        ROLLOUT_STAGES_STATUS status
+        timestamp entered_at
+    }

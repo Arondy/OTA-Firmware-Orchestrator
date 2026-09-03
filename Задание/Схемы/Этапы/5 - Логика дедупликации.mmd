@@ -1,0 +1,16 @@
+flowchart TD
+    GOT["Получено сообщение из Kafka"]
+    EXT["Извлечение campaign_id, stage_id, event_id"]
+    DEDUP{"SETNX seen:{event_id} в Redis (Lua, с TTL)"}
+
+    NEW["Ключ установлен успешно, новое событие"]
+    DUP["Ключ уже существует, дубликат"]
+
+    INCR["INCR success, failure или timeout счётчика"]
+    SKIP["Пропуск инкремента"]
+
+    DONE["Обработка завершена"]
+
+    GOT --> EXT --> DEDUP
+    DEDUP -- "Новое" --> NEW --> INCR --> DONE
+    DEDUP -- "Дубликат" --> DUP --> SKIP --> DONE

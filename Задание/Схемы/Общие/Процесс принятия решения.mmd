@@ -1,0 +1,41 @@
+flowchart TD
+    TICK["Цикл оценки Evaluator (EVALUATOR_FREQUENCY)"]
+    CUR["Чтение current_stage кампании"]
+    STATS["GetCampaignStats: MGet success, failure, timeout"]
+    CALC["Вычисление sample_size, success_rate"]
+
+    ENOUGH{"sample_size >= min_sample_size?"}
+    WAIT["Ничего не делать, ждать данных"]
+
+    CMP{"success_rate >= success_threshold?"}
+    ADV["decision = advance_stage"]
+    RB["decision = rollback"]
+
+    SAME{"decision == campaign:decision в Redis?"}
+    SET["SetDecision + сброс stable_cycles"]
+    INCR["INCR stable_cycles"]
+
+    STABLE{"cycles >= REQUIRED_STABLE_CYCLES?"}
+    PUB["Публикация DecisionEvent (decision_id uuidv7, previous_stage_id)"]
+    CLEAN["Чистка stable_cycles и decision"]
+
+    END1["Конец цикла"]
+    END2["Конец цикла, ждём стабильности"]
+
+    TICK --> CUR --> STATS --> CALC --> ENOUGH
+
+    ENOUGH -- Нет --> WAIT --> END1
+    ENOUGH -- Да --> CMP
+
+    CMP -- Да --> ADV
+    CMP -- Нет --> RB
+
+    ADV --> SAME
+    RB --> SAME
+
+    SAME -- "Нет (сменилось)" --> SET --> INCR
+    SAME -- "Да" --> INCR
+
+    INCR --> STABLE
+    STABLE -- Нет --> END2
+    STABLE -- Да --> PUB --> CLEAN --> END1

@@ -1,0 +1,15 @@
+flowchart TB
+    subgraph MAIN["OTA Orchestrator"]
+        WARM["Прогрев кэша при старте"]
+        API["REST API: Devices, Firmware, Campaigns"]
+        LOGIC["Checkin and Report Logic"]
+    end
+
+    PG[("PostgreSQL")]
+    RD[("Redis")]
+
+    WARM <--> PG
+    WARM <--> RD
+    API <--> PG
+    API <--> RD
+    LOGIC <--> RD
