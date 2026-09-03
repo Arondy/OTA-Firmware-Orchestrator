@@ -8,3 +8,8 @@ type CheckinResult struct {
 	BinaryUrl       string
 	FWChecksum      string
 }
+
+type CheckinData struct {
+	StageID       uuid.UUID
+	TargetPercent int
+}

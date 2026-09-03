@@ -7,3 +7,8 @@ type RolloutCampaignStats struct {
 	SuccessRate   float32
 	SampleSize    int
 }
+
+type StageStats struct {
+	MinSampleSize    int
+	SuccessThreshold float32
+}
