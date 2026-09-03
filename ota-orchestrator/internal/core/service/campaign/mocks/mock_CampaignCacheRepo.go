@@ -7,6 +7,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -159,12 +160,12 @@ func (_c *MockCampaignCacheRepo_DeleteAllRunningCampaigns_Call) RunAndReturn(run
 	return _c
 }
 
-// DeleteCurrentStage provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) DeleteCurrentStage(ctx context.Context, id uuid.UUID) error {
+// DeleteCheckinData provides a mock function for the type MockCampaignCacheRepo
+func (_mock *MockCampaignCacheRepo) DeleteCheckinData(ctx context.Context, id uuid.UUID) error {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DeleteCurrentStage")
+		panic("no return value specified for DeleteCheckinData")
 	}
 
 	var r0 error
@@ -176,19 +177,19 @@ func (_mock *MockCampaignCacheRepo) DeleteCurrentStage(ctx context.Context, id u
 	return r0
 }
 
-// MockCampaignCacheRepo_DeleteCurrentStage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteCurrentStage'
-type MockCampaignCacheRepo_DeleteCurrentStage_Call struct {
+// MockCampaignCacheRepo_DeleteCheckinData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteCheckinData'
+type MockCampaignCacheRepo_DeleteCheckinData_Call struct {
 	*mock.Call
 }
 
-// DeleteCurrentStage is a helper method to define mock.On call
+// DeleteCheckinData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockCampaignCacheRepo_Expecter) DeleteCurrentStage(ctx any, id any) *MockCampaignCacheRepo_DeleteCurrentStage_Call {
-	return &MockCampaignCacheRepo_DeleteCurrentStage_Call{Call: _e.mock.On("DeleteCurrentStage", ctx, id)}
+func (_e *MockCampaignCacheRepo_Expecter) DeleteCheckinData(ctx any, id any) *MockCampaignCacheRepo_DeleteCheckinData_Call {
+	return &MockCampaignCacheRepo_DeleteCheckinData_Call{Call: _e.mock.On("DeleteCheckinData", ctx, id)}
 }
 
-func (_c *MockCampaignCacheRepo_DeleteCurrentStage_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockCampaignCacheRepo_DeleteCurrentStage_Call {
+func (_c *MockCampaignCacheRepo_DeleteCheckinData_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockCampaignCacheRepo_DeleteCheckinData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -206,69 +207,12 @@ func (_c *MockCampaignCacheRepo_DeleteCurrentStage_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_DeleteCurrentStage_Call) Return(err error) *MockCampaignCacheRepo_DeleteCurrentStage_Call {
+func (_c *MockCampaignCacheRepo_DeleteCheckinData_Call) Return(err error) *MockCampaignCacheRepo_DeleteCheckinData_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_DeleteCurrentStage_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockCampaignCacheRepo_DeleteCurrentStage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// DeleteCurrentTargetPercent provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) DeleteCurrentTargetPercent(ctx context.Context, id uuid.UUID) error {
-	ret := _mock.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for DeleteCurrentTargetPercent")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, id)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteCurrentTargetPercent'
-type MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call struct {
-	*mock.Call
-}
-
-// DeleteCurrentTargetPercent is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-func (_e *MockCampaignCacheRepo_Expecter) DeleteCurrentTargetPercent(ctx any, id any) *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call {
-	return &MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call{Call: _e.mock.On("DeleteCurrentTargetPercent", ctx, id)}
-}
-
-func (_c *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call) Return(err error) *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockCampaignCacheRepo_DeleteCurrentTargetPercent_Call {
+func (_c *MockCampaignCacheRepo_DeleteCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockCampaignCacheRepo_DeleteCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -343,37 +287,37 @@ func (_c *MockCampaignCacheRepo_RemoveRunningCampaigns_Call) RunAndReturn(run fu
 	return _c
 }
 
-// SetCurrentStage provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) SetCurrentStage(ctx context.Context, id uuid.UUID, stageID uuid.UUID) error {
-	ret := _mock.Called(ctx, id, stageID)
+// SetCheckinData provides a mock function for the type MockCampaignCacheRepo
+func (_mock *MockCampaignCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CheckinData) error {
+	ret := _mock.Called(ctx, id, data)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetCurrentStage")
+		panic("no return value specified for SetCheckinData")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, id, stageID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.CheckinData) error); ok {
+		r0 = returnFunc(ctx, id, data)
 	} else {
 		r0 = ret.Error(0)
 	}
 	return r0
 }
 
-// MockCampaignCacheRepo_SetCurrentStage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCurrentStage'
-type MockCampaignCacheRepo_SetCurrentStage_Call struct {
+// MockCampaignCacheRepo_SetCheckinData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCheckinData'
+type MockCampaignCacheRepo_SetCheckinData_Call struct {
 	*mock.Call
 }
 
-// SetCurrentStage is a helper method to define mock.On call
+// SetCheckinData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-//   - stageID uuid.UUID
-func (_e *MockCampaignCacheRepo_Expecter) SetCurrentStage(ctx any, id any, stageID any) *MockCampaignCacheRepo_SetCurrentStage_Call {
-	return &MockCampaignCacheRepo_SetCurrentStage_Call{Call: _e.mock.On("SetCurrentStage", ctx, id, stageID)}
+//   - data domain.CheckinData
+func (_e *MockCampaignCacheRepo_Expecter) SetCheckinData(ctx any, id any, data any) *MockCampaignCacheRepo_SetCheckinData_Call {
+	return &MockCampaignCacheRepo_SetCheckinData_Call{Call: _e.mock.On("SetCheckinData", ctx, id, data)}
 }
 
-func (_c *MockCampaignCacheRepo_SetCurrentStage_Call) Run(run func(ctx context.Context, id uuid.UUID, stageID uuid.UUID)) *MockCampaignCacheRepo_SetCurrentStage_Call {
+func (_c *MockCampaignCacheRepo_SetCheckinData_Call) Run(run func(ctx context.Context, id uuid.UUID, data domain.CheckinData)) *MockCampaignCacheRepo_SetCheckinData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -383,9 +327,9 @@ func (_c *MockCampaignCacheRepo_SetCurrentStage_Call) Run(run func(ctx context.C
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
+		var arg2 domain.CheckinData
 		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
+			arg2 = args[2].(domain.CheckinData)
 		}
 		run(
 			arg0,
@@ -396,75 +340,12 @@ func (_c *MockCampaignCacheRepo_SetCurrentStage_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_SetCurrentStage_Call) Return(err error) *MockCampaignCacheRepo_SetCurrentStage_Call {
+func (_c *MockCampaignCacheRepo_SetCheckinData_Call) Return(err error) *MockCampaignCacheRepo_SetCheckinData_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_SetCurrentStage_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, stageID uuid.UUID) error) *MockCampaignCacheRepo_SetCurrentStage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetCurrentTargetPercent provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) SetCurrentTargetPercent(ctx context.Context, id uuid.UUID, percent int) error {
-	ret := _mock.Called(ctx, id, percent)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetCurrentTargetPercent")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int) error); ok {
-		r0 = returnFunc(ctx, id, percent)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockCampaignCacheRepo_SetCurrentTargetPercent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCurrentTargetPercent'
-type MockCampaignCacheRepo_SetCurrentTargetPercent_Call struct {
-	*mock.Call
-}
-
-// SetCurrentTargetPercent is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-//   - percent int
-func (_e *MockCampaignCacheRepo_Expecter) SetCurrentTargetPercent(ctx any, id any, percent any) *MockCampaignCacheRepo_SetCurrentTargetPercent_Call {
-	return &MockCampaignCacheRepo_SetCurrentTargetPercent_Call{Call: _e.mock.On("SetCurrentTargetPercent", ctx, id, percent)}
-}
-
-func (_c *MockCampaignCacheRepo_SetCurrentTargetPercent_Call) Run(run func(ctx context.Context, id uuid.UUID, percent int)) *MockCampaignCacheRepo_SetCurrentTargetPercent_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 int
-		if args[2] != nil {
-			arg2 = args[2].(int)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockCampaignCacheRepo_SetCurrentTargetPercent_Call) Return(err error) *MockCampaignCacheRepo_SetCurrentTargetPercent_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockCampaignCacheRepo_SetCurrentTargetPercent_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, percent int) error) *MockCampaignCacheRepo_SetCurrentTargetPercent_Call {
+func (_c *MockCampaignCacheRepo_SetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, data domain.CheckinData) error) *MockCampaignCacheRepo_SetCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }

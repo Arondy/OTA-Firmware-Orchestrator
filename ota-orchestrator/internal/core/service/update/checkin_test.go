@@ -170,8 +170,7 @@ func TestCheckin_CacheSetFails_StillContinues(t *testing.T) {
 	m.campaignRepo.EXPECT().FindRunning(mock.Anything, dev.DeviceModel).Return(campaign, nil)
 	m.checkinProducer.EXPECT().Produce(mock.Anything).Return()
 	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(stageID, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentTargetPercent(mock.Anything, campaignID).Return(100, nil)
+	m.campaignCacheRepo.EXPECT().GetCheckinData(mock.Anything, campaignID).Return(domain.CheckinData{StageID: stageID, TargetPercent: 100}, nil)
 
 	result, err := m.service().Checkin(context.Background(), dev)
 	require.NoError(t, err)
@@ -199,8 +198,7 @@ func TestCheckin_ProducesEvent_WhenRunningCampaignExists(t *testing.T) {
 		assert.Equal(t, dev.CurrentVersion, event.CurrentVersion)
 	}).Return()
 	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(stageID, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentTargetPercent(mock.Anything, campaignID).Return(100, nil)
+	m.campaignCacheRepo.EXPECT().GetCheckinData(mock.Anything, campaignID).Return(domain.CheckinData{StageID: stageID, TargetPercent: 100}, nil)
 
 	result, err := m.service().Checkin(context.Background(), dev)
 	require.NoError(t, err)
@@ -248,7 +246,7 @@ func TestCheckin_VersionEqualOrGreater_ReturnsNoUpdate(t *testing.T) {
 	assert.False(t, result.UpdateAvailable)
 }
 
-func TestCheckin_CacheGetStageFails_ReturnsError(t *testing.T) {
+func TestCheckin_CacheGetFails_ReturnsError(t *testing.T) {
 	t.Parallel()
 	m := newCheckinMocks(t)
 	deviceID := uuid.New()
@@ -263,30 +261,7 @@ func TestCheckin_CacheGetStageFails_ReturnsError(t *testing.T) {
 	m.campaignRepo.EXPECT().FindRunning(mock.Anything, dev.DeviceModel).Return(campaign, nil)
 	m.checkinProducer.EXPECT().Produce(mock.Anything).Return()
 	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(uuid.UUID{}, someErr())
-
-	_, err := m.service().Checkin(context.Background(), dev)
-	require.Error(t, err)
-}
-
-func TestCheckin_CacheGetTargetPercentFails_ReturnsError(t *testing.T) {
-	t.Parallel()
-	m := newCheckinMocks(t)
-	deviceID := uuid.New()
-	campaignID := uuid.New()
-	fwID := uuid.New()
-	dev := activeDevice(deviceID)
-	campaign := runningCampaign(campaignID, fwID)
-	fw := newerFirmware(fwID)
-	stageID := uuid.UUID{1}
-
-	expectCacheWrites(m)
-	m.deviceRepo.EXPECT().Get(mock.Anything, deviceID).Return(dev, nil)
-	m.campaignRepo.EXPECT().FindRunning(mock.Anything, dev.DeviceModel).Return(campaign, nil)
-	m.checkinProducer.EXPECT().Produce(mock.Anything).Return()
-	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(stageID, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentTargetPercent(mock.Anything, campaignID).Return(0, someErr())
+	m.campaignCacheRepo.EXPECT().GetCheckinData(mock.Anything, campaignID).Return(domain.CheckinData{}, someErr())
 
 	_, err := m.service().Checkin(context.Background(), dev)
 	require.Error(t, err)
@@ -310,12 +285,11 @@ func TestCheckin_BucketAboveTargetPercent_ReturnsNoUpdate(t *testing.T) {
 	m.campaignRepo.EXPECT().FindRunning(mock.Anything, dev.DeviceModel).Return(campaign, nil)
 	m.checkinProducer.EXPECT().Produce(mock.Anything).Return()
 	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(stageID, nil)
 	target := bucket - 1
 	if target < 0 {
 		target = 0
 	}
-	m.campaignCacheRepo.EXPECT().GetCurrentTargetPercent(mock.Anything, campaignID).Return(target, nil)
+	m.campaignCacheRepo.EXPECT().GetCheckinData(mock.Anything, campaignID).Return(domain.CheckinData{StageID: stageID, TargetPercent: target}, nil)
 
 	result, err := m.service().Checkin(context.Background(), dev)
 	require.NoError(t, err)
@@ -340,8 +314,7 @@ func TestCheckin_BucketWithinTargetPercent_ReturnsUpdate(t *testing.T) {
 	m.campaignRepo.EXPECT().FindRunning(mock.Anything, dev.DeviceModel).Return(campaign, nil)
 	m.checkinProducer.EXPECT().Produce(mock.Anything).Return()
 	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(stageID, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentTargetPercent(mock.Anything, campaignID).Return(bucket, nil)
+	m.campaignCacheRepo.EXPECT().GetCheckinData(mock.Anything, campaignID).Return(domain.CheckinData{StageID: stageID, TargetPercent: bucket}, nil)
 
 	result, err := m.service().Checkin(context.Background(), dev)
 	require.NoError(t, err)
@@ -368,8 +341,7 @@ func TestCheckin_TargetPercent100_AllDevicesGetUpdate(t *testing.T) {
 	m.campaignRepo.EXPECT().FindRunning(mock.Anything, dev.DeviceModel).Return(campaign, nil)
 	m.checkinProducer.EXPECT().Produce(mock.Anything).Return()
 	m.firmwareRepo.EXPECT().Get(mock.Anything, fwID).Return(fw, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentStage(mock.Anything, campaignID).Return(stageID, nil)
-	m.campaignCacheRepo.EXPECT().GetCurrentTargetPercent(mock.Anything, campaignID).Return(100, nil)
+	m.campaignCacheRepo.EXPECT().GetCheckinData(mock.Anything, campaignID).Return(domain.CheckinData{StageID: stageID, TargetPercent: 100}, nil)
 
 	result, err := m.service().Checkin(context.Background(), dev)
 	require.NoError(t, err)

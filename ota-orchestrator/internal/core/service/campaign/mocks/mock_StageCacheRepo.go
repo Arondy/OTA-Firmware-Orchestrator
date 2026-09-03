@@ -7,6 +7,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -38,12 +39,12 @@ func (_m *MockStageCacheRepo) EXPECT() *MockStageCacheRepo_Expecter {
 	return &MockStageCacheRepo_Expecter{mock: &_m.Mock}
 }
 
-// DeleteMinSampleSize provides a mock function for the type MockStageCacheRepo
-func (_mock *MockStageCacheRepo) DeleteMinSampleSize(ctx context.Context, id uuid.UUID) error {
+// DeleteStageStats provides a mock function for the type MockStageCacheRepo
+func (_mock *MockStageCacheRepo) DeleteStageStats(ctx context.Context, id uuid.UUID) error {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DeleteMinSampleSize")
+		panic("no return value specified for DeleteStageStats")
 	}
 
 	var r0 error
@@ -55,19 +56,19 @@ func (_mock *MockStageCacheRepo) DeleteMinSampleSize(ctx context.Context, id uui
 	return r0
 }
 
-// MockStageCacheRepo_DeleteMinSampleSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMinSampleSize'
-type MockStageCacheRepo_DeleteMinSampleSize_Call struct {
+// MockStageCacheRepo_DeleteStageStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteStageStats'
+type MockStageCacheRepo_DeleteStageStats_Call struct {
 	*mock.Call
 }
 
-// DeleteMinSampleSize is a helper method to define mock.On call
+// DeleteStageStats is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockStageCacheRepo_Expecter) DeleteMinSampleSize(ctx any, id any) *MockStageCacheRepo_DeleteMinSampleSize_Call {
-	return &MockStageCacheRepo_DeleteMinSampleSize_Call{Call: _e.mock.On("DeleteMinSampleSize", ctx, id)}
+func (_e *MockStageCacheRepo_Expecter) DeleteStageStats(ctx any, id any) *MockStageCacheRepo_DeleteStageStats_Call {
+	return &MockStageCacheRepo_DeleteStageStats_Call{Call: _e.mock.On("DeleteStageStats", ctx, id)}
 }
 
-func (_c *MockStageCacheRepo_DeleteMinSampleSize_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockStageCacheRepo_DeleteMinSampleSize_Call {
+func (_c *MockStageCacheRepo_DeleteStageStats_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockStageCacheRepo_DeleteStageStats_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -85,46 +86,47 @@ func (_c *MockStageCacheRepo_DeleteMinSampleSize_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockStageCacheRepo_DeleteMinSampleSize_Call) Return(err error) *MockStageCacheRepo_DeleteMinSampleSize_Call {
+func (_c *MockStageCacheRepo_DeleteStageStats_Call) Return(err error) *MockStageCacheRepo_DeleteStageStats_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockStageCacheRepo_DeleteMinSampleSize_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockStageCacheRepo_DeleteMinSampleSize_Call {
+func (_c *MockStageCacheRepo_DeleteStageStats_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockStageCacheRepo_DeleteStageStats_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeleteSuccessThreshold provides a mock function for the type MockStageCacheRepo
-func (_mock *MockStageCacheRepo) DeleteSuccessThreshold(ctx context.Context, id uuid.UUID) error {
-	ret := _mock.Called(ctx, id)
+// SetStageStats provides a mock function for the type MockStageCacheRepo
+func (_mock *MockStageCacheRepo) SetStageStats(ctx context.Context, id uuid.UUID, stats domain.StageStats) error {
+	ret := _mock.Called(ctx, id, stats)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DeleteSuccessThreshold")
+		panic("no return value specified for SetStageStats")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.StageStats) error); ok {
+		r0 = returnFunc(ctx, id, stats)
 	} else {
 		r0 = ret.Error(0)
 	}
 	return r0
 }
 
-// MockStageCacheRepo_DeleteSuccessThreshold_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteSuccessThreshold'
-type MockStageCacheRepo_DeleteSuccessThreshold_Call struct {
+// MockStageCacheRepo_SetStageStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetStageStats'
+type MockStageCacheRepo_SetStageStats_Call struct {
 	*mock.Call
 }
 
-// DeleteSuccessThreshold is a helper method to define mock.On call
+// SetStageStats is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockStageCacheRepo_Expecter) DeleteSuccessThreshold(ctx any, id any) *MockStageCacheRepo_DeleteSuccessThreshold_Call {
-	return &MockStageCacheRepo_DeleteSuccessThreshold_Call{Call: _e.mock.On("DeleteSuccessThreshold", ctx, id)}
+//   - stats domain.StageStats
+func (_e *MockStageCacheRepo_Expecter) SetStageStats(ctx any, id any, stats any) *MockStageCacheRepo_SetStageStats_Call {
+	return &MockStageCacheRepo_SetStageStats_Call{Call: _e.mock.On("SetStageStats", ctx, id, stats)}
 }
 
-func (_c *MockStageCacheRepo_DeleteSuccessThreshold_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockStageCacheRepo_DeleteSuccessThreshold_Call {
+func (_c *MockStageCacheRepo_SetStageStats_Call) Run(run func(ctx context.Context, id uuid.UUID, stats domain.StageStats)) *MockStageCacheRepo_SetStageStats_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -134,67 +136,9 @@ func (_c *MockStageCacheRepo_DeleteSuccessThreshold_Call) Run(run func(ctx conte
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStageCacheRepo_DeleteSuccessThreshold_Call) Return(err error) *MockStageCacheRepo_DeleteSuccessThreshold_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockStageCacheRepo_DeleteSuccessThreshold_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockStageCacheRepo_DeleteSuccessThreshold_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetMinSampleSize provides a mock function for the type MockStageCacheRepo
-func (_mock *MockStageCacheRepo) SetMinSampleSize(ctx context.Context, id uuid.UUID, size int) error {
-	ret := _mock.Called(ctx, id, size)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetMinSampleSize")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int) error); ok {
-		r0 = returnFunc(ctx, id, size)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockStageCacheRepo_SetMinSampleSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMinSampleSize'
-type MockStageCacheRepo_SetMinSampleSize_Call struct {
-	*mock.Call
-}
-
-// SetMinSampleSize is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-//   - size int
-func (_e *MockStageCacheRepo_Expecter) SetMinSampleSize(ctx any, id any, size any) *MockStageCacheRepo_SetMinSampleSize_Call {
-	return &MockStageCacheRepo_SetMinSampleSize_Call{Call: _e.mock.On("SetMinSampleSize", ctx, id, size)}
-}
-
-func (_c *MockStageCacheRepo_SetMinSampleSize_Call) Run(run func(ctx context.Context, id uuid.UUID, size int)) *MockStageCacheRepo_SetMinSampleSize_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 int
+		var arg2 domain.StageStats
 		if args[2] != nil {
-			arg2 = args[2].(int)
+			arg2 = args[2].(domain.StageStats)
 		}
 		run(
 			arg0,
@@ -205,75 +149,12 @@ func (_c *MockStageCacheRepo_SetMinSampleSize_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockStageCacheRepo_SetMinSampleSize_Call) Return(err error) *MockStageCacheRepo_SetMinSampleSize_Call {
+func (_c *MockStageCacheRepo_SetStageStats_Call) Return(err error) *MockStageCacheRepo_SetStageStats_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockStageCacheRepo_SetMinSampleSize_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, size int) error) *MockStageCacheRepo_SetMinSampleSize_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetSuccessThreshold provides a mock function for the type MockStageCacheRepo
-func (_mock *MockStageCacheRepo) SetSuccessThreshold(ctx context.Context, id uuid.UUID, threshold float32) error {
-	ret := _mock.Called(ctx, id, threshold)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetSuccessThreshold")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, float32) error); ok {
-		r0 = returnFunc(ctx, id, threshold)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockStageCacheRepo_SetSuccessThreshold_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSuccessThreshold'
-type MockStageCacheRepo_SetSuccessThreshold_Call struct {
-	*mock.Call
-}
-
-// SetSuccessThreshold is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-//   - threshold float32
-func (_e *MockStageCacheRepo_Expecter) SetSuccessThreshold(ctx any, id any, threshold any) *MockStageCacheRepo_SetSuccessThreshold_Call {
-	return &MockStageCacheRepo_SetSuccessThreshold_Call{Call: _e.mock.On("SetSuccessThreshold", ctx, id, threshold)}
-}
-
-func (_c *MockStageCacheRepo_SetSuccessThreshold_Call) Run(run func(ctx context.Context, id uuid.UUID, threshold float32)) *MockStageCacheRepo_SetSuccessThreshold_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 float32
-		if args[2] != nil {
-			arg2 = args[2].(float32)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockStageCacheRepo_SetSuccessThreshold_Call) Return(err error) *MockStageCacheRepo_SetSuccessThreshold_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockStageCacheRepo_SetSuccessThreshold_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, threshold float32) error) *MockStageCacheRepo_SetSuccessThreshold_Call {
+func (_c *MockStageCacheRepo_SetStageStats_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, stats domain.StageStats) error) *MockStageCacheRepo_SetStageStats_Call {
 	_c.Call.Return(run)
 	return _c
 }
