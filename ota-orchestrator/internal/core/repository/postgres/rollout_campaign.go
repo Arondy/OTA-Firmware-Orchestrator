@@ -134,18 +134,48 @@ func (r *RolloutCampaignRepo) Create(ctx context.Context, campaign domain.Rollou
 		}
 
 		stagesQuery := `
-		INSERT INTO rollout_stages (campaign_id, order_index, target_percent, min_sample_size, success_threshold)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, campaign_id, order_index, target_percent, min_sample_size, success_threshold, status, entered_at
+		WITH inserted AS (
+			INSERT INTO rollout_stages (campaign_id, order_index, target_percent, min_sample_size, success_threshold)
+			SELECT *
+			FROM unnest($1::uuid[], $2::int[], $3::int[], $4::int[], $5::real[])
+			RETURNING id, campaign_id, order_index, target_percent, min_sample_size, success_threshold, status, entered_at
+		)
+		SELECT *
+		FROM inserted
+		ORDER BY order_index;
 		`
 
-		createdCampaign.RolloutStages = make([]domain.RolloutStage, len(campaign.RolloutStages))
+		stagesLen := len(campaign.RolloutStages)
+		campaignIDs := make([]uuid.UUID, stagesLen)
+		orderIndexes := make([]int, stagesLen)
+		targetPercents := make([]int, stagesLen)
+		minSampleSizes := make([]int, stagesLen)
+		successThresholds := make([]float32, stagesLen)
 
 		for i, stage := range campaign.RolloutStages {
-			row := exec.QueryRow(txCtx, stagesQuery, createdCampaign.ID, stage.OrderIndex, stage.TargetPercent, stage.MinSampleSize, stage.SuccessThreshold)
+			campaignIDs[i] = createdCampaign.ID
+			orderIndexes[i] = stage.OrderIndex
+			targetPercents[i] = stage.TargetPercent
+			minSampleSizes[i] = stage.MinSampleSize
+			successThresholds[i] = stage.SuccessThreshold
+		}
 
+		rows, err := exec.Query(txCtx, stagesQuery, campaignIDs, orderIndexes, targetPercents, minSampleSizes, successThresholds)
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return domain.ErrRolloutStageAlreadyExists
+		} else if err != nil {
+			return fmt.Errorf("failed to create rollout stages during campaign creation: %w", err)
+		}
+
+		defer rows.Close()
+
+		createdCampaign.RolloutStages = make([]domain.RolloutStage, 0, len(campaign.RolloutStages))
+
+		for rows.Next() {
 			var createdStage domain.RolloutStage
-			err = row.Scan(
+			err = rows.Scan(
 				&createdStage.ID,
 				&createdStage.CampaignID,
 				&createdStage.OrderIndex,
@@ -155,23 +185,22 @@ func (r *RolloutCampaignRepo) Create(ctx context.Context, campaign domain.Rollou
 				&createdStage.Status,
 				&createdStage.EnteredAt,
 			)
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-				return domain.ErrRolloutStageAlreadyExists
-			} else if err != nil {
-				return fmt.Errorf("failed to create rollout stage during campaign creation: %w", err)
+
+			if err != nil {
+				return fmt.Errorf("failed to scan rollout stage during campaign creation: %w", err)
 			}
 
-			createdCampaign.RolloutStages[i] = createdStage
+			createdCampaign.RolloutStages = append(createdCampaign.RolloutStages, createdStage)
+		}
+
+		if err = rows.Err(); err != nil {
+			return fmt.Errorf("failed to read stages during campaign creation: %w", err)
 		}
 
 		return nil
 	})
-	if err != nil {
-		return domain.RolloutCampaign{}, err
-	}
 
-	return createdCampaign, nil
+	return createdCampaign, err
 }
 
 func (r *RolloutCampaignRepo) Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {
