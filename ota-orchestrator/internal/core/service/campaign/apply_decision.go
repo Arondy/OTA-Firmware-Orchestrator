@@ -67,8 +67,12 @@ func (s *RolloutCampaignService) ApplyDecision(ctx context.Context, decision dom
 		}
 	} else {
 		s.campaignCache.RemoveRunningCampaigns(ctx, decision.CampaignID)
-		s.deleteCampaignCache(ctx, decision.CampaignID, decision.PreviousStageID)
-		s.deleteStageCache(ctx, decision.CampaignID, decision.PreviousStageID)
+		if err := s.campaignCache.DeleteCheckinData(ctx, decision.CampaignID); err != nil {
+			logger.Warnw("failed to delete checkin data from campaignCache", "error", err)
+		}
+		if err := s.stageCache.DeleteStageStats(ctx, decision.PreviousStageID); err != nil {
+			logger.Warnw("failed to delete stage stats from stageCache", "error", err)
+		}
 	}
 
 	return nil
@@ -103,8 +107,12 @@ func (s *RolloutCampaignService) rollbackStage(ctx context.Context, campaignID u
 func (s *RolloutCampaignService) handleAdvanceCache(ctx context.Context, campaign domain.RolloutCampaign, prevStageID uuid.UUID) {
 	if campaign.Status == domain.RolloutCampaignsStatusCompleted {
 		s.campaignCache.RemoveRunningCampaigns(ctx, campaign.ID)
-		s.deleteStageCache(ctx, campaign.ID, prevStageID)
-		s.deleteCampaignCache(ctx, campaign.ID, prevStageID)
+		if err := s.stageCache.DeleteStageStats(ctx, prevStageID); err != nil {
+			config.LoggerFromContext(ctx).Warnw("failed to delete stage stats from stageCache", "error", err)
+		}
+		if err := s.campaignCache.DeleteCheckinData(ctx, campaign.ID); err != nil {
+			config.LoggerFromContext(ctx).Warnw("failed to delete checkin data from campaignCache", "error", err)
+		}
 		return
 	}
 
@@ -124,6 +132,8 @@ func (s *RolloutCampaignService) handleAdvanceCache(ctx context.Context, campaig
 		return
 	}
 
-	s.deleteStageCache(ctx, campaign.ID, prevStageID)
+	if err := s.stageCache.DeleteStageStats(ctx, prevStageID); err != nil {
+		config.LoggerFromContext(ctx).Warnw("failed to delete stage stats from stageCache", "error", err)
+	}
 	s.setCampaignStageCache(ctx, activeStage)
 }

@@ -38,20 +38,16 @@ type TxManager interface {
 }
 
 type CampaignCacheRepo interface {
-	SetCurrentStage(ctx context.Context, id uuid.UUID, stageID uuid.UUID) error
-	DeleteCurrentStage(ctx context.Context, id uuid.UUID) error
-	SetCurrentTargetPercent(ctx context.Context, id uuid.UUID, percent int) error
-	DeleteCurrentTargetPercent(ctx context.Context, id uuid.UUID) error
+	SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CheckinData) error
+	DeleteCheckinData(ctx context.Context, id uuid.UUID) error
 	AddRunningCampaigns(ctx context.Context, ids ...uuid.UUID) error
 	RemoveRunningCampaigns(ctx context.Context, ids ...uuid.UUID) error
 	DeleteAllRunningCampaigns(ctx context.Context) error
 }
 
 type StageCacheRepo interface {
-	SetMinSampleSize(ctx context.Context, id uuid.UUID, size int) error
-	DeleteMinSampleSize(ctx context.Context, id uuid.UUID) error
-	SetSuccessThreshold(ctx context.Context, id uuid.UUID, threshold float32) error
-	DeleteSuccessThreshold(ctx context.Context, id uuid.UUID) error
+	SetStageStats(ctx context.Context, id uuid.UUID, stats domain.StageStats) error
+	DeleteStageStats(ctx context.Context, id uuid.UUID) error
 }
 
 type RolloutController interface {

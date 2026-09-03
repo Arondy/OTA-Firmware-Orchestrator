@@ -38,8 +38,7 @@ type DeviceCacheRepo interface {
 }
 
 type CampaignCacheRepo interface {
-	GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
-	GetCurrentTargetPercent(ctx context.Context, id uuid.UUID) (int, error)
+	GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CheckinData, error)
 }
 
 type CheckinProducer interface {
@@ -124,24 +123,19 @@ func (s *UpdateService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	stageID, err := s.campaignCacheRepo.GetCurrentStage(ctx, campaign.ID)
-	if err != nil {
-		return domain.CheckinResult{}, err
-	}
-
-	targetPercent, err := s.campaignCacheRepo.GetCurrentTargetPercent(ctx, campaign.ID)
+	checkinData, err := s.campaignCacheRepo.GetCheckinData(ctx, campaign.ID)
 	if err != nil {
 		return domain.CheckinResult{}, err
 	}
 
 	bucket := s.calculateBucket(device.ID, campaign.ID)
-	if bucket > uint32(targetPercent) {
+	if bucket > uint32(checkinData.TargetPercent) {
 		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
 	return domain.CheckinResult{
 		UpdateAvailable: true,
-		StageID:         &stageID,
+		StageID:         &checkinData.StageID,
 		BinaryUrl:       fw.BinaryUrl,
 		FWChecksum:      fw.FWChecksum,
 	}, nil
