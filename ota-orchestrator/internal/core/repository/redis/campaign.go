@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
@@ -21,87 +22,49 @@ func NewCampaignCacheRepo(rdb *redis.Client) *CampaignCacheRepo {
 	}
 }
 
-func (r *CampaignCacheRepo) GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CheckinData, error) {
-	stageKey := fmt.Sprintf("%s:%s:current_stage", r.key, id)
-	targetPercentKey := fmt.Sprintf("%s:%s:current_target_percent", r.key, id)
-	var bytesCmd *redis.StringCmd
-	var targetPercentCmd *redis.StringCmd
+func (r *CampaignCacheRepo) GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error) {
+	key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
 
-	_, err := r.client.Pipelined(ctx, func(p redis.Pipeliner) error {
-		bytesCmd = p.Get(ctx, stageKey)
-		targetPercentCmd = p.Get(ctx, targetPercentKey)
-		return nil
-	})
-	if err != nil {
-		return domain.CheckinData{}, fmt.Errorf("failed to get checkin data in pipeline: %w", err)
+	cmd := r.client.HGetAll(ctx, key)
+	if err := cmd.Err(); err != nil {
+		return domain.CampaignCheckinData{}, fmt.Errorf("failed to get checkin data: %w", err)
 	}
 
-	bytes, err := bytesCmd.Bytes()
-	if err != nil {
-		return domain.CheckinData{}, fmt.Errorf("failed to get bytes from cmd: %w", err)
+	fields := cmd.Val()
+	if len(fields) != 2 {
+		return domain.CampaignCheckinData{}, fmt.Errorf("unexpected checkin data keys number: %d", len(fields))
 	}
 
-	targetPercent, err := targetPercentCmd.Int()
+	stageID, err := uuid.FromBytes([]byte(fields["stage_id"]))
 	if err != nil {
-		return domain.CheckinData{}, fmt.Errorf("failed to get target percent from cmd: %w", err)
+		return domain.CampaignCheckinData{}, fmt.Errorf("failed to parse stage_id: %w", err)
 	}
 
-	stageID, err := uuid.FromBytes(bytes)
+	targetPercent, err := strconv.Atoi(fields["target_percent"])
 	if err != nil {
-		return domain.CheckinData{}, fmt.Errorf("failed to convert bytes to stage id for checkin data: %w", err)
+		return domain.CampaignCheckinData{}, fmt.Errorf("failed to parse target_percent: %w", err)
 	}
 
-	return domain.CheckinData{
-		StageID:       stageID,
-		TargetPercent: targetPercent,
-	}, nil
+	return domain.CampaignCheckinData{StageID: stageID, TargetPercent: targetPercent}, nil
 }
 
-func (r *CampaignCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CheckinData) error {
-	stageKey := fmt.Sprintf("%s:%s:current_stage", r.key, id)
-	targetPercentKey := fmt.Sprintf("%s:%s:current_target_percent", r.key, id)
-	var stageCmd *redis.StatusCmd
-	var targetPercentCmd *redis.StatusCmd
+func (r *CampaignCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CampaignCheckinData) error {
+	key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
 
-	_, err := r.client.Pipelined(ctx, func(p redis.Pipeliner) error {
-		stageCmd = p.Set(ctx, stageKey, data.StageID, 0)
-		targetPercentCmd = p.Set(ctx, targetPercentKey, data.TargetPercent, 0)
-		return nil
-	})
+	err := r.client.HSet(ctx, key, data).Err()
 	if err != nil {
-		return fmt.Errorf("failed to set checkin data in pipeline: %w", err)
-	}
-
-	if err = stageCmd.Err(); err != nil {
-		return fmt.Errorf("failed to set stage in pipeline: %w", err)
-	}
-	if err = targetPercentCmd.Err(); err != nil {
-		return fmt.Errorf("failed to set target percent in pipeline: %w", err)
+		return fmt.Errorf("failed to set checkin data: %w", err)
 	}
 
 	return nil
 }
 
 func (r *CampaignCacheRepo) DeleteCheckinData(ctx context.Context, id uuid.UUID) error {
-	stageKey := fmt.Sprintf("%s:%s:current_stage", r.key, id)
-	targetPercentKey := fmt.Sprintf("%s:%s:current_target_percent", r.key, id)
-	var stageCmd *redis.IntCmd
-	var targetPercentCmd *redis.IntCmd
+	key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
 
-	_, err := r.client.Pipelined(ctx, func(p redis.Pipeliner) error {
-		stageCmd = p.Del(ctx, stageKey)
-		targetPercentCmd = p.Del(ctx, targetPercentKey)
-		return nil
-	})
+	err := r.client.Del(ctx, key).Err()
 	if err != nil {
-		return fmt.Errorf("failed to delete checkin data in pipeline: %w", err)
-	}
-
-	if err = stageCmd.Err(); err != nil {
-		return fmt.Errorf("failed to delete stage in pipeline: %w", err)
-	}
-	if err = targetPercentCmd.Err(); err != nil {
-		return fmt.Errorf("failed to delete target percent in pipeline: %w", err)
+		return fmt.Errorf("failed to delete checkin data: %w", err)
 	}
 
 	return nil

@@ -6,72 +6,70 @@ import (
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
 type DeviceCacheRepo struct {
-	client            *redis.Client
-	key               string
-	lastSeenTTL       time.Duration
-	currentVersionTTL time.Duration
+	client         *redis.Client
+	key            string
+	checkinDataTTL time.Duration
 }
 
 func NewDeviceCacheRepo(rdb *redis.Client, config config.CacheConfig) *DeviceCacheRepo {
 	return &DeviceCacheRepo{
-		client:            rdb,
-		key:               "device",
-		lastSeenTTL:       config.DeviceLastSeenTTL,
-		currentVersionTTL: config.DeviceCurrentVersionTTL,
+		client:         rdb,
+		key:            "device",
+		checkinDataTTL: config.DeviceCheckinDataTTL,
 	}
 }
 
-func (r *DeviceCacheRepo) ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (versions map[uuid.UUID]string, lastSeen map[uuid.UUID]time.Time, err error) {
-	versions = make(map[uuid.UUID]string, len(ids))
-	lastSeen = make(map[uuid.UUID]time.Time, len(ids))
+func (r *DeviceCacheRepo) ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.DeviceCheckinData, error) {
 	if len(ids) == 0 {
-		return versions, lastSeen, nil
+		return nil, nil
 	}
 
-	allKeys := make([]string, 2*len(ids))
-	for i, id := range ids {
-		allKeys[i] = fmt.Sprintf("%s:%s:current_version", r.key, id)
-		allKeys[i+len(ids)] = fmt.Sprintf("%s:%s:last_seen", r.key, id)
-	}
+	result := make(map[uuid.UUID]domain.DeviceCheckinData, len(ids))
+	cmds := make([]*redis.MapStringStringCmd, len(ids))
 
-	res, err := r.client.MGet(ctx, allKeys...).Result()
+	_, err := r.client.Pipelined(ctx, func(p redis.Pipeliner) error {
+		for i, id := range ids {
+			key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
+			cmds[i] = p.HGetAll(ctx, key)
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("redis mget failed: %w", err)
+		return nil, fmt.Errorf("redis pipeline hgetall failed: %w", err)
 	}
-
-	resVersions := res[:len(ids)]
-	resLastSeen := res[len(ids):]
 
 	for i, id := range ids {
-		if resVersions[i] != nil {
-			if v, ok := resVersions[i].(string); ok {
-				versions[id] = v
-			}
+		if len(cmds[i].Val()) == 0 {
+			continue
 		}
 
-		if resLastSeen[i] != nil {
-			if timeStr, ok := resLastSeen[i].(string); ok {
-				if parsedTime, err := time.Parse(time.RFC3339Nano, timeStr); err == nil {
-					lastSeen[id] = parsedTime
-				}
-			}
+		var data domain.DeviceCheckinData
+		if err := cmds[i].Scan(&data); err != nil {
+			return nil, fmt.Errorf("redis scan device checkin data failed: %w", err)
 		}
+		result[id] = data
 	}
 
-	return versions, lastSeen, nil
+	return result, nil
 }
 
-func (r *DeviceCacheRepo) SetCurrentVersion(ctx context.Context, id uuid.UUID, currentVersion string) error {
-	key := fmt.Sprintf("%s:%s:current_version", r.key, id)
-	return r.client.Set(ctx, key, currentVersion, r.currentVersionTTL).Err()
-}
+func (r *DeviceCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.DeviceCheckinData) error {
+	key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
 
-func (r *DeviceCacheRepo) SetLastSeen(ctx context.Context, id uuid.UUID, lastSeen time.Time) error {
-	key := fmt.Sprintf("%s:%s:last_seen", r.key, id)
-	return r.client.Set(ctx, key, lastSeen, r.lastSeenTTL).Err()
+	_, err := r.client.Pipelined(ctx, func(p redis.Pipeliner) error {
+		p.HSet(ctx, key, data)
+		p.Expire(ctx, key, r.checkinDataTTL)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set device checkin data: %w", err)
+	}
+
+	return nil
 }

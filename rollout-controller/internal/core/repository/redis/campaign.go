@@ -87,8 +87,9 @@ func (r *CampaignCacheRepo) GetCampaignStats(ctx context.Context, id uuid.UUID) 
 }
 
 func (r *CampaignCacheRepo) GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	key := fmt.Sprintf("%s:%s:current_stage", r.key, id)
-	value, err := r.client.Get(ctx, key).Bytes()
+	key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
+	value, err := r.client.HGet(ctx, key, "stage_id").Bytes()
+
 	if err == redis.Nil {
 		return uuid.UUID{}, domain.ErrCurrentStageNotFound
 	} else if err != nil {
