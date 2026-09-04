@@ -56,13 +56,9 @@ func (m *mockCampaignRepo) DeleteDecision(ctx context.Context, id uuid.UUID) err
 
 type mockStageRepo struct{ mock.Mock }
 
-func (m *mockStageRepo) GetMinSampleSize(ctx context.Context, id uuid.UUID) (int, error) {
+func (m *mockStageRepo) GetStageStats(ctx context.Context, id uuid.UUID) (domain.StageStats, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(int), args.Error(1)
-}
-func (m *mockStageRepo) GetSuccessThreshold(ctx context.Context, id uuid.UUID) (float32, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(float32), args.Error(1)
+	return args.Get(0).(domain.StageStats), args.Error(1)
 }
 
 type mockProducer struct{ mock.Mock }
@@ -89,92 +85,79 @@ func TestEvaluateDecision_Table(t *testing.T) {
 	stageID := uuid.New()
 
 	tests := []struct {
-		name             string
-		stats            domain.CampaignStats
-		statsErr         error
-		minSampleSize    int
-		minErr           error
-		successThreshold float32
-		thresholdErr     error
-		wantDecision     domain.DecisionType
-		wantErr          error
+		name         string
+		stats        domain.CampaignStats
+		statsErr     error
+		stageStats   domain.StageStats
+		stageErr     error
+		wantDecision domain.DecisionType
+		wantErr      error
 	}{
 		{
-			name:             "not_enough_samples_sample_lt_min",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 1.0, SampleSize: 2},
-			minSampleSize:    5,
-			successThreshold: 0.5,
-			wantErr:          domain.ErrNotEnoughSamples,
+			name:       "not_enough_samples_sample_lt_min",
+			stats:      domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 1.0, SampleSize: 2},
+			stageStats: domain.StageStats{MinSampleSize: 5, SuccessThreshold: 0.5},
+			wantErr:    domain.ErrNotEnoughSamples,
 		},
 		{
-			name:             "not_enough_samples_zero_sample",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0, SampleSize: 0},
-			minSampleSize:    1,
-			successThreshold: 0.5,
-			wantErr:          domain.ErrNotEnoughSamples,
+			name:       "not_enough_samples_zero_sample",
+			stats:      domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0, SampleSize: 0},
+			stageStats: domain.StageStats{MinSampleSize: 1, SuccessThreshold: 0.5},
+			wantErr:    domain.ErrNotEnoughSamples,
 		},
 		{
-			name:             "advance_when_success_rate_equals_threshold",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.5, SampleSize: 10},
-			minSampleSize:    10,
-			successThreshold: 0.5,
-			wantDecision:     domain.DecisionTypeAdvance,
+			name:         "advance_when_success_rate_equals_threshold",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.5, SampleSize: 10},
+			stageStats:   domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.5},
+			wantDecision: domain.DecisionTypeAdvance,
 		},
 		{
-			name:             "advance_when_success_rate_above_threshold",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.8, SampleSize: 100},
-			minSampleSize:    10,
-			successThreshold: 0.5,
-			wantDecision:     domain.DecisionTypeAdvance,
+			name:         "advance_when_success_rate_above_threshold",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.8, SampleSize: 100},
+			stageStats:   domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.5},
+			wantDecision: domain.DecisionTypeAdvance,
 		},
 		{
-			name:             "advance_when_success_rate_1_threshold_1",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 1.0, SampleSize: 50},
-			minSampleSize:    50,
-			successThreshold: 1.0,
-			wantDecision:     domain.DecisionTypeAdvance,
+			name:         "advance_when_success_rate_1_threshold_1",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 1.0, SampleSize: 50},
+			stageStats:   domain.StageStats{MinSampleSize: 50, SuccessThreshold: 1.0},
+			wantDecision: domain.DecisionTypeAdvance,
 		},
 		{
-			name:             "advance_when_threshold_0_always_advance",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0, SampleSize: 5},
-			minSampleSize:    5,
-			successThreshold: 0,
-			wantDecision:     domain.DecisionTypeAdvance,
+			name:         "advance_when_threshold_0_always_advance",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0, SampleSize: 5},
+			stageStats:   domain.StageStats{MinSampleSize: 5, SuccessThreshold: 0},
+			wantDecision: domain.DecisionTypeAdvance,
 		},
 		{
-			name:             "rollback_when_success_rate_below_threshold",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.49, SampleSize: 10},
-			minSampleSize:    5,
-			successThreshold: 0.5,
-			wantDecision:     domain.DecisionTypeRollback,
+			name:         "rollback_when_success_rate_below_threshold",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.49, SampleSize: 10},
+			stageStats:   domain.StageStats{MinSampleSize: 5, SuccessThreshold: 0.5},
+			wantDecision: domain.DecisionTypeRollback,
 		},
 		{
-			name:             "rollback_when_success_rate_0_threshold_high",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0, SampleSize: 10},
-			minSampleSize:    5,
-			successThreshold: 0.9,
-			wantDecision:     domain.DecisionTypeRollback,
+			name:         "rollback_when_success_rate_0_threshold_high",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0, SampleSize: 10},
+			stageStats:   domain.StageStats{MinSampleSize: 5, SuccessThreshold: 0.9},
+			wantDecision: domain.DecisionTypeRollback,
 		},
 		{
-			name:             "rollback_when_just_below_threshold",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.799, SampleSize: 20},
-			minSampleSize:    10,
-			successThreshold: 0.8,
-			wantDecision:     domain.DecisionTypeRollback,
+			name:         "rollback_when_just_below_threshold",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.799, SampleSize: 20},
+			stageStats:   domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.8},
+			wantDecision: domain.DecisionTypeRollback,
 		},
 		{
-			name:             "sample_exactly_min_advance",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.6, SampleSize: 10},
-			minSampleSize:    10,
-			successThreshold: 0.5,
-			wantDecision:     domain.DecisionTypeAdvance,
+			name:         "sample_exactly_min_advance",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.6, SampleSize: 10},
+			stageStats:   domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.5},
+			wantDecision: domain.DecisionTypeAdvance,
 		},
 		{
-			name:             "sample_exactly_min_rollback",
-			stats:            domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.4, SampleSize: 10},
-			minSampleSize:    10,
-			successThreshold: 0.5,
-			wantDecision:     domain.DecisionTypeRollback,
+			name:         "sample_exactly_min_rollback",
+			stats:        domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.4, SampleSize: 10},
+			stageStats:   domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.5},
+			wantDecision: domain.DecisionTypeRollback,
 		},
 	}
 
@@ -187,10 +170,7 @@ func TestEvaluateDecision_Table(t *testing.T) {
 
 			campaignRepo.On("GetCampaignStats", mock.Anything, campaignID).Return(tc.stats, tc.statsErr)
 			if tc.statsErr == nil {
-				stageRepo.On("GetMinSampleSize", mock.Anything, stageID).Return(tc.minSampleSize, tc.minErr)
-				if tc.minErr == nil && tc.stats.SampleSize >= tc.minSampleSize {
-					stageRepo.On("GetSuccessThreshold", mock.Anything, stageID).Return(tc.successThreshold, tc.thresholdErr)
-				}
+				stageRepo.On("GetStageStats", mock.Anything, stageID).Return(tc.stageStats, tc.stageErr)
 			}
 
 			svc := newTestService(campaignRepo, stageRepo, producer)
@@ -226,7 +206,7 @@ func TestEvaluateDecision_Errors(t *testing.T) {
 		require.ErrorIs(t, err, wantErr)
 	})
 
-	t.Run("GetMinSampleSize_error_propagated", func(t *testing.T) {
+	t.Run("GetStageStats_error_propagated", func(t *testing.T) {
 		t.Parallel()
 		campaignRepo := new(mockCampaignRepo)
 		stageRepo := new(mockStageRepo)
@@ -235,31 +215,14 @@ func TestEvaluateDecision_Errors(t *testing.T) {
 		stats := domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.9, SampleSize: 10}
 		wantErr := errors.New("stage not found")
 		campaignRepo.On("GetCampaignStats", mock.Anything, campaignID).Return(stats, nil)
-		stageRepo.On("GetMinSampleSize", mock.Anything, stageID).Return(0, wantErr)
+		stageRepo.On("GetStageStats", mock.Anything, stageID).Return(domain.StageStats{}, wantErr)
 
 		svc := newTestService(campaignRepo, stageRepo, producer)
 		_, err := svc.EvaluateDecision(context.Background(), campaignID)
 		require.ErrorIs(t, err, wantErr)
 	})
 
-	t.Run("GetSuccessThreshold_error_propagated", func(t *testing.T) {
-		t.Parallel()
-		campaignRepo := new(mockCampaignRepo)
-		stageRepo := new(mockStageRepo)
-		producer := new(mockProducer)
-
-		stats := domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.9, SampleSize: 10}
-		wantErr := errors.New("threshold read fail")
-		campaignRepo.On("GetCampaignStats", mock.Anything, campaignID).Return(stats, nil)
-		stageRepo.On("GetMinSampleSize", mock.Anything, stageID).Return(5, nil)
-		stageRepo.On("GetSuccessThreshold", mock.Anything, stageID).Return(float32(0), wantErr)
-
-		svc := newTestService(campaignRepo, stageRepo, producer)
-		_, err := svc.EvaluateDecision(context.Background(), campaignID)
-		require.ErrorIs(t, err, wantErr)
-	})
-
-	t.Run("not_enough_samples_does_not_call_GetSuccessThreshold", func(t *testing.T) {
+	t.Run("not_enough_samples_returns_error", func(t *testing.T) {
 		t.Parallel()
 		campaignRepo := new(mockCampaignRepo)
 		stageRepo := new(mockStageRepo)
@@ -267,11 +230,10 @@ func TestEvaluateDecision_Errors(t *testing.T) {
 
 		stats := domain.CampaignStats{ActiveStageID: stageID, SuccessRate: 0.9, SampleSize: 2}
 		campaignRepo.On("GetCampaignStats", mock.Anything, campaignID).Return(stats, nil)
-		stageRepo.On("GetMinSampleSize", mock.Anything, stageID).Return(10, nil)
-		// GetSuccessThreshold must not be called
+		stageRepo.On("GetStageStats", mock.Anything, stageID).Return(domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.5}, nil)
+
 		svc := newTestService(campaignRepo, stageRepo, producer)
 		_, err := svc.EvaluateDecision(context.Background(), campaignID)
 		require.ErrorIs(t, err, domain.ErrNotEnoughSamples)
-		stageRepo.AssertNotCalled(t, "GetSuccessThreshold", mock.Anything, mock.Anything)
 	})
 }

@@ -171,7 +171,7 @@ func TestStart_Success_SetsCacheForFirstStage(t *testing.T) {
 
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusDraft, nil), nil)
 	m.campaignRepo.EXPECT().Start(mock.Anything, id).Return(started, nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(nil)
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(nil)
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(nil)
 
@@ -189,7 +189,7 @@ func TestStart_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusDraft, nil), nil)
 	m.campaignRepo.EXPECT().Start(mock.Anything, id).Return(started, nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(someCampaignErr())
 
@@ -290,7 +290,7 @@ func TestResume_Success_SetsCacheForActiveStage(t *testing.T) {
 
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
 	m.campaignRepo.EXPECT().Resume(mock.Anything, id).Return(resumed, nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(nil)
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(nil)
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(nil)
 
@@ -308,7 +308,7 @@ func TestResume_CacheSetFails_StillReturnsCampaign(t *testing.T) {
 
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusPaused, nil), nil)
 	m.campaignRepo.EXPECT().Resume(mock.Anything, id).Return(resumed, nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(someCampaignErr())
 
@@ -400,7 +400,7 @@ func TestApplyDecision_Advance_NextStageActive_SetsCacheForNewStage(t *testing.T
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(advanced, nil)
 	m.stageCache.EXPECT().DeleteStageStats(mock.Anything, prevStageID).Return(nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[1].ID, TargetPercent: stages[1].TargetPercent}).Return(nil)
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[1].ID, TargetPercent: stages[1].TargetPercent}).Return(nil)
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[1].ID, domain.StageStats{MinSampleSize: stages[1].MinSampleSize, SuccessThreshold: stages[1].SuccessThreshold}).Return(nil)
 
@@ -440,7 +440,7 @@ func TestApplyDecision_Advance_CacheFails_StillReturnsNil(t *testing.T) {
 	m.campaignRepo.EXPECT().Get(mock.Anything, id).Return(campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil), nil)
 	m.campaignRepo.EXPECT().AdvanceStage(mock.Anything, id, prevStageID).Return(advanced, nil)
 	m.stageCache.EXPECT().DeleteStageStats(mock.Anything, prevStageID).Return(someCampaignErr())
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(someCampaignErr())
 
@@ -694,10 +694,10 @@ func TestWarmUpCache_Success_SetsCacheForAllActiveStages(t *testing.T) {
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(stages, nil)
 	m.cache.EXPECT().DeleteAllRunningCampaigns(mock.Anything).Return(nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(nil)
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(nil)
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[1].ID, TargetPercent: stages[1].TargetPercent}).Return(nil)
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[1].ID, TargetPercent: stages[1].TargetPercent}).Return(nil)
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[1].ID, domain.StageStats{MinSampleSize: stages[1].MinSampleSize, SuccessThreshold: stages[1].SuccessThreshold}).Return(nil)
 
@@ -713,10 +713,10 @@ func TestWarmUpCache_PartialCacheFailure_ContinuesProcessing(t *testing.T) {
 	m.campaignRepo.EXPECT().ListRunning(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
 	m.campaignRepo.EXPECT().FindActiveStages(mock.Anything, mock.Anything).Return(stages, nil)
 	m.cache.EXPECT().DeleteAllRunningCampaigns(mock.Anything).Return(nil)
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[0].ID, TargetPercent: stages[0].TargetPercent}).Return(someCampaignErr())
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(someCampaignErr())
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[0].ID, domain.StageStats{MinSampleSize: stages[0].MinSampleSize, SuccessThreshold: stages[0].SuccessThreshold}).Return(someCampaignErr())
-	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CheckinData{StageID: stages[1].ID, TargetPercent: stages[1].TargetPercent}).Return(nil)
+	m.cache.EXPECT().SetCheckinData(mock.Anything, id, domain.CampaignCheckinData{StageID: stages[1].ID, TargetPercent: stages[1].TargetPercent}).Return(nil)
 	m.cache.EXPECT().AddRunningCampaigns(mock.Anything, id).Return(nil)
 	m.stageCache.EXPECT().SetStageStats(mock.Anything, stages[1].ID, domain.StageStats{MinSampleSize: stages[1].MinSampleSize, SuccessThreshold: stages[1].SuccessThreshold}).Return(nil)
 

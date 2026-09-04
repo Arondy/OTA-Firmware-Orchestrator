@@ -70,10 +70,13 @@ func resetRedis(t *testing.T) {
 	require.NoError(t, testRDB.FlushDB(context.Background()).Err())
 }
 
-// setCurrentStage writes the active stage key directly so that GetCampaignStats
+// setCurrentStage writes the active stage hash directly so that GetCampaignStats
 // can resolve the stage id without a dedicated setter on the repo.
 func setCurrentStage(t *testing.T, id, stageID uuid.UUID) {
 	t.Helper()
-	key := "campaign:" + id.String() + ":current_stage"
-	require.NoError(t, testRDB.Set(context.Background(), key, stageID, 0).Err())
+	key := "campaign:" + id.String() + ":checkin_data"
+	require.NoError(t, testRDB.HSet(context.Background(), key,
+		"stage_id", stageID,
+		"target_percent", 100,
+	).Err())
 }
