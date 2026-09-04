@@ -40,22 +40,22 @@ func (_m *MockCampaignCacheRepo) EXPECT() *MockCampaignCacheRepo_Expecter {
 }
 
 // GetCheckinData provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CheckinData, error) {
+func (_mock *MockCampaignCacheRepo) GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error) {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetCheckinData")
 	}
 
-	var r0 domain.CheckinData
+	var r0 domain.CampaignCheckinData
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (domain.CheckinData, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (domain.CampaignCheckinData, error)); ok {
 		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) domain.CheckinData); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) domain.CampaignCheckinData); ok {
 		r0 = returnFunc(ctx, id)
 	} else {
-		r0 = ret.Get(0).(domain.CheckinData)
+		r0 = ret.Get(0).(domain.CampaignCheckinData)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
 		r1 = returnFunc(ctx, id)
@@ -95,12 +95,12 @@ func (_c *MockCampaignCacheRepo_GetCheckinData_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_GetCheckinData_Call) Return(checkinData domain.CheckinData, err error) *MockCampaignCacheRepo_GetCheckinData_Call {
-	_c.Call.Return(checkinData, err)
+func (_c *MockCampaignCacheRepo_GetCheckinData_Call) Return(campaignCheckinData domain.CampaignCheckinData, err error) *MockCampaignCacheRepo_GetCheckinData_Call {
+	_c.Call.Return(campaignCheckinData, err)
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_GetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (domain.CheckinData, error)) *MockCampaignCacheRepo_GetCheckinData_Call {
+func (_c *MockCampaignCacheRepo_GetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error)) *MockCampaignCacheRepo_GetCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }

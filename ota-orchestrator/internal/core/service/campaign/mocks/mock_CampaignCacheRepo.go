@@ -288,7 +288,7 @@ func (_c *MockCampaignCacheRepo_RemoveRunningCampaigns_Call) RunAndReturn(run fu
 }
 
 // SetCheckinData provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CheckinData) error {
+func (_mock *MockCampaignCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CampaignCheckinData) error {
 	ret := _mock.Called(ctx, id, data)
 
 	if len(ret) == 0 {
@@ -296,7 +296,7 @@ func (_mock *MockCampaignCacheRepo) SetCheckinData(ctx context.Context, id uuid.
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.CheckinData) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.CampaignCheckinData) error); ok {
 		r0 = returnFunc(ctx, id, data)
 	} else {
 		r0 = ret.Error(0)
@@ -312,12 +312,12 @@ type MockCampaignCacheRepo_SetCheckinData_Call struct {
 // SetCheckinData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-//   - data domain.CheckinData
+//   - data domain.CampaignCheckinData
 func (_e *MockCampaignCacheRepo_Expecter) SetCheckinData(ctx any, id any, data any) *MockCampaignCacheRepo_SetCheckinData_Call {
 	return &MockCampaignCacheRepo_SetCheckinData_Call{Call: _e.mock.On("SetCheckinData", ctx, id, data)}
 }
 
-func (_c *MockCampaignCacheRepo_SetCheckinData_Call) Run(run func(ctx context.Context, id uuid.UUID, data domain.CheckinData)) *MockCampaignCacheRepo_SetCheckinData_Call {
+func (_c *MockCampaignCacheRepo_SetCheckinData_Call) Run(run func(ctx context.Context, id uuid.UUID, data domain.CampaignCheckinData)) *MockCampaignCacheRepo_SetCheckinData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -327,9 +327,9 @@ func (_c *MockCampaignCacheRepo_SetCheckinData_Call) Run(run func(ctx context.Co
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 domain.CheckinData
+		var arg2 domain.CampaignCheckinData
 		if args[2] != nil {
-			arg2 = args[2].(domain.CheckinData)
+			arg2 = args[2].(domain.CampaignCheckinData)
 		}
 		run(
 			arg0,
@@ -345,7 +345,7 @@ func (_c *MockCampaignCacheRepo_SetCheckinData_Call) Return(err error) *MockCamp
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_SetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, data domain.CheckinData) error) *MockCampaignCacheRepo_SetCheckinData_Call {
+func (_c *MockCampaignCacheRepo_SetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, data domain.CampaignCheckinData) error) *MockCampaignCacheRepo_SetCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }
