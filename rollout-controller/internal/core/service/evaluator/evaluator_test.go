@@ -174,7 +174,7 @@ func TestEvaluateDecision_Table(t *testing.T) {
 			}
 
 			svc := newTestService(campaignRepo, stageRepo, producer)
-			decision, err := svc.EvaluateDecision(context.Background(), campaignID)
+			decision, err := svc.evaluateDecision(context.Background(), campaignID)
 
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)
@@ -202,7 +202,7 @@ func TestEvaluateDecision_Errors(t *testing.T) {
 		campaignRepo.On("GetCampaignStats", mock.Anything, campaignID).Return(domain.CampaignStats{}, wantErr)
 
 		svc := newTestService(campaignRepo, stageRepo, producer)
-		_, err := svc.EvaluateDecision(context.Background(), campaignID)
+		_, err := svc.evaluateDecision(context.Background(), campaignID)
 		require.ErrorIs(t, err, wantErr)
 	})
 
@@ -218,7 +218,7 @@ func TestEvaluateDecision_Errors(t *testing.T) {
 		stageRepo.On("GetStageStats", mock.Anything, stageID).Return(domain.StageStats{}, wantErr)
 
 		svc := newTestService(campaignRepo, stageRepo, producer)
-		_, err := svc.EvaluateDecision(context.Background(), campaignID)
+		_, err := svc.evaluateDecision(context.Background(), campaignID)
 		require.ErrorIs(t, err, wantErr)
 	})
 
@@ -233,7 +233,7 @@ func TestEvaluateDecision_Errors(t *testing.T) {
 		stageRepo.On("GetStageStats", mock.Anything, stageID).Return(domain.StageStats{MinSampleSize: 10, SuccessThreshold: 0.5}, nil)
 
 		svc := newTestService(campaignRepo, stageRepo, producer)
-		_, err := svc.EvaluateDecision(context.Background(), campaignID)
+		_, err := svc.evaluateDecision(context.Background(), campaignID)
 		require.ErrorIs(t, err, domain.ErrNotEnoughSamples)
 	})
 }
