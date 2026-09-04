@@ -76,10 +76,9 @@ func (c DBConfig) ConnString() string {
 }
 
 type CacheConfig struct {
-	Host                    string        `koanf:"CACHE_HOST" validate:"required"`
-	Port                    int           `koanf:"CACHE_PORT" validate:"required"`
-	DeviceLastSeenTTL       time.Duration `koanf:"CACHE_DEVICE_LAST_SEEN_TTL" validate:"required"`
-	DeviceCurrentVersionTTL time.Duration `koanf:"CACHE_DEVICE_CURRENT_VERSION_TTL" validate:"required"`
+	Host                 string        `koanf:"CACHE_HOST" validate:"required"`
+	Port                 int           `koanf:"CACHE_PORT" validate:"required"`
+	DeviceCheckinDataTTL time.Duration `koanf:"CACHE_DEVICE_CHECKIN_DATA_TTL" validate:"required"`
 }
 
 const (

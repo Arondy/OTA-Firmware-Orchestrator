@@ -9,6 +9,6 @@ type RolloutCampaignStats struct {
 }
 
 type StageStats struct {
-	MinSampleSize    int
-	SuccessThreshold float32
+	MinSampleSize    int     `redis:"min_sample_size"`
+	SuccessThreshold float32 `redis:"success_threshold"`
 }
