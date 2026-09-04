@@ -6,8 +6,8 @@ package mocks
 
 import (
 	"context"
-	"time"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -39,37 +39,37 @@ func (_m *MockDeviceCacheRepo) EXPECT() *MockDeviceCacheRepo_Expecter {
 	return &MockDeviceCacheRepo_Expecter{mock: &_m.Mock}
 }
 
-// SetCurrentVersion provides a mock function for the type MockDeviceCacheRepo
-func (_mock *MockDeviceCacheRepo) SetCurrentVersion(ctx context.Context, id uuid.UUID, currentVersion string) error {
-	ret := _mock.Called(ctx, id, currentVersion)
+// SetCheckinData provides a mock function for the type MockDeviceCacheRepo
+func (_mock *MockDeviceCacheRepo) SetCheckinData(ctx context.Context, id uuid.UUID, data domain.DeviceCheckinData) error {
+	ret := _mock.Called(ctx, id, data)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetCurrentVersion")
+		panic("no return value specified for SetCheckinData")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
-		r0 = returnFunc(ctx, id, currentVersion)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.DeviceCheckinData) error); ok {
+		r0 = returnFunc(ctx, id, data)
 	} else {
 		r0 = ret.Error(0)
 	}
 	return r0
 }
 
-// MockDeviceCacheRepo_SetCurrentVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCurrentVersion'
-type MockDeviceCacheRepo_SetCurrentVersion_Call struct {
+// MockDeviceCacheRepo_SetCheckinData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCheckinData'
+type MockDeviceCacheRepo_SetCheckinData_Call struct {
 	*mock.Call
 }
 
-// SetCurrentVersion is a helper method to define mock.On call
+// SetCheckinData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-//   - currentVersion string
-func (_e *MockDeviceCacheRepo_Expecter) SetCurrentVersion(ctx any, id any, currentVersion any) *MockDeviceCacheRepo_SetCurrentVersion_Call {
-	return &MockDeviceCacheRepo_SetCurrentVersion_Call{Call: _e.mock.On("SetCurrentVersion", ctx, id, currentVersion)}
+//   - data domain.DeviceCheckinData
+func (_e *MockDeviceCacheRepo_Expecter) SetCheckinData(ctx any, id any, data any) *MockDeviceCacheRepo_SetCheckinData_Call {
+	return &MockDeviceCacheRepo_SetCheckinData_Call{Call: _e.mock.On("SetCheckinData", ctx, id, data)}
 }
 
-func (_c *MockDeviceCacheRepo_SetCurrentVersion_Call) Run(run func(ctx context.Context, id uuid.UUID, currentVersion string)) *MockDeviceCacheRepo_SetCurrentVersion_Call {
+func (_c *MockDeviceCacheRepo_SetCheckinData_Call) Run(run func(ctx context.Context, id uuid.UUID, data domain.DeviceCheckinData)) *MockDeviceCacheRepo_SetCheckinData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -79,9 +79,9 @@ func (_c *MockDeviceCacheRepo_SetCurrentVersion_Call) Run(run func(ctx context.C
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 string
+		var arg2 domain.DeviceCheckinData
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(domain.DeviceCheckinData)
 		}
 		run(
 			arg0,
@@ -92,75 +92,12 @@ func (_c *MockDeviceCacheRepo_SetCurrentVersion_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockDeviceCacheRepo_SetCurrentVersion_Call) Return(err error) *MockDeviceCacheRepo_SetCurrentVersion_Call {
+func (_c *MockDeviceCacheRepo_SetCheckinData_Call) Return(err error) *MockDeviceCacheRepo_SetCheckinData_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockDeviceCacheRepo_SetCurrentVersion_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, currentVersion string) error) *MockDeviceCacheRepo_SetCurrentVersion_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetLastSeen provides a mock function for the type MockDeviceCacheRepo
-func (_mock *MockDeviceCacheRepo) SetLastSeen(ctx context.Context, id uuid.UUID, lastSeen time.Time) error {
-	ret := _mock.Called(ctx, id, lastSeen)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetLastSeen")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, time.Time) error); ok {
-		r0 = returnFunc(ctx, id, lastSeen)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockDeviceCacheRepo_SetLastSeen_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetLastSeen'
-type MockDeviceCacheRepo_SetLastSeen_Call struct {
-	*mock.Call
-}
-
-// SetLastSeen is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-//   - lastSeen time.Time
-func (_e *MockDeviceCacheRepo_Expecter) SetLastSeen(ctx any, id any, lastSeen any) *MockDeviceCacheRepo_SetLastSeen_Call {
-	return &MockDeviceCacheRepo_SetLastSeen_Call{Call: _e.mock.On("SetLastSeen", ctx, id, lastSeen)}
-}
-
-func (_c *MockDeviceCacheRepo_SetLastSeen_Call) Run(run func(ctx context.Context, id uuid.UUID, lastSeen time.Time)) *MockDeviceCacheRepo_SetLastSeen_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 time.Time
-		if args[2] != nil {
-			arg2 = args[2].(time.Time)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockDeviceCacheRepo_SetLastSeen_Call) Return(err error) *MockDeviceCacheRepo_SetLastSeen_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockDeviceCacheRepo_SetLastSeen_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, lastSeen time.Time) error) *MockDeviceCacheRepo_SetLastSeen_Call {
+func (_c *MockDeviceCacheRepo_SetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, data domain.DeviceCheckinData) error) *MockDeviceCacheRepo_SetCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }

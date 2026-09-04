@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant M as OTA Orchestrator
+    participant R as Redis
+    participant C as Rollout Controller
+    participant K as Kafka
+
+    Note over M,R: Только main пишет проекцию активной стадии (start/resume)
+
+    M->>R: Запись stage&#58;{id}&#58; min_sample_size, success_threshold&#59; campaign&#58;{id}&#58; current_stage, current_target_percent
+
+    Note over C,R: Evaluator только читает проекцию и счётчики
+
+    C->>R: Чтение метрик (success, failure, timeout) и конфига стадии
+
+    Note over C: Принятие решения advance_stage/rollback после N стабильных циклов
+
+    C->>K: Публикация rollout.decisions
+
+    Note over M,K: Consumer решений (main)
+
+    K->>M: Чтение rollout.decisions
+    M->>R: После коммита ApplyDecision&#58; сдвиг проекции на новую активную стадию либо чистка кэшей

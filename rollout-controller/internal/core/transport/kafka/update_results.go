@@ -1,4 +1,4 @@
-package kafka
+package core_kafka
 
 import (
 	"context"
@@ -52,18 +52,18 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 		MaxAttempts:  3,
 	}
 
-	p := &UpdateResultsConsumer{
+	c := &UpdateResultsConsumer{
 		reader:    reader,
 		dlqWriter: dlqWriter,
 		svc:       svc,
 		logger:    logger,
 	}
-	return p, nil
+	return c, nil
 }
 
-func (p *UpdateResultsConsumer) Run(ctx context.Context) error {
+func (c *UpdateResultsConsumer) Run(ctx context.Context) error {
 	for {
-		message, err := p.reader.FetchMessage(ctx)
+		message, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return nil
@@ -71,15 +71,15 @@ func (p *UpdateResultsConsumer) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to fetch event: %w", err)
 		}
 
-		logger := p.logger.With("event_time", message.Time, "event_offset", message.Offset)
+		logger := c.logger.With("event_time", message.Time, "event_offset", message.Offset)
 
 		var event domain.UpdateResultsEvent
 		if err = json.Unmarshal(message.Value, &event); err != nil {
 			logger.Errorw("failed to unmarshal event", "error", err)
-			go p.writeToDLQ(ctx, message, err, false)
+			go c.writeToDLQ(ctx, message, err, false)
 
 			commitCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			err = p.reader.CommitMessages(commitCtx, message)
+			err = c.reader.CommitMessages(commitCtx, message)
 			cancel()
 			if err != nil {
 				logger.Errorw("failed to commit corrupted message", "error", err)
@@ -87,15 +87,15 @@ func (p *UpdateResultsConsumer) Run(ctx context.Context) error {
 			continue
 		}
 
-		updatedCount, err := p.svc.UpdateStageResults(ctx, event)
+		updatedCount, err := c.svc.UpdateStageResults(ctx, event)
 		if err != nil {
 			logger.Errorw("failed to update stage results", "error", err)
-			go p.writeToDLQ(ctx, message, err, true)
+			go c.writeToDLQ(ctx, message, err, true)
 		}
-		p.logger.Debugw("updated stage results", "stage_id", event.StageID, "result", event.Result, "updated", updatedCount)
+		c.logger.Debugw("updated stage results", "stage_id", event.StageID, "result", event.Result, "updated", updatedCount)
 
 		commitCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		err = p.reader.CommitMessages(commitCtx, message)
+		err = c.reader.CommitMessages(commitCtx, message)
 		cancel()
 		if err != nil {
 			logger.Errorw("failed to commit message", "error", err)
@@ -103,7 +103,7 @@ func (p *UpdateResultsConsumer) Run(ctx context.Context) error {
 	}
 }
 
-func (p *UpdateResultsConsumer) writeToDLQ(ctx context.Context, message kafka.Message, err error, retryable bool) {
+func (c *UpdateResultsConsumer) writeToDLQ(ctx context.Context, message kafka.Message, err error, retryable bool) {
 	headers := []kafka.Header{
 		{Key: "x-retryable", Value: []byte(strconv.FormatBool(retryable))},
 		{Key: "x-error", Value: []byte(err.Error())},
@@ -117,16 +117,16 @@ func (p *UpdateResultsConsumer) writeToDLQ(ctx context.Context, message kafka.Me
 		Headers: headers,
 	}
 
-	if err := p.dlqWriter.WriteMessages(ctx, dlqMessage); err != nil {
-		p.logger.Errorw("failed to send message to DLQ", "error", err, "event_time", message.Time, "event_offset", message.Offset)
+	if err := c.dlqWriter.WriteMessages(ctx, dlqMessage); err != nil {
+		c.logger.Errorw("failed to send message to DLQ", "error", err, "event_time", message.Time, "event_offset", message.Offset)
 	}
 }
 
-func (p *UpdateResultsConsumer) Close() {
-	if err := p.reader.Close(); err != nil {
-		p.logger.Errorw("failed to close reader", "error", err)
+func (c *UpdateResultsConsumer) Close() {
+	if err := c.reader.Close(); err != nil {
+		c.logger.Errorw("failed to close reader", "error", err)
 	}
-	if err := p.dlqWriter.Close(); err != nil {
-		p.logger.Errorw("failed to close dlqWriter", "error", err)
+	if err := c.dlqWriter.Close(); err != nil {
+		c.logger.Errorw("failed to close dlqWriter", "error", err)
 	}
 }

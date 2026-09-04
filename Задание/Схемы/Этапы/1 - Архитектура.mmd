@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph EXT["Внешние участники"]
+        ADM["Администратор / API Клиент"]
+    end
+
+    subgraph MAIN["OTA Orchestrator"]
+        API["REST API: Devices, Firmware, Campaigns"]
+    end
+
+    subgraph DB["База данных"]
+        PG[("PostgreSQL")]
+    end
+
+    ADM -- "HTTP запросы" --> API
+    API -- "Чтение / Запись" --> PG

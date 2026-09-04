@@ -7,91 +7,74 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func campaignStageKey(id uuid.UUID) string {
-	return fmt.Sprintf("campaign:%s:current_stage", id)
+func campaignCheckinKey(id uuid.UUID) string {
+	return fmt.Sprintf("campaign:%s:checkin_data", id)
 }
 
-func campaignTargetKey(id uuid.UUID) string {
-	return fmt.Sprintf("campaign:%s:current_target_percent", id)
-}
-
-func TestCampaignCacheRepo_SetAndGetCurrentStage(t *testing.T) {
+func TestCampaignCacheRepo_SetAndGetCheckinData(t *testing.T) {
 	resetRedis(t)
 	repo := NewCampaignCacheRepo(testRDB)
 	ctx := context.Background()
 	id := uuid.New()
 	stageID := uuid.New()
 
-	require.NoError(t, repo.SetCurrentStage(ctx, id, stageID))
+	require.NoError(t, repo.SetCheckinData(ctx, id, domain.CampaignCheckinData{StageID: stageID, TargetPercent: 42}))
 
-	got, err := repo.GetCurrentStage(ctx, id)
+	got, err := repo.GetCheckinData(ctx, id)
 	require.NoError(t, err)
-	assert.Equal(t, stageID, got)
+	assert.Equal(t, stageID, got.StageID)
+	assert.Equal(t, 42, got.TargetPercent)
+
+	fields, err := testRDB.HGetAll(ctx, campaignCheckinKey(id)).Result()
+	require.NoError(t, err)
+	assert.Equal(t, string(stageID[:]), fields["stage_id"])
+	assert.Equal(t, "42", fields["target_percent"])
 }
 
-func TestCampaignCacheRepo_DeleteCurrentStage_RemovesKey(t *testing.T) {
+func TestCampaignCacheRepo_DeleteCheckinData_RemovesKeys(t *testing.T) {
 	resetRedis(t)
 	repo := NewCampaignCacheRepo(testRDB)
 	ctx := context.Background()
 	id := uuid.New()
 	stageID := uuid.New()
 
-	require.NoError(t, repo.SetCurrentStage(ctx, id, stageID))
-	require.NoError(t, repo.DeleteCurrentStage(ctx, id))
+	require.NoError(t, repo.SetCheckinData(ctx, id, domain.CampaignCheckinData{StageID: stageID, TargetPercent: 42}))
+	require.NoError(t, repo.DeleteCheckinData(ctx, id))
 
-	_, err := repo.GetCurrentStage(ctx, id)
+	_, err := repo.GetCheckinData(ctx, id)
 	require.Error(t, err)
-}
 
-func TestCampaignCacheRepo_GetCurrentStage_Missing_ReturnsError(t *testing.T) {
-	resetRedis(t)
-	repo := NewCampaignCacheRepo(testRDB)
-	ctx := context.Background()
-	id := uuid.New()
-
-	_, err := repo.GetCurrentStage(ctx, id)
-	require.Error(t, err)
-}
-
-func TestCampaignCacheRepo_SetAndGetCurrentTargetPercent(t *testing.T) {
-	resetRedis(t)
-	repo := NewCampaignCacheRepo(testRDB)
-	ctx := context.Background()
-	id := uuid.New()
-
-	const percent = 42
-	require.NoError(t, repo.SetCurrentTargetPercent(ctx, id, percent))
-
-	got, err := repo.GetCurrentTargetPercent(ctx, id)
+	exists, err := testRDB.Exists(ctx, campaignCheckinKey(id)).Result()
 	require.NoError(t, err)
-	assert.Equal(t, percent, got)
+	assert.Equal(t, int64(0), exists)
 }
 
-func TestCampaignCacheRepo_DeleteCurrentTargetPercent_RemovesKey(t *testing.T) {
+func TestCampaignCacheRepo_GetCheckinData_Missing_ReturnsError(t *testing.T) {
 	resetRedis(t)
 	repo := NewCampaignCacheRepo(testRDB)
 	ctx := context.Background()
 	id := uuid.New()
 
-	require.NoError(t, repo.SetCurrentTargetPercent(ctx, id, 42))
-	require.NoError(t, repo.DeleteCurrentTargetPercent(ctx, id))
-
-	_, err := repo.GetCurrentTargetPercent(ctx, id)
+	_, err := repo.GetCheckinData(ctx, id)
 	require.Error(t, err)
 }
 
-func TestCampaignCacheRepo_GetCurrentTargetPercent_Missing_ReturnsError(t *testing.T) {
+func TestCampaignCacheRepo_GetCheckinData_PartialMissing_ReturnsError(t *testing.T) {
 	resetRedis(t)
 	repo := NewCampaignCacheRepo(testRDB)
 	ctx := context.Background()
 	id := uuid.New()
+	stageID := uuid.New()
 
-	_, err := repo.GetCurrentTargetPercent(ctx, id)
+	require.NoError(t, testRDB.HSet(ctx, campaignCheckinKey(id), "stage_id", stageID).Err())
+
+	_, err := repo.GetCheckinData(ctx, id)
 	require.Error(t, err)
 }
 
@@ -102,14 +85,9 @@ func TestCampaignCacheRepo_KeysHaveNoTTL(t *testing.T) {
 	id := uuid.New()
 	stageID := uuid.New()
 
-	require.NoError(t, repo.SetCurrentStage(ctx, id, stageID))
-	require.NoError(t, repo.SetCurrentTargetPercent(ctx, id, 10))
+	require.NoError(t, repo.SetCheckinData(ctx, id, domain.CampaignCheckinData{StageID: stageID, TargetPercent: 10}))
 
-	ttlStage, err := testRDB.TTL(ctx, campaignStageKey(id)).Result()
+	ttl, err := testRDB.TTL(ctx, campaignCheckinKey(id)).Result()
 	require.NoError(t, err)
-	assert.Equal(t, int64(-1), int64(ttlStage))
-
-	ttlPercent, err := testRDB.TTL(ctx, campaignTargetKey(id)).Result()
-	require.NoError(t, err)
-	assert.Equal(t, int64(-1), int64(ttlPercent))
+	assert.Equal(t, int64(-1), int64(ttl))
 }

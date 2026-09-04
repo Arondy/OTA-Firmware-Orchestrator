@@ -1,0 +1,10 @@
+flowchart TD
+    START["Запуск Main Service"]
+    LIST["SELECT running campaigns (ListRunning)"]
+    FIND["FindActiveStages для running-кампаний"]
+    CLEAR["DeleteAllRunningCampaigns в Redis"]
+    EACH["Для каждой active stage"]
+    WRITE["setCampaignStageCache: current_stage, current_target_percent, min_sample_size, success_threshold, running_campaigns"]
+    DONE["Инициализация завершена (ошибки записи — warn, не фатальны)"]
+
+    START --> LIST --> FIND --> CLEAR --> EACH --> WRITE --> DONE

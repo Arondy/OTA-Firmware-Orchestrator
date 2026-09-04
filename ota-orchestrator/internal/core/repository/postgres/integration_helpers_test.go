@@ -67,7 +67,7 @@ func TestMain(m *testing.M) {
 		terminateAndFatal("failed to apply migrations: %v", err)
 	}
 
-	testDB = &DB{pool: pool, requestTimeout: 10 * time.Second}
+	testDB = &DB{pool: pool, tm: NewTxManager(pool), requestTimeout: 10 * time.Second}
 
 	code := m.Run()
 
@@ -128,7 +128,7 @@ func resetDB(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := testDB.pool.Exec(ctx, `
-		TRUNCATE update_attempts, rollout_stages, rollout_campaigns, firmware_versions, devices RESTART IDENTITY CASCADE;
+		TRUNCATE applied_decisions, update_attempts, rollout_stages, rollout_campaigns, firmware_versions, devices RESTART IDENTITY CASCADE;
 	`)
 	require.NoError(t, err)
 }

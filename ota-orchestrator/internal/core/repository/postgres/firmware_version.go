@@ -24,13 +24,15 @@ func (r *FirmwareVersionRepo) List(ctx context.Context) ([]domain.FirmwareVersio
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	SELECT id, device_model, fw_version, fw_checksum, binary_url, created_at
 	FROM firmware_versions
 	ORDER BY created_at DESC
 	`
 
-	rows, err := r.pool.Query(reqCtx, query)
+	rows, err := exec.Query(reqCtx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list firmware versions: %w", err)
 	}
@@ -65,13 +67,15 @@ func (r *FirmwareVersionRepo) Get(ctx context.Context, id uuid.UUID) (domain.Fir
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	SELECT id, device_model, fw_version, fw_checksum, binary_url, created_at 
 	FROM firmware_versions 
 	WHERE id = $1
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, id)
+	row := exec.QueryRow(reqCtx, query, id)
 
 	var firmwareVersion domain.FirmwareVersion
 	err := row.Scan(
@@ -96,13 +100,15 @@ func (r *FirmwareVersionRepo) Create(ctx context.Context, firmwareVersion domain
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
+	exec := r.exec(reqCtx)
+
 	query := `
 	INSERT INTO firmware_versions (device_model, fw_version, fw_checksum, binary_url)
 	VALUES ($1, $2, $3, $4)
 	RETURNING id, device_model, fw_version, fw_checksum, binary_url, created_at
 	`
 
-	row := r.pool.QueryRow(reqCtx, query, firmwareVersion.DeviceModel, firmwareVersion.FWVersion, firmwareVersion.FWChecksum, firmwareVersion.BinaryUrl)
+	row := exec.QueryRow(reqCtx, query, firmwareVersion.DeviceModel, firmwareVersion.FWVersion, firmwareVersion.FWChecksum, firmwareVersion.BinaryUrl)
 
 	var createdFirmwareVersion domain.FirmwareVersion
 	err := row.Scan(

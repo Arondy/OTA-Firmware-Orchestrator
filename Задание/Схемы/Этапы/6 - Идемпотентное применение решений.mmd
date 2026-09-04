@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant K as Kafka
+    participant M as OTA Orchestrator
+    participant PG as PostgreSQL
+    participant R as Redis
+
+    K->>M: Поставка сообщения rollout.decisions (decision_id)
+    M->>PG: TxManager.Do: SELECT из applied_decisions WHERE decision_id = ?
+
+    alt Записи нет
+        M->>PG: INSERT into applied_decisions (decision_id, decision_type)
+        M->>PG: AdvanceStage / Rollback по previous_stage_id (FOR UPDATE)
+
+        alt Стадия уже не active или кампания не running
+            Note over M: Stale — no-op, транзакция без эффекта
+        else Применено
+            Note over M: COMMIT
+            M->>R: Сдвиг проекции на новую активную стадию либо чистка кэшей
+        end
+    else Запись уже есть
+        Note over M: Игнорирование (идемпотентность)
+    end

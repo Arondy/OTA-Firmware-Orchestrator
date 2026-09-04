@@ -7,3 +7,10 @@ const (
 	UpdateAttemptsResultFailure UpdateAttemptsResult = "failure"
 	UpdateAttemptsResultTimeout UpdateAttemptsResult = "timeout"
 )
+
+type DecisionType string
+
+const (
+	DecisionTypeAdvance  DecisionType = "advance_stage"
+	DecisionTypeRollback DecisionType = "rollback"
+)

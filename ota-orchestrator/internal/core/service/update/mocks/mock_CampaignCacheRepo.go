@@ -7,6 +7,7 @@ package mocks
 import (
 	"context"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -38,25 +39,23 @@ func (_m *MockCampaignCacheRepo) EXPECT() *MockCampaignCacheRepo_Expecter {
 	return &MockCampaignCacheRepo_Expecter{mock: &_m.Mock}
 }
 
-// GetCurrentStage provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+// GetCheckinData provides a mock function for the type MockCampaignCacheRepo
+func (_mock *MockCampaignCacheRepo) GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error) {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetCurrentStage")
+		panic("no return value specified for GetCheckinData")
 	}
 
-	var r0 uuid.UUID
+	var r0 domain.CampaignCheckinData
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (uuid.UUID, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (domain.CampaignCheckinData, error)); ok {
 		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) uuid.UUID); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) domain.CampaignCheckinData); ok {
 		r0 = returnFunc(ctx, id)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
-		}
+		r0 = ret.Get(0).(domain.CampaignCheckinData)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
 		r1 = returnFunc(ctx, id)
@@ -66,19 +65,19 @@ func (_mock *MockCampaignCacheRepo) GetCurrentStage(ctx context.Context, id uuid
 	return r0, r1
 }
 
-// MockCampaignCacheRepo_GetCurrentStage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCurrentStage'
-type MockCampaignCacheRepo_GetCurrentStage_Call struct {
+// MockCampaignCacheRepo_GetCheckinData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCheckinData'
+type MockCampaignCacheRepo_GetCheckinData_Call struct {
 	*mock.Call
 }
 
-// GetCurrentStage is a helper method to define mock.On call
+// GetCheckinData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockCampaignCacheRepo_Expecter) GetCurrentStage(ctx any, id any) *MockCampaignCacheRepo_GetCurrentStage_Call {
-	return &MockCampaignCacheRepo_GetCurrentStage_Call{Call: _e.mock.On("GetCurrentStage", ctx, id)}
+func (_e *MockCampaignCacheRepo_Expecter) GetCheckinData(ctx any, id any) *MockCampaignCacheRepo_GetCheckinData_Call {
+	return &MockCampaignCacheRepo_GetCheckinData_Call{Call: _e.mock.On("GetCheckinData", ctx, id)}
 }
 
-func (_c *MockCampaignCacheRepo_GetCurrentStage_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockCampaignCacheRepo_GetCurrentStage_Call {
+func (_c *MockCampaignCacheRepo_GetCheckinData_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockCampaignCacheRepo_GetCheckinData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -96,78 +95,12 @@ func (_c *MockCampaignCacheRepo_GetCurrentStage_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_GetCurrentStage_Call) Return(uUID uuid.UUID, err error) *MockCampaignCacheRepo_GetCurrentStage_Call {
-	_c.Call.Return(uUID, err)
+func (_c *MockCampaignCacheRepo_GetCheckinData_Call) Return(campaignCheckinData domain.CampaignCheckinData, err error) *MockCampaignCacheRepo_GetCheckinData_Call {
+	_c.Call.Return(campaignCheckinData, err)
 	return _c
 }
 
-func (_c *MockCampaignCacheRepo_GetCurrentStage_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (uuid.UUID, error)) *MockCampaignCacheRepo_GetCurrentStage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetCurrentTargetPercent provides a mock function for the type MockCampaignCacheRepo
-func (_mock *MockCampaignCacheRepo) GetCurrentTargetPercent(ctx context.Context, id uuid.UUID) (int, error) {
-	ret := _mock.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetCurrentTargetPercent")
-	}
-
-	var r0 int
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int, error)); ok {
-		return returnFunc(ctx, id)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) int); ok {
-		r0 = returnFunc(ctx, id)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockCampaignCacheRepo_GetCurrentTargetPercent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCurrentTargetPercent'
-type MockCampaignCacheRepo_GetCurrentTargetPercent_Call struct {
-	*mock.Call
-}
-
-// GetCurrentTargetPercent is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-func (_e *MockCampaignCacheRepo_Expecter) GetCurrentTargetPercent(ctx any, id any) *MockCampaignCacheRepo_GetCurrentTargetPercent_Call {
-	return &MockCampaignCacheRepo_GetCurrentTargetPercent_Call{Call: _e.mock.On("GetCurrentTargetPercent", ctx, id)}
-}
-
-func (_c *MockCampaignCacheRepo_GetCurrentTargetPercent_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockCampaignCacheRepo_GetCurrentTargetPercent_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockCampaignCacheRepo_GetCurrentTargetPercent_Call) Return(n int, err error) *MockCampaignCacheRepo_GetCurrentTargetPercent_Call {
-	_c.Call.Return(n, err)
-	return _c
-}
-
-func (_c *MockCampaignCacheRepo_GetCurrentTargetPercent_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (int, error)) *MockCampaignCacheRepo_GetCurrentTargetPercent_Call {
+func (_c *MockCampaignCacheRepo_GetCheckinData_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error)) *MockCampaignCacheRepo_GetCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }

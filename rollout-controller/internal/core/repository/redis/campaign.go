@@ -37,7 +37,7 @@ func (r *CampaignCacheRepo) UpdateStageResults(ctx context.Context, event domain
 }
 
 func (r *CampaignCacheRepo) GetCampaignStats(ctx context.Context, id uuid.UUID) (domain.CampaignStats, error) {
-	stageID, err := r.getCurrentStage(ctx, id)
+	stageID, err := r.GetCurrentStage(ctx, id)
 	if err != nil {
 		return domain.CampaignStats{}, err
 	}
@@ -86,9 +86,10 @@ func (r *CampaignCacheRepo) GetCampaignStats(ctx context.Context, id uuid.UUID) 
 	}, nil
 }
 
-func (r *CampaignCacheRepo) getCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	key := fmt.Sprintf("%s:%s:current_stage", r.key, id)
-	value, err := r.client.Get(ctx, key).Bytes()
+func (r *CampaignCacheRepo) GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	key := fmt.Sprintf("%s:%s:checkin_data", r.key, id)
+	value, err := r.client.HGet(ctx, key, "stage_id").Bytes()
+
 	if err == redis.Nil {
 		return uuid.UUID{}, domain.ErrCurrentStageNotFound
 	} else if err != nil {
@@ -96,4 +97,51 @@ func (r *CampaignCacheRepo) getCurrentStage(ctx context.Context, id uuid.UUID) (
 	}
 
 	return uuid.FromBytes(value)
+}
+
+func (r *CampaignCacheRepo) ListRunningCampaigns(ctx context.Context) ([]uuid.UUID, error) {
+	key := fmt.Sprintf("%s:running_campaigns", r.key)
+	strs, err := r.client.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]uuid.UUID, len(strs))
+	for i, str := range strs {
+		ids[i], err = uuid.FromBytes([]byte(str))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ids, nil
+}
+
+func (r *CampaignCacheRepo) IncrStableCycles(ctx context.Context, id uuid.UUID) (int64, error) {
+	key := fmt.Sprintf("%s:%s:stable_cycles", r.key, id)
+	return r.client.Incr(ctx, key).Result()
+}
+
+func (r *CampaignCacheRepo) DeleteStableCycles(ctx context.Context, id uuid.UUID) error {
+	key := fmt.Sprintf("%s:%s:stable_cycles", r.key, id)
+	return r.client.Del(ctx, key).Err()
+}
+
+func (r *CampaignCacheRepo) GetDecision(ctx context.Context, id uuid.UUID) (domain.DecisionType, error) {
+	key := fmt.Sprintf("%s:%s:decision", r.key, id)
+	str, err := r.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		err = nil
+	}
+	return domain.DecisionType(str), err
+}
+
+func (r *CampaignCacheRepo) SetDecision(ctx context.Context, id uuid.UUID, decision domain.DecisionType) error {
+	key := fmt.Sprintf("%s:%s:decision", r.key, id)
+	return r.client.Set(ctx, key, string(decision), 0).Err()
+}
+
+func (r *CampaignCacheRepo) DeleteDecision(ctx context.Context, id uuid.UUID) error {
+	key := fmt.Sprintf("%s:%s:decision", r.key, id)
+	return r.client.Del(ctx, key).Err()
 }

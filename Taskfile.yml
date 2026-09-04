@@ -79,12 +79,16 @@ tasks:
       - cd rollout-controller && mockery
 
   test-unit:
+    aliases:
+      - tu
     desc: Run unit tests in both modules
     cmds:
       - cd ota-orchestrator && gotestsum -- -race $(go list -f '{{.LISTPKG}}' ./...)
       - cd rollout-controller && gotestsum -- -race $(go list -f '{{.LISTPKG}}' ./...)
 
   test-all:
+    aliases:
+      - ta
     desc: Run all tests in both modules
     cmds:
       - cd ota-orchestrator && gotestsum -- -tags "integration,e2e" $(go list -tags "integration,e2e" -f '{{.LISTPKG}}' ./...)

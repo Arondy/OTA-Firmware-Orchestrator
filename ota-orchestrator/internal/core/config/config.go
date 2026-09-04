@@ -18,6 +18,7 @@ const RequestIDHeader = "x-request-id"
 type CtxKeyRequestID struct{}
 
 type Config struct {
+	ShutdownTimeout   time.Duration           `koanf:"SHUTDOWN_TIMEOUT" validate:"required"`
 	HTTPServer        HTTPServerConfig        `koanf:",squash"`
 	DB                DBConfig                `koanf:",squash"`
 	Cache             CacheConfig             `koanf:",squash"`
@@ -75,15 +76,15 @@ func (c DBConfig) ConnString() string {
 }
 
 type CacheConfig struct {
-	Host                    string        `koanf:"CACHE_HOST" validate:"required"`
-	Port                    int           `koanf:"CACHE_PORT" validate:"required"`
-	DeviceLastSeenTTL       time.Duration `koanf:"CACHE_DEVICE_LAST_SEEN_TTL" validate:"required"`
-	DeviceCurrentVersionTTL time.Duration `koanf:"CACHE_DEVICE_CURRENT_VERSION_TTL" validate:"required"`
+	Host                 string        `koanf:"CACHE_HOST" validate:"required"`
+	Port                 int           `koanf:"CACHE_PORT" validate:"required"`
+	DeviceCheckinDataTTL time.Duration `koanf:"CACHE_DEVICE_CHECKIN_DATA_TTL" validate:"required"`
 }
 
 const (
-	UpdateResultsTopic = "firmware.update-results"
-	CheckinsTopic      = "device.checkins"
+	UpdateResultsTopic   = "firmware.update-results"
+	CheckinsTopic        = "device.checkins"
+	RolloutDecisionTopic = "rollout.decisions"
 )
 
 type BrokerConfig struct {
@@ -92,6 +93,8 @@ type BrokerConfig struct {
 	BatchTimeout time.Duration `koanf:"BROKER_BATCH_TIMEOUT" validate:"required"`
 	Timeout      time.Duration `koanf:"BROKER_TIMEOUT" validate:"required"`
 	BufferSize   int           `koanf:"BROKER_BUFFER_SIZE" validate:"required,min=1"`
+	GroupID      string        `koanf:"BROKER_GROUP_ID" validate:"required"`
+	MinBytes     int           `koanf:"BROKER_MIN_BYTES" validate:"required,min=1"`
 	Topic        string
 }
 

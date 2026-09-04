@@ -1,0 +1,63 @@
+erDiagram
+    firmware_versions ||--o{ rollout_campaigns : "target of"
+    rollout_campaigns ||--o{ rollout_stages : "contains"
+    rollout_campaigns ||--o{ applied_decisions : "applies"
+    devices ||--o{ update_attempts : "has"
+    rollout_stages ||--o{ update_attempts : "tracks"
+    rollout_campaigns ||--o{ update_attempts : "receives"
+
+    firmware_versions {
+        UUID id PK
+        TEXT device_model
+        TEXT fw_version
+        TEXT fw_checksum
+        TEXT binary_url
+        TIMESTAMPTZ created_at
+    }
+
+    rollout_campaigns {
+        UUID id PK
+        UUID firmware_version_id FK
+        TEXT device_model
+        ROLLOUT_CAMPAIGNS_STATUS status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ started_at
+        TIMESTAMPTZ completed_at
+    }
+
+    rollout_stages {
+        UUID id PK
+        UUID campaign_id FK
+        INT order_index
+        INT target_percent
+        INT min_sample_size
+        REAL success_threshold
+        ROLLOUT_STAGES_STATUS status
+        TIMESTAMPTZ entered_at
+    }
+
+    devices {
+        UUID id PK
+        TEXT device_model
+        TEXT current_version
+        DEVICE_STATUS status
+        TIMESTAMPTZ last_seen
+        TIMESTAMPTZ created_at
+    }
+
+    update_attempts {
+        UUID id PK
+        UUID device_id FK
+        UUID campaign_id FK
+        UUID stage_id FK
+        UPDATE_ATTEMPTS_RESULT result
+        UUID event_id
+        TIMESTAMPTZ reported_at
+    }
+
+    applied_decisions {
+        UUID decision_id PK
+        UUID campaign_id FK
+        DECISION_TYPE decision_type
+        TIMESTAMPTZ applied_at
+    }

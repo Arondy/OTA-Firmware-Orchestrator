@@ -25,6 +25,7 @@ import (
 	orchestratorconfig "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	tkafka "github.com/Arondy/OTA-Firmware-Orchestrator/testutil/kafka"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
@@ -36,9 +37,11 @@ import (
 )
 
 const (
-	updateResultsTopic    = "firmware.update-results"
-	checkinsTopic         = "device.checkins"
-	updateResultsDLQTopic = "firmware.update-results.dlq"
+	updateResultsTopic       = "firmware.update-results"
+	checkinsTopic            = "device.checkins"
+	updateResultsDLQTopic    = "firmware.update-results.dlq"
+	rolloutDecisionsTopic    = "rollout.decisions"
+	rolloutDecisionsDLQTopic = "rollout.decisions.dlq"
 
 	// Match docker-compose.yml image versions.
 	postgresImage = "postgres:18-alpine"
@@ -47,6 +50,7 @@ const (
 	statsPollTimeout     = 90 * time.Second
 	readinessPollTimeout = 150 * time.Second
 	controllerGroupID    = "e2e-test-group"
+	orchestratorGroupID  = "e2e-orchestrator-group"
 )
 
 var (
@@ -165,7 +169,7 @@ func TestMain(m *testing.M) {
 
 	connStr := fmt.Sprintf("postgres://test:test@%s:%d/testdb?sslmode=disable", dbHost, dbPort)
 	applyMigrations(ctx, connStr)
-	for _, name := range []string{checkinsTopic, updateResultsTopic, updateResultsDLQTopic} {
+	for _, name := range []string{checkinsTopic, updateResultsTopic, updateResultsDLQTopic, rolloutDecisionsTopic, rolloutDecisionsDLQTopic} {
 		tkafka.CreateTopic(name, 3)
 	}
 
@@ -181,13 +185,18 @@ func TestMain(m *testing.M) {
 		fail("failed to start rollout-controller: %v", err)
 	}
 	controllerCmd = ctrlCmd
+	// Контроллер валидирует env при старте и паникует на неполном конфиге —
+	// падаем сразу, а не ждём весь readinessPollTimeout.
+	controllerExited := make(chan error, 1)
+	go func() { controllerExited <- ctrlCmd.Wait() }()
 	ctrlBaseURL = fmt.Sprintf("http://127.0.0.1:%d", ctrlPort)
-	if err := waitForConnectHealth(ctrlBaseURL, readinessPollTimeout); err != nil {
+	if err := waitForConnectHealth(ctrlBaseURL, controllerExited, readinessPollTimeout); err != nil {
 		fail("rollout-controller not ready: %v", err)
 	}
 
 	orchPort := freePort()
 	orchCfg := &orchestratorconfig.Config{
+		ShutdownTimeout: 10 * time.Second,
 		HTTPServer: orchestratorconfig.HTTPServerConfig{
 			Host:    "127.0.0.1",
 			Port:    uint16(orchPort),
@@ -203,10 +212,9 @@ func TestMain(m *testing.M) {
 			RequestTimeout: 10 * time.Second,
 		},
 		Cache: orchestratorconfig.CacheConfig{
-			Host:                    redisHost,
-			Port:                    redisPort,
-			DeviceLastSeenTTL:       24 * time.Hour,
-			DeviceCurrentVersionTTL: 24 * time.Hour,
+			Host:                 redisHost,
+			Port:                 redisPort,
+			DeviceCheckinDataTTL: 24 * time.Hour,
 		},
 		Broker: orchestratorconfig.BrokerConfig{
 			Host:         kafkaHost,
@@ -214,6 +222,10 @@ func TestMain(m *testing.M) {
 			BatchTimeout: 100 * time.Millisecond,
 			Timeout:      5 * time.Second,
 			BufferSize:   1024,
+			// Без GroupID kafka-go читает только partition 0, а продюсер
+			// контроллера раскладывает решения по партициям хешем campaign_id.
+			GroupID:  orchestratorGroupID,
+			MinBytes: 1,
 		},
 		RolloutController: orchestratorconfig.RolloutControllerConfig{
 			Scheme:  "http",
@@ -221,6 +233,12 @@ func TestMain(m *testing.M) {
 			Port:    ctrlPort,
 			Timeout: 5 * time.Second,
 		},
+	}
+
+	// Те же правила, что продовый LoadConfig: незаполненное обязательное поле
+	// должно ронять сьют сразу, а не вешать тесты на таймаутах.
+	if err := validator.New().Struct(orchCfg); err != nil {
+		fail("invalid orchestrator test config: %v", err)
 	}
 
 	go func() {
@@ -301,8 +319,12 @@ func controllerEnv(port int, redisHost string, redisPort int, kafkaHost string, 
 		"CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL=10m",
 		"BROKER_HOST=127.0.0.1",
 		fmt.Sprintf("BROKER_PORT=%d", kafkaPort),
+		"BROKER_BATCH_TIMEOUT=100ms",
+		"BROKER_TIMEOUT=10s",
 		"BROKER_GROUP_ID=" + controllerGroupID,
 		"BROKER_MIN_BYTES=1",
+		"EVALUATOR_FREQUENCY=1s",
+		"EVALUATOR_REQUIRED_STABLE_CYCLES=3",
 	}
 }
 
@@ -375,19 +397,6 @@ func applyMigrations(ctx context.Context, connStr string) {
 	}
 }
 
-func waitForPort(addr string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
-		if err == nil {
-			_ = conn.Close()
-			return nil
-		}
-		time.Sleep(300 * time.Millisecond)
-	}
-	return fmt.Errorf("port %s not ready within %s", addr, timeout)
-}
-
 func waitForHTTPReady(url string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -403,23 +412,23 @@ func waitForHTTPReady(url string, timeout time.Duration) error {
 	return fmt.Errorf("http endpoint %s not ready within %s", url, timeout)
 }
 
-func waitForConnectHealth(baseURL string, timeout time.Duration) error {
-	if err := waitForPort(strings.TrimPrefix(baseURL, "http://"), timeout); err != nil {
-		return err
-	}
+func waitForConnectHealth(baseURL string, exited <-chan error, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		req, err := http.NewRequest(http.MethodPost, baseURL+"/health.v1.HealthService/CheckHealth", bytes.NewReader([]byte("{}")))
-		if err != nil {
-			time.Sleep(300 * time.Millisecond)
-			continue
+		select {
+		case err := <-exited:
+			return fmt.Errorf("rollout-controller exited before becoming ready: %v", err)
+		default:
 		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := httpClient.Do(req)
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/health.v1.HealthService/CheckHealth", bytes.NewReader([]byte("{}")))
 		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				return nil
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := httpClient.Do(req)
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					return nil
+				}
 			}
 		}
 		time.Sleep(300 * time.Millisecond)
@@ -532,6 +541,7 @@ func getCampaign(t *testing.T, id uuid.UUID) campaignResp {
 }
 
 func waitForStats(t *testing.T, campID uuid.UUID, pred func(statsResp) bool) statsResp {
+
 	t.Helper()
 	deadline := time.Now().Add(statsPollTimeout)
 	var last statsResp
@@ -623,7 +633,13 @@ func TestE2E_DuplicateReportEvent_DoesNotDoubleCount(t *testing.T) {
 	model := uniqueModel()
 	deviceID := createDevice(t, model, "0.0.1")
 	fwID := createFirmware(t, model, "1.0.0", strings.Repeat("c", 64), "http://example.com/fw-1.0.0.bin")
-	campID, camp := createCampaign(t, fwID, twoStages())
+	// Выский min_sample_size: evaluator не должен принять решение и сдвинуть
+	// кампанию, пока тест проверяет дедупликацию счётчиков.
+	noDecisionStages := []map[string]any{
+		{"order_index": 0, "target_percent": 100, "min_sample_size": 100, "success_threshold": 0.5},
+		{"order_index": 1, "target_percent": 100, "min_sample_size": 100, "success_threshold": 0.5},
+	}
+	campID, camp := createCampaign(t, fwID, noDecisionStages)
 	startCampaign(t, campID)
 
 	stageID := uuid.MustParse(camp.RolloutStages[0].ID)
@@ -648,4 +664,103 @@ func TestE2E_DuplicateReportEvent_DoesNotDoubleCount(t *testing.T) {
 	final := getCampaign(t, campID)
 	require.NotNil(t, final.Stats, "campaign stats should be present")
 	require.Equal(t, 1, final.Stats.SampleSize, "a duplicate event_id must not double count the sample size")
+}
+
+func stageByOrder(t *testing.T, camp campaignResp, orderIndex int) stageResp {
+	t.Helper()
+	for _, s := range camp.RolloutStages {
+		if s.OrderIndex == orderIndex {
+			return s
+		}
+	}
+	require.FailNow(t, "stage not found", "campaign: %s order_index: %d", camp.ID, orderIndex)
+	return stageResp{}
+}
+
+func waitForActiveStage(t *testing.T, campID, stageID uuid.UUID) {
+	t.Helper()
+	deadline := time.Now().Add(statsPollTimeout)
+	for time.Now().Before(deadline) {
+		camp := getCampaign(t, campID)
+		for _, s := range camp.RolloutStages {
+			if s.ID == stageID.String() && s.Status == "active" {
+				return
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	require.FailNow(t, "stage did not become active within timeout", "campaign: %s stage: %s", campID, stageID)
+}
+
+func waitForCampaignStatus(t *testing.T, campID uuid.UUID, status string) {
+	t.Helper()
+	deadline := time.Now().Add(statsPollTimeout)
+	var last string
+	for time.Now().Before(deadline) {
+		camp := getCampaign(t, campID)
+		last = camp.Status
+		if camp.Status == status {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	require.FailNow(t, "campaign did not reach status within timeout", "campaign: %s want: %s last: %s", campID, status, last)
+}
+
+func TestE2E_EvaluatorAdvancesAndCompletesOnSuccess(t *testing.T) {
+	t.Parallel()
+	model := uniqueModel()
+	deviceID := createDevice(t, model, "0.0.1")
+	fwID := createFirmware(t, model, "1.0.0", strings.Repeat("d", 64), "http://example.com/fw-1.0.0.bin")
+	campID, camp := createCampaign(t, fwID, twoStages())
+	startCampaign(t, campID)
+
+	stage0ID := uuid.MustParse(stageByOrder(t, camp, 0).ID)
+	stage1ID := uuid.MustParse(stageByOrder(t, camp, 1).ID)
+
+	cr := checkin(t, deviceID, "0.0.1")
+	require.True(t, cr.UpdateAvailable)
+	require.NotNil(t, cr.StageID)
+	require.Equal(t, stage0ID.String(), *cr.StageID)
+
+	// Success above the threshold must promote the campaign to stage 1:
+	// evaluator -> rollout.decisions -> ApplyDecision -> redis projection.
+	report(t, deviceID, campID, stage0ID, "success")
+	waitForActiveStage(t, campID, stage1ID)
+
+	cr = checkin(t, deviceID, "0.0.1")
+	require.True(t, cr.UpdateAvailable, "checkin must offer the update from the new active stage")
+	require.NotNil(t, cr.StageID)
+	require.Equal(t, stage1ID.String(), *cr.StageID)
+
+	// Success on the last stage must complete the campaign (no next stage).
+	report(t, deviceID, campID, stage1ID, "success")
+	waitForCampaignStatus(t, campID, "completed")
+
+	cr = checkin(t, deviceID, "0.0.1")
+	require.False(t, cr.UpdateAvailable, "a completed campaign must not offer updates")
+	require.Nil(t, cr.StageID)
+}
+
+func TestE2E_EvaluatorRollsBackOnFailure(t *testing.T) {
+	t.Parallel()
+	model := uniqueModel()
+	deviceID := createDevice(t, model, "0.0.1")
+	fwID := createFirmware(t, model, "1.0.0", strings.Repeat("e", 64), "http://example.com/fw-1.0.0.bin")
+	campID, camp := createCampaign(t, fwID, twoStages())
+	startCampaign(t, campID)
+
+	stage0ID := uuid.MustParse(stageByOrder(t, camp, 0).ID)
+
+	cr := checkin(t, deviceID, "0.0.1")
+	require.True(t, cr.UpdateAvailable)
+	require.NotNil(t, cr.StageID)
+
+	// Failure below the threshold must roll the campaign back.
+	report(t, deviceID, campID, stage0ID, "failure")
+	waitForCampaignStatus(t, campID, "rolled_back")
+
+	cr = checkin(t, deviceID, "0.0.1")
+	require.False(t, cr.UpdateAvailable, "a rolled back campaign must not offer updates")
+	require.Nil(t, cr.StageID)
 }

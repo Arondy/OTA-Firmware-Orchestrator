@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph STACK["Docker Compose стек"]
+        subgraph SVC["Сервисы"]
+            FE["frontend"]
+            ORCH["ota-orchestrator"]
+            CTRL["rollout-controller"]
+        end
+
+        subgraph MIG["Миграции"]
+            MUP["migrate up"]
+        end
+
+        subgraph INFRA["Инфраструктура"]
+            PG[("postgres")]
+            KUI["kafka-ui"]
+            RD[("redis")]
+            KAF["kafka KRaft"]
+        end
+    end
+
+    FE -- "HTTP API" --> ORCH
+    ORCH -- "Connect-RPC" --> CTRL
+
+    ORCH -- "TCP" --> PG
+    ORCH -- "TCP" --> RD
+    ORCH -- "TCP" --> KAF
+
+    CTRL -- "TCP" --> RD
+    CTRL -- "TCP" --> KAF
+
+    MUP -- "Применяет схему" --> PG
+    KUI -- "Мониторинг" --> KAF

@@ -6,8 +6,8 @@ package mocks
 
 import (
 	"context"
-	"time"
 
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -40,39 +40,31 @@ func (_m *MockDeviceCacheRepo) EXPECT() *MockDeviceCacheRepo_Expecter {
 }
 
 // ListDeviceCheckinData provides a mock function for the type MockDeviceCacheRepo
-func (_mock *MockDeviceCacheRepo) ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, map[uuid.UUID]time.Time, error) {
+func (_mock *MockDeviceCacheRepo) ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.DeviceCheckinData, error) {
 	ret := _mock.Called(ctx, ids)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListDeviceCheckinData")
 	}
 
-	var r0 map[uuid.UUID]string
-	var r1 map[uuid.UUID]time.Time
-	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, []uuid.UUID) (map[uuid.UUID]string, map[uuid.UUID]time.Time, error)); ok {
+	var r0 map[uuid.UUID]domain.DeviceCheckinData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []uuid.UUID) (map[uuid.UUID]domain.DeviceCheckinData, error)); ok {
 		return returnFunc(ctx, ids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, []uuid.UUID) map[uuid.UUID]string); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []uuid.UUID) map[uuid.UUID]domain.DeviceCheckinData); ok {
 		r0 = returnFunc(ctx, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[uuid.UUID]string)
+			r0 = ret.Get(0).(map[uuid.UUID]domain.DeviceCheckinData)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, []uuid.UUID) map[uuid.UUID]time.Time); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []uuid.UUID) error); ok {
 		r1 = returnFunc(ctx, ids)
 	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(map[uuid.UUID]time.Time)
-		}
+		r1 = ret.Error(1)
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context, []uuid.UUID) error); ok {
-		r2 = returnFunc(ctx, ids)
-	} else {
-		r2 = ret.Error(2)
-	}
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockDeviceCacheRepo_ListDeviceCheckinData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListDeviceCheckinData'
@@ -105,12 +97,12 @@ func (_c *MockDeviceCacheRepo_ListDeviceCheckinData_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockDeviceCacheRepo_ListDeviceCheckinData_Call) Return(versions map[uuid.UUID]string, lastSeen map[uuid.UUID]time.Time, err error) *MockDeviceCacheRepo_ListDeviceCheckinData_Call {
-	_c.Call.Return(versions, lastSeen, err)
+func (_c *MockDeviceCacheRepo_ListDeviceCheckinData_Call) Return(uUIDToDeviceCheckinData map[uuid.UUID]domain.DeviceCheckinData, err error) *MockDeviceCacheRepo_ListDeviceCheckinData_Call {
+	_c.Call.Return(uUIDToDeviceCheckinData, err)
 	return _c
 }
 
-func (_c *MockDeviceCacheRepo_ListDeviceCheckinData_Call) RunAndReturn(run func(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, map[uuid.UUID]time.Time, error)) *MockDeviceCacheRepo_ListDeviceCheckinData_Call {
+func (_c *MockDeviceCacheRepo_ListDeviceCheckinData_Call) RunAndReturn(run func(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.DeviceCheckinData, error)) *MockDeviceCacheRepo_ListDeviceCheckinData_Call {
 	_c.Call.Return(run)
 	return _c
 }

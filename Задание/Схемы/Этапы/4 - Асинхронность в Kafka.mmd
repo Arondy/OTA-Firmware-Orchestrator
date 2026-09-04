@@ -1,0 +1,28 @@
+flowchart TD
+    subgraph CHK["Checkin Handler: Fire-and-Forget"]
+        direction TD
+        H1["HTTP Request: /checkin"]
+        H2["Форматирование события"]
+        H3["Неблокирующая отправка в буфер. канал"]
+        H4["Асинхронная запись в Kafka: device.checkins"]
+        H5["Лог + Дроп события"]
+        H6["HTTP 200 OK"]
+
+        H1 --> H2 --> H3
+        H3 -- "Успех" --> H4 --> H6
+        H3 -- "Буфер полон" --> H5 --> H6
+    end
+
+    subgraph REP["Report Handler: Синхронная доставка"]
+        direction TD
+        R1["HTTP Request: /report"]
+        R2["Генерация event_id"]
+        R3["Синхронная запись в PostgreSQL"]
+        R4["Синхронная публикация в Kafka: firmware.update-results"]
+        R5["HTTP 503, устройство повторяет (запись в БД уже сделана)"]
+        R6["HTTP 200 OK"]
+
+        R1 --> R2 --> R3 --> R4
+        R4 -- "Ошибка" --> R5
+        R4 -- "Успех" --> R6
+    end

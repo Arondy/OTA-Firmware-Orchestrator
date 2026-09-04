@@ -33,13 +33,11 @@ type UpdateAttemptRepo interface {
 }
 
 type DeviceCacheRepo interface {
-	SetCurrentVersion(ctx context.Context, id uuid.UUID, currentVersion string) error
-	SetLastSeen(ctx context.Context, id uuid.UUID, lastSeen time.Time) error
+	SetCheckinData(ctx context.Context, id uuid.UUID, data domain.DeviceCheckinData) error
 }
 
 type CampaignCacheRepo interface {
-	GetCurrentStage(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
-	GetCurrentTargetPercent(ctx context.Context, id uuid.UUID) (int, error)
+	GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error)
 }
 
 type CheckinProducer interface {
@@ -86,14 +84,12 @@ func (s *UpdateService) Checkin(ctx context.Context, checkinDevice domain.Device
 
 	logger := config.LoggerFromContext(ctx).With("device_id", checkinDevice.ID)
 
-	err = s.deviceCacheRepo.SetCurrentVersion(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
+	err = s.deviceCacheRepo.SetCheckinData(ctx, checkinDevice.ID, domain.DeviceCheckinData{
+		CurrentVersion: checkinDevice.CurrentVersion,
+		LastSeen:       time.Now(),
+	})
 	if err != nil {
-		logger.Warnw("failed to set device current version", "error", err)
-	}
-
-	err = s.deviceCacheRepo.SetLastSeen(ctx, checkinDevice.ID, time.Now())
-	if err != nil {
-		logger.Warnw("failed to set device last seen", "error", err)
+		logger.Warnw("failed to set device checkin data", "error", err)
 	}
 
 	campaign, err := s.campaignRepo.FindRunning(ctx, device.DeviceModel)
@@ -124,24 +120,19 @@ func (s *UpdateService) Checkin(ctx context.Context, checkinDevice domain.Device
 		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
-	stageID, err := s.campaignCacheRepo.GetCurrentStage(ctx, campaign.ID)
-	if err != nil {
-		return domain.CheckinResult{}, err
-	}
-
-	targetPercent, err := s.campaignCacheRepo.GetCurrentTargetPercent(ctx, campaign.ID)
+	checkinData, err := s.campaignCacheRepo.GetCheckinData(ctx, campaign.ID)
 	if err != nil {
 		return domain.CheckinResult{}, err
 	}
 
 	bucket := s.calculateBucket(device.ID, campaign.ID)
-	if bucket > uint32(targetPercent) {
+	if bucket > uint32(checkinData.TargetPercent) {
 		return domain.CheckinResult{UpdateAvailable: false}, nil
 	}
 
 	return domain.CheckinResult{
 		UpdateAvailable: true,
-		StageID:         &stageID,
+		StageID:         &checkinData.StageID,
 		BinaryUrl:       fw.BinaryUrl,
 		FWChecksum:      fw.FWChecksum,
 	}, nil

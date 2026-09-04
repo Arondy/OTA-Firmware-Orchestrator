@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant A as Администратор
+    participant M as OTA Orchestrator
+    participant C as Rollout Controller
+    participant K as Kafka
+    participant PG as PostgreSQL
+
+    A->>M: POST /v1/campaigns/{id}/rollback
+    M->>C: gRPC ForceRollback(campaign_id)
+
+    Note over C: Остановка автоматической оценки (in-memory set)
+
+    C->>K: Публикация rollout.decisions (type: rollback, new decision_id)
+    C-->>M: gRPC Response OK
+    M-->>A: HTTP 202 Accepted
+
+    Note over M,K: Дальше работает стандартный потребитель решений
+
+    K->>M: Чтение rollout.decisions
+    M->>PG: Идемпотентное применение rollback (UPDATE campaigns/stages, INSERT applied_decisions)

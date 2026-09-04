@@ -1,0 +1,29 @@
+flowchart TB
+    ADM["Администратор / Frontend"]
+
+    subgraph MAIN["OTA Orchestrator"]
+        CLI["Connect-клиент"]
+        API["Admin API and REST"]
+        PROD["Producer: firmware.update-results"]
+    end
+
+    subgraph CTRL["Rollout Controller"]
+        SRV["Connect-сервер: GetCampaignStats, CheckHealth"]
+        CON["Consumer: firmware.update-results"]
+    end
+
+    PG[("PostgreSQL")]
+    KF["Kafka"]
+    RD[("Redis")]
+
+    ADM -- "GET /campaigns/{id}" --> API
+
+    API -- "Чтение/Запись основных данных" --> PG
+    API -- "Запись результатов" --> PROD
+    PROD --> KF
+
+    KF -- "Чтение результатов" --> CON
+    CON -- "Запись счётчиков и дедупликация" --> RD
+
+    CLI -- "Connect-RPC GetCampaignStats" --> SRV
+    SRV -- "Чтение счётчиков" --> RD

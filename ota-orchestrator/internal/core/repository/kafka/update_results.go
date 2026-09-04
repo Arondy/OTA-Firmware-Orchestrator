@@ -17,7 +17,6 @@ import (
 type UpdateResultsProducer struct {
 	writer  *kafka.Writer
 	timeout time.Duration
-	logger  *zap.SugaredLogger
 }
 
 func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) (*UpdateResultsProducer, error) {
@@ -39,7 +38,6 @@ func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerCon
 	p := &UpdateResultsProducer{
 		writer:  writer,
 		timeout: config.Timeout,
-		logger:  logger,
 	}
 	return p, nil
 }

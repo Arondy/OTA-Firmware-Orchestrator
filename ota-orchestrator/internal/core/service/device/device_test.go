@@ -23,8 +23,8 @@ func newService(repo *mocks.MockDeviceRepo, cache *mocks.MockDeviceCacheRepo) *d
 	return device.NewService(repo, cache)
 }
 
-func expectCheckinData(cache *mocks.MockDeviceCacheRepo, versions map[uuid.UUID]string, lastSeen map[uuid.UUID]time.Time, err error) {
-	cache.EXPECT().ListDeviceCheckinData(mock.Anything, mock.Anything).Return(versions, lastSeen, err)
+func expectCheckinData(cache *mocks.MockDeviceCacheRepo, data map[uuid.UUID]domain.DeviceCheckinData, err error) {
+	cache.EXPECT().ListDeviceCheckinData(mock.Anything, mock.Anything).Return(data, err)
 }
 
 func TestList_RepoFails_ReturnsError(t *testing.T) {
@@ -43,7 +43,7 @@ func TestList_NoCacheData_ReturnsPostgresValues(t *testing.T) {
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
 	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
-	expectCheckinData(cache, map[uuid.UUID]string{}, map[uuid.UUID]time.Time{}, nil)
+	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{}, nil)
 
 	devices, err := newService(repo, cache).List(context.Background())
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestList_CacheHasBothFields_OverridesPostgres(t *testing.T) {
 	cachedLastSeen := time.Now()
 
 	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
-	expectCheckinData(cache, map[uuid.UUID]string{id: cachedVersion}, map[uuid.UUID]time.Time{id: cachedLastSeen}, nil)
+	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{id: {CurrentVersion: cachedVersion, LastSeen: cachedLastSeen}}, nil)
 
 	devices, err := newService(repo, cache).List(context.Background())
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestList_CacheHasVersionOnly_OverridesVersion(t *testing.T) {
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
 	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
-	expectCheckinData(cache, map[uuid.UUID]string{id: "2.0.0"}, map[uuid.UUID]time.Time{}, nil)
+	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{id: {CurrentVersion: "2.0.0"}}, nil)
 
 	devices, err := newService(repo, cache).List(context.Background())
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestList_CacheMiss_KeepsPostgresValues(t *testing.T) {
 	pgDevice := domain.Device{ID: uuid.New(), DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
 	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
-	expectCheckinData(cache, map[uuid.UUID]string{}, map[uuid.UUID]time.Time{}, nil)
+	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{}, nil)
 
 	devices, err := newService(repo, cache).List(context.Background())
 	require.NoError(t, err)

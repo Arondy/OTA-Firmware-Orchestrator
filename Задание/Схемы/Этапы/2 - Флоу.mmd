@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant Dev as Устройство
+    participant M as OTA Orchestrator
+    participant PG as PostgreSQL
+    participant Adm as Администратор
+
+    Dev->>M: POST /checkin (current_version)
+    M->>PG: SELECT running-кампания и активная стадия (JOIN)
+    PG-->>M: Данные стадии (target_percent и т.д.)
+
+    Note over M: Вычисление bucket (hash device_id + campaign_id % 100)
+
+    alt Попадает в процент и версия устарела
+        M-->>Dev: 200 OK (update_available, stage_id, binary_url)
+    else Не попадает или версия актуальна
+        M-->>Dev: 200 OK (no_update)
+    end
+
+    Dev->>M: POST /report (campaign_id, stage_id, result)
+    M->>PG: Валидация принадлежности и INSERT в update_attempts
+    PG-->>M: Успех
+    M-->>Dev: 200 OK
+
+    Note over M,PG: Ручное продвижение стадии (временный эндпоинт, удалён на этапе 6)
+
+    Adm->>M: POST /advance-stage
+    M->>PG: UPDATE текущей стадии (passed), UPDATE следующей (active)
+    PG-->>M: Успех
+    M-->>Adm: 200 OK

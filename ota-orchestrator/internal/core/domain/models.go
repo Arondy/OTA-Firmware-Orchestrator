@@ -56,3 +56,19 @@ type UpdateAttempt struct {
 	EventID    uuid.UUID
 	ReportedAt time.Time
 }
+
+type AppliedDecision struct {
+	DecisionID   uuid.UUID
+	CampaignID   uuid.UUID
+	DecisionType DecisionType
+	AppliedAt    time.Time
+}
+
+func AppliedDecisionFromEvent(event DecisionEvent) AppliedDecision {
+	return AppliedDecision{
+		DecisionID:   event.DecisionID,
+		CampaignID:   event.CampaignID,
+		DecisionType: event.DecisionType,
+		AppliedAt:    event.Timestamp,
+	}
+}

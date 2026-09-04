@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> Running
+    Running --> ShuttingDown : Получен SIGTERM / отмена контекста
+
+    state ShuttingDown {
+        [*] --> StopHTTP
+        StopHTTP --> DrainKafka : Остановка приёма новых HTTP запросов
+        DrainKafka --> WaitEvaluator : Слив буферов Kafka (с таймаутом)
+        WaitEvaluator --> Done : Ожидание завершения цикла Evaluator
+    }
+
+    ShuttingDown --> [*] : Процесс завершён

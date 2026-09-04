@@ -325,27 +325,6 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/v1/campaigns/{id}/advance-stage:
-    post:
-      tags:
-        - Rollout Campaigns
-      summary: Advance a rollout campaign to the next stage
-      operationId: advanceRolloutCampaignStage
-      parameters:
-        - $ref: "#/components/parameters/Id"
-      responses:
-        "200":
-          description: Rollout campaign advanced
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RolloutCampaignResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
 components:
   parameters:
     Id:

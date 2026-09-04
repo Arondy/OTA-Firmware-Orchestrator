@@ -15,7 +15,6 @@ type RolloutCampaignService interface {
 	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Pause(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
-	AdvanceStage(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 }
 
 type RolloutCampaignHandler struct {
