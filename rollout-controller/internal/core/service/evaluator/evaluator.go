@@ -23,8 +23,7 @@ type CampaignRepo interface {
 }
 
 type StageRepo interface {
-	GetMinSampleSize(ctx context.Context, id uuid.UUID) (int, error)
-	GetSuccessThreshold(ctx context.Context, id uuid.UUID) (float32, error)
+	GetStageStats(ctx context.Context, id uuid.UUID) (domain.StageStats, error)
 }
 
 type RolloutDecisionsProducer interface {
@@ -152,21 +151,16 @@ func (s *EvaluatorService) EvaluateDecision(ctx context.Context, campaignID uuid
 		return "", err
 	}
 
-	minSampleSize, err := s.stageRepo.GetMinSampleSize(ctx, stats.ActiveStageID)
+	stageStats, err := s.stageRepo.GetStageStats(ctx, stats.ActiveStageID)
 	if err != nil {
 		return "", err
 	}
 
-	if stats.SampleSize < minSampleSize {
+	if stats.SampleSize < stageStats.MinSampleSize {
 		return "", domain.ErrNotEnoughSamples
 	}
 
-	successThreshold, err := s.stageRepo.GetSuccessThreshold(ctx, stats.ActiveStageID)
-	if err != nil {
-		return "", err
-	}
-
-	if stats.SuccessRate >= successThreshold {
+	if stats.SuccessRate >= stageStats.SuccessThreshold {
 		return domain.DecisionTypeAdvance, nil
 	} else {
 		return domain.DecisionTypeRollback, nil

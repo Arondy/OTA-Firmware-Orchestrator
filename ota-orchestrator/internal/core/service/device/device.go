@@ -2,7 +2,6 @@ package device
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -17,7 +16,7 @@ type DeviceRepo interface {
 }
 
 type DeviceCacheRepo interface {
-	ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (versions map[uuid.UUID]string, lastSeen map[uuid.UUID]time.Time, err error)
+	ListDeviceCheckinData(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.DeviceCheckinData, error)
 }
 
 type DeviceService struct {
@@ -43,7 +42,7 @@ func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
 		ids[i] = device.ID
 	}
 
-	versions, lastSeen, err := s.cache.ListDeviceCheckinData(ctx, ids)
+	checkinData, err := s.cache.ListDeviceCheckinData(ctx, ids)
 	if err != nil {
 		logger := config.LoggerFromContext(ctx)
 		logger.Errorw("failed to list device checkin data", "error", err)
@@ -51,10 +50,15 @@ func (s *DeviceService) List(ctx context.Context) ([]domain.Device, error) {
 	}
 
 	for i, device := range devices {
-		if version, exists := versions[device.ID]; exists {
-			devices[i].CurrentVersion = version
+		data, exists := checkinData[device.ID]
+		if !exists {
+			continue
 		}
-		if seen, exists := lastSeen[device.ID]; exists {
+		if data.CurrentVersion != "" {
+			devices[i].CurrentVersion = data.CurrentVersion
+		}
+		if !data.LastSeen.IsZero() {
+			seen := data.LastSeen
 			devices[i].LastSeen = &seen
 		}
 	}

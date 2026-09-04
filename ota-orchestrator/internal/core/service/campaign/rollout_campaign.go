@@ -38,7 +38,7 @@ type TxManager interface {
 }
 
 type CampaignCacheRepo interface {
-	SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CheckinData) error
+	SetCheckinData(ctx context.Context, id uuid.UUID, data domain.CampaignCheckinData) error
 	DeleteCheckinData(ctx context.Context, id uuid.UUID) error
 	AddRunningCampaigns(ctx context.Context, ids ...uuid.UUID) error
 	RemoveRunningCampaigns(ctx context.Context, ids ...uuid.UUID) error

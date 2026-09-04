@@ -33,12 +33,11 @@ type UpdateAttemptRepo interface {
 }
 
 type DeviceCacheRepo interface {
-	SetCurrentVersion(ctx context.Context, id uuid.UUID, currentVersion string) error
-	SetLastSeen(ctx context.Context, id uuid.UUID, lastSeen time.Time) error
+	SetCheckinData(ctx context.Context, id uuid.UUID, data domain.DeviceCheckinData) error
 }
 
 type CampaignCacheRepo interface {
-	GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CheckinData, error)
+	GetCheckinData(ctx context.Context, id uuid.UUID) (domain.CampaignCheckinData, error)
 }
 
 type CheckinProducer interface {
@@ -85,14 +84,12 @@ func (s *UpdateService) Checkin(ctx context.Context, checkinDevice domain.Device
 
 	logger := config.LoggerFromContext(ctx).With("device_id", checkinDevice.ID)
 
-	err = s.deviceCacheRepo.SetCurrentVersion(ctx, checkinDevice.ID, checkinDevice.CurrentVersion)
+	err = s.deviceCacheRepo.SetCheckinData(ctx, checkinDevice.ID, domain.DeviceCheckinData{
+		CurrentVersion: checkinDevice.CurrentVersion,
+		LastSeen:       time.Now(),
+	})
 	if err != nil {
-		logger.Warnw("failed to set device current version", "error", err)
-	}
-
-	err = s.deviceCacheRepo.SetLastSeen(ctx, checkinDevice.ID, time.Now())
-	if err != nil {
-		logger.Warnw("failed to set device last seen", "error", err)
+		logger.Warnw("failed to set device checkin data", "error", err)
 	}
 
 	campaign, err := s.campaignRepo.FindRunning(ctx, device.DeviceModel)

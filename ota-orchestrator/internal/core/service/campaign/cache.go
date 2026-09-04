@@ -15,7 +15,7 @@ func (s *RolloutCampaignService) setCampaignStageCache(ctx context.Context, stag
 
 	var joinedErr error
 
-	err := s.campaignCache.SetCheckinData(ctx, campaignID, domain.CheckinData{
+	err := s.campaignCache.SetCheckinData(ctx, campaignID, domain.CampaignCheckinData{
 		StageID:       stage.ID,
 		TargetPercent: stage.TargetPercent,
 	})
