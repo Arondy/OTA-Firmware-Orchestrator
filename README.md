@@ -7,7 +7,9 @@
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3-6BA539?logo=swagger)](ota-orchestrator/api/openapi.yaml)
 [![Connect RPC](https://img.shields.io/badge/Connect%20RPC-1.20-77E1FF?logo=grpc)](https://connectrpc.com/)
 
-Пет-проект уровня production-ready: canary-раскатка OTA-прошивок - обновление сначала малой группе, остальным - только при стабильных метриках. Два Go-сервиса делят ответственность - OTA Orchestrator работает с устройствами и админом, Rollout Controller автоматически двигает раскатку по метрикам.
+Пет-проект уровня production-ready: canary-раскатка OTA-прошивок - обновление сначала малой группе, остальным - только при стабильных метриках.
+
+Два Go-сервиса делят ответственность - OTA Orchestrator работает с устройствами и админом, Rollout Controller автоматически двигает раскатку по метрикам.
 
 ![Архитектура системы](<Задание/Схемы/Общие/Архитектура системы.png>)
 
@@ -19,9 +21,9 @@
 - [Как это работает](#как-это-работает)
 - [Архитектура](#архитектура)
 - [Конфигурация](#конфигурация)
-- [Тестирование](#тестирование)
 - [API](#api)
-- [Статус и план](#статус-и-план)
+- [Тестирование](#тестирование)
+- [Статус](#статус)
 - [Ограничения](#ограничения)
 - [Использование ИИ](#использование-ии)
 
@@ -147,57 +149,7 @@ curl -s $BASE/campaigns/$CAMP | \
 
 ## Конфигурация
 
-Корневой `.env` - для compose, остальные - для приложений.
-
-| Переменная | Описание |
-|---|---|
-| `POSTGRES_USER`, `POSTGRES_PASSWORD` | креды Postgres для compose и обоих `.env` |
-| `POSTGRES_DB`, `POSTGRES_PORT` | база и порт Postgres |
-| `REDIS_PORT`, `KAFKA_PORT` | порты Redis и Kafka наружу |
-| `KAFKA_TOPIC_PARTITIONS` | число партиций на топик, по умолчанию 3 |
-| `KAFKA_LOG_RETENTION_HOURS` | ретеншн логов Kafka |
-| `KAFKA_UI_PORT` | порт kafka-ui, поднимается профилем `task kafka-ui` |
-| `HTTP_SERVER_HOST`, `HTTP_SERVER_PORT` | адрес main service - `:8080` |
-| `HTTP_SERVER_TIMEOUT` | таймаут graceful shutdown HTTP |
-| `DB_HOST`, `DB_PORT`, `DB_NAME` | подключение к Postgres |
-| `DB_SSL_MODE` | SSL-режим, локально `disable` |
-| `DB_MAX_CONNS`, `DB_MIN_CONNS` | размер пула pgx |
-| `DB_MAX_CONN_LIFETIME`, `DB_MAX_CONN_IDLE_TIME` | время жизни соединений |
-| `DB_HEALTH_CHECK_PERIOD` | период health-check пула |
-| `DB_MAX_CONN_LIFETIME_JITTER` | джиттер lifetime |
-| `DB_REQUEST_TIMEOUT` | таймаут одного запроса к БД |
-| `CACHE_HOST`, `CACHE_PORT` | подключение к Redis |
-| `CACHE_DEVICE_CHECKIN_DATA_TTL` | TTL device-hash `checkin_data`, по умолчанию 24h |
-| `CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL` | TTL дедупа `event_id` для контроллера |
-| `BROKER_HOST`, `BROKER_PORT` | подключение к Kafka |
-| `BROKER_BATCH_TIMEOUT` | `BatchTimeout` writer'а |
-| `BROKER_TIMEOUT` | таймаут записи и drain при shutdown |
-| `BROKER_BUFFER_SIZE` | буфер checkin-канала, при переполнении события дропаются |
-| `BROKER_GROUP_ID` | consumer group |
-| `BROKER_MIN_BYTES` | `MinBytes` consumer'а |
-| `ROLLOUT_CONTROLLER_SCHEME` | схема клиента - `http` |
-| `ROLLOUT_CONTROLLER_HOST` | хост контроллера |
-| `ROLLOUT_CONTROLLER_PORT` | порт контроллера - `8090` |
-| `ROLLOUT_CONTROLLER_TIMEOUT` | таймаут `GetCampaignStats` |
-| `SERVER_HOST`, `SERVER_PORT` | адрес контроллера - `:8090` |
-| `SERVER_TIMEOUT` | таймаут graceful shutdown контроллера |
-| `EVALUATOR_FREQUENCY` | период тика evaluator |
-| `EVALUATOR_REQUIRED_STABLE_CYCLES` | стабильных циклов до решения |
-| `SHUTDOWN_TIMEOUT` | graceful shutdown обоих сервисов, 30s |
-
-## Тестирование
-
-| Уровень | Команда | Требования |
-|---|---|---|
-| Unit - сервисы, HTTP, моки | `task test-unit` | не требуются |
-| Integration + e2e по всем модулям | `task test-all` | Docker, инфра через testcontainers |
-| e2e отдельно - canary-сценарий | `cd ota-orchestrator && go test -tags e2e ./tests/e2e` | Docker |
-
-> [!NOTE]
-> Без тегов - только unit-тесты.
-> `task test-unit`/`test-all` гоняют оба модуля через `gotestsum`.
-> Моки под каталогами вида `*/mocks/` генерирует `mockery` командой `task mock`, руками не править.
-> CI в репозитории нет.
+Полный список переменных - последним пунктом в [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md).
 
 ## API
 
@@ -222,9 +174,22 @@ curl -s $BASE/campaigns/$CAMP | \
 | `POST` | `/api/v1/campaigns/{id}/resume` | продолжение: перевод `paused - running` |
 | `POST` | `/api/v1/campaigns/{id}/rollback` | принудительный откат `running`/`paused`: `202` пустой, решение применяется асинхронно |
 
-## Статус и план
+## Тестирование
 
-Реализованы этапы 1-7, источник правды - код и миграции.
+| Уровень | Команда | Требования |
+|---|---|---|
+| Unit - сервисы, HTTP, моки | `task test-unit` | не требуются |
+| Integration + e2e по всем модулям | `task test-all` | Docker, инфра через testcontainers |
+| e2e отдельно - canary-сценарий | `cd ota-orchestrator && go test -tags e2e ./tests/e2e` | Docker |
+
+> [!NOTE]
+> Без тегов - только unit-тесты.
+> `task test-unit`/`test-all` гоняют оба модуля через `gotestsum`.
+> Моки под каталогами вида `*/mocks/` генерирует `mockery` командой `task mock`, руками не править.
+
+## Статус
+
+Реализованы этапы 1-7.
 
 | Этап | Содержание | Статус |
 |---|---|---|
