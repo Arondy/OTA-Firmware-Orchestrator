@@ -96,6 +96,13 @@ curl -s $BASE/campaigns/$CAMP | \
   python3 -m json.tool # rollout_stages + stats от контроллера
 ```
 
+```bash
+# Принудительный откат running/paused кампании: 202 с пустым телом, итог - опросом статуса
+curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/campaigns/$CAMP/rollback # 202
+curl -s $BASE/campaigns/$CAMP | \
+  python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])' # rolled_back после применения решения
+```
+
 > [!TIP]
 > `update_available:false` после checkin - чаще всего так задумано: bucket `hash(device_id + campaign_id) % 100` вне `target_percent` стадии, либо устройство уже на целевой версии.
 > `stage_id` из ответа checkin возвращается в report без изменений.
@@ -111,6 +118,7 @@ curl -s $BASE/campaigns/$CAMP | \
 - **Report** - `success`/`failure`/`timeout`, каждый результат с уникальным `event_id` пишется в `update_attempts`
 - **Живые метрики** - `GET /campaigns/{id}` отдаёт `stats` с долей успеха и размером выборки; без контроллера - без `stats`
 - **Авторешения** - evaluator двигает стадии командами `advance_stage` и `rollback` после стабильных циклов
+- **Ручной откат** - `POST /campaigns/{id}/rollback` для `running`/`paused`: отвечает `202` и публикует решение `rollback` тем же пайплайном, что автоматика
 - **Строгая валидация** - semver, sha256-hex, диапазоны стадий, лимит тела 1 MiB, запрет неизвестных JSON-полей
 
 ## Как это работает
@@ -121,6 +129,7 @@ curl -s $BASE/campaigns/$CAMP | \
 4. Устройство ставит прошивку и шлёт `report`; результат пишется в БД и публикуется в `firmware.update-results`.
 5. Контроллер агрегирует результаты в счётчики Redis, а его evaluator периодически сверяет `success_rate` с порогом стадии и после `EVALUATOR_REQUIRED_STABLE_CYCLES` стабильных циклов публикует `rollout.decisions`.
 6. Main применяет решение идемпотентно в одной транзакции: `advance` - сдвиг на следующую стадию, а если её нет - завершение в `completed`, `rollback` - переход в `rolled_back`; затем обновляет проекцию Redis.
+7. Админ может принудительно откатить кампанию в статусе `running` или `paused`: `POST /campaigns/{id}/rollback` возвращает `202` с пустым телом и ничего не пишет в Postgres напрямую - контроллер публикует решение `rollback`, main применяет его тем же consumer; итог проверяется через `GET /campaigns/{id}`.
 
 > [!NOTE]
 > Повторная доставка безопасна с обеих сторон: контроллер дедуплицирует результаты по `event_id` через `SETNX` с TTL, а main - решения по `decision_id` через `applied_decisions` плюс stale-check того, что `previous_stage_id` всё ещё в статусе `active`.
@@ -128,7 +137,7 @@ curl -s $BASE/campaigns/$CAMP | \
 ## Архитектура
 
 - **Main service** из `ota-orchestrator/` - HTTP API для устройств и админа; PostgreSQL - источник правды; решений о раскатке не принимает, только исполняет
-- **Rollout Controller** из `rollout-controller/` - stateless: consumer результатов, счётчики Redis, evaluator решений, Connect-RPC `GetCampaignStats` на `:8090`
+- **Rollout Controller** из `rollout-controller/` - stateless: consumer результатов, счётчики Redis, evaluator решений, Connect-RPC `GetCampaignStats` + `ForceRollback` на `:8090`
 - **PostgreSQL 18** - устройства, прошивки, кампании, стадии, попытки обновлений, применённые решения
 - **Redis 8** - проекция активной стадии и счётчики; быстрый путь чтения на checkin
 - **Kafka 4** - `device.checkins`, `firmware.update-results`, `rollout.decisions` и DLQ к двум последним топикам
@@ -211,10 +220,11 @@ curl -s $BASE/campaigns/$CAMP | \
 | `POST` | `/api/v1/campaigns/{id}/start` | запуск: перевод `draft - running` |
 | `POST` | `/api/v1/campaigns/{id}/pause` | пауза: перевод `running - paused` |
 | `POST` | `/api/v1/campaigns/{id}/resume` | продолжение: перевод `paused - running` |
+| `POST` | `/api/v1/campaigns/{id}/rollback` | принудительный откат `running`/`paused`: `202` пустой, решение применяется асинхронно |
 
 ## Статус и план
 
-Реализованы этапы 1–6, источник правды - код и миграции.
+Реализованы этапы 1-7, источник правды - код и миграции.
 
 | Этап | Содержание | Статус |
 |---|---|---|
@@ -224,7 +234,7 @@ curl -s $BASE/campaigns/$CAMP | \
 | 4 | Kafka: события checkin и report | Готово |
 | 5 | Controller: consumer результатов, счётчики | Готово |
 | 6 | Evaluator, consumer решений в main | Готово |
-| 7 | Ручной откат через ForceRollback | ... |
+| 7 | Ручной откат через ForceRollback | Готово |
 | 8 | Индексация и устойчивость | ... |
 | 9 | Полный compose-стек и frontend | ... |
 
@@ -233,6 +243,7 @@ curl -s $BASE/campaigns/$CAMP | \
 - Повторный `report` создаёт новую запись в `update_attempts` с новым `event_id`. Если публикация в Kafka не удалась, API вернёт 503, но запись в БД уже сделана.
 - checkin-события при переполнении буфера `BROKER_BUFFER_SIZE` дропаются с warn - ответ устройству важнее доставки события.
 - Одна running-кампания на модель.
+- Откат асинхронный: `POST .../rollback` отвечает `202` с пустым телом и только ставит решение в очередь - Postgres меняется позже тем же consumer, что автоматику. Повторный вызов безопасен: новое решение по уже завершённой кампании станет no-op.
 
 ## Использование ИИ
 
