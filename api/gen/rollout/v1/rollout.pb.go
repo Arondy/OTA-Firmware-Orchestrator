@@ -125,6 +125,86 @@ func (x *GetCampaignStatsResponse) GetSampleSize() int32 {
 	return 0
 }
 
+type ForceRollbackRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForceRollbackRequest) Reset() {
+	*x = ForceRollbackRequest{}
+	mi := &file_rollout_v1_rollout_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForceRollbackRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForceRollbackRequest) ProtoMessage() {}
+
+func (x *ForceRollbackRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rollout_v1_rollout_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForceRollbackRequest.ProtoReflect.Descriptor instead.
+func (*ForceRollbackRequest) Descriptor() ([]byte, []int) {
+	return file_rollout_v1_rollout_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ForceRollbackRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+type ForceRollbackResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForceRollbackResponse) Reset() {
+	*x = ForceRollbackResponse{}
+	mi := &file_rollout_v1_rollout_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForceRollbackResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForceRollbackResponse) ProtoMessage() {}
+
+func (x *ForceRollbackResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rollout_v1_rollout_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForceRollbackResponse.ProtoReflect.Descriptor instead.
+func (*ForceRollbackResponse) Descriptor() ([]byte, []int) {
+	return file_rollout_v1_rollout_proto_rawDescGZIP(), []int{3}
+}
+
 var File_rollout_v1_rollout_proto protoreflect.FileDescriptor
 
 const file_rollout_v1_rollout_proto_rawDesc = "" +
@@ -138,9 +218,14 @@ const file_rollout_v1_rollout_proto_rawDesc = "" +
 	"\x0factive_stage_id\x18\x01 \x01(\tR\ractiveStageId\x12!\n" +
 	"\fsuccess_rate\x18\x02 \x01(\x02R\vsuccessRate\x12\x1f\n" +
 	"\vsample_size\x18\x03 \x01(\x05R\n" +
-	"sampleSize2p\n" +
+	"sampleSize\"7\n" +
+	"\x14ForceRollbackRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"\x17\n" +
+	"\x15ForceRollbackResponse2\xc6\x01\n" +
 	"\x0fCampaignService\x12]\n" +
-	"\x10GetCampaignStats\x12#.rollout.v1.GetCampaignStatsRequest\x1a$.rollout.v1.GetCampaignStatsResponseBJZHgithub.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout/v1;rolloutv1b\x06proto3"
+	"\x10GetCampaignStats\x12#.rollout.v1.GetCampaignStatsRequest\x1a$.rollout.v1.GetCampaignStatsResponse\x12T\n" +
+	"\rForceRollback\x12 .rollout.v1.ForceRollbackRequest\x1a!.rollout.v1.ForceRollbackResponseBJZHgithub.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout/v1;rolloutv1b\x06proto3"
 
 var (
 	file_rollout_v1_rollout_proto_rawDescOnce sync.Once
@@ -154,16 +239,20 @@ func file_rollout_v1_rollout_proto_rawDescGZIP() []byte {
 	return file_rollout_v1_rollout_proto_rawDescData
 }
 
-var file_rollout_v1_rollout_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_rollout_v1_rollout_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_rollout_v1_rollout_proto_goTypes = []any{
 	(*GetCampaignStatsRequest)(nil),  // 0: rollout.v1.GetCampaignStatsRequest
 	(*GetCampaignStatsResponse)(nil), // 1: rollout.v1.GetCampaignStatsResponse
+	(*ForceRollbackRequest)(nil),     // 2: rollout.v1.ForceRollbackRequest
+	(*ForceRollbackResponse)(nil),    // 3: rollout.v1.ForceRollbackResponse
 }
 var file_rollout_v1_rollout_proto_depIdxs = []int32{
 	0, // 0: rollout.v1.CampaignService.GetCampaignStats:input_type -> rollout.v1.GetCampaignStatsRequest
-	1, // 1: rollout.v1.CampaignService.GetCampaignStats:output_type -> rollout.v1.GetCampaignStatsResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: rollout.v1.CampaignService.ForceRollback:input_type -> rollout.v1.ForceRollbackRequest
+	1, // 2: rollout.v1.CampaignService.GetCampaignStats:output_type -> rollout.v1.GetCampaignStatsResponse
+	3, // 3: rollout.v1.CampaignService.ForceRollback:output_type -> rollout.v1.ForceRollbackResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -180,7 +269,7 @@ func file_rollout_v1_rollout_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rollout_v1_rollout_proto_rawDesc), len(file_rollout_v1_rollout_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

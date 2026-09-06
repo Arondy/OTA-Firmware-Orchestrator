@@ -36,11 +36,15 @@ const (
 	// CampaignServiceGetCampaignStatsProcedure is the fully-qualified name of the CampaignService's
 	// GetCampaignStats RPC.
 	CampaignServiceGetCampaignStatsProcedure = "/rollout.v1.CampaignService/GetCampaignStats"
+	// CampaignServiceForceRollbackProcedure is the fully-qualified name of the CampaignService's
+	// ForceRollback RPC.
+	CampaignServiceForceRollbackProcedure = "/rollout.v1.CampaignService/ForceRollback"
 )
 
 // CampaignServiceClient is a client for the rollout.v1.CampaignService service.
 type CampaignServiceClient interface {
 	GetCampaignStats(context.Context, *connect.Request[v1.GetCampaignStatsRequest]) (*connect.Response[v1.GetCampaignStatsResponse], error)
+	ForceRollback(context.Context, *connect.Request[v1.ForceRollbackRequest]) (*connect.Response[v1.ForceRollbackResponse], error)
 }
 
 // NewCampaignServiceClient constructs a client for the rollout.v1.CampaignService service. By
@@ -60,12 +64,19 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(campaignServiceMethods.ByName("GetCampaignStats")),
 			connect.WithClientOptions(opts...),
 		),
+		forceRollback: connect.NewClient[v1.ForceRollbackRequest, v1.ForceRollbackResponse](
+			httpClient,
+			baseURL+CampaignServiceForceRollbackProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("ForceRollback")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // campaignServiceClient implements CampaignServiceClient.
 type campaignServiceClient struct {
 	getCampaignStats *connect.Client[v1.GetCampaignStatsRequest, v1.GetCampaignStatsResponse]
+	forceRollback    *connect.Client[v1.ForceRollbackRequest, v1.ForceRollbackResponse]
 }
 
 // GetCampaignStats calls rollout.v1.CampaignService.GetCampaignStats.
@@ -73,9 +84,15 @@ func (c *campaignServiceClient) GetCampaignStats(ctx context.Context, req *conne
 	return c.getCampaignStats.CallUnary(ctx, req)
 }
 
+// ForceRollback calls rollout.v1.CampaignService.ForceRollback.
+func (c *campaignServiceClient) ForceRollback(ctx context.Context, req *connect.Request[v1.ForceRollbackRequest]) (*connect.Response[v1.ForceRollbackResponse], error) {
+	return c.forceRollback.CallUnary(ctx, req)
+}
+
 // CampaignServiceHandler is an implementation of the rollout.v1.CampaignService service.
 type CampaignServiceHandler interface {
 	GetCampaignStats(context.Context, *connect.Request[v1.GetCampaignStatsRequest]) (*connect.Response[v1.GetCampaignStatsResponse], error)
+	ForceRollback(context.Context, *connect.Request[v1.ForceRollbackRequest]) (*connect.Response[v1.ForceRollbackResponse], error)
 }
 
 // NewCampaignServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -91,10 +108,18 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 		connect.WithSchema(campaignServiceMethods.ByName("GetCampaignStats")),
 		connect.WithHandlerOptions(opts...),
 	)
+	campaignServiceForceRollbackHandler := connect.NewUnaryHandler(
+		CampaignServiceForceRollbackProcedure,
+		svc.ForceRollback,
+		connect.WithSchema(campaignServiceMethods.ByName("ForceRollback")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/rollout.v1.CampaignService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CampaignServiceGetCampaignStatsProcedure:
 			campaignServiceGetCampaignStatsHandler.ServeHTTP(w, r)
+		case CampaignServiceForceRollbackProcedure:
+			campaignServiceForceRollbackHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +131,8 @@ type UnimplementedCampaignServiceHandler struct{}
 
 func (UnimplementedCampaignServiceHandler) GetCampaignStats(context.Context, *connect.Request[v1.GetCampaignStatsRequest]) (*connect.Response[v1.GetCampaignStatsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("rollout.v1.CampaignService.GetCampaignStats is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) ForceRollback(context.Context, *connect.Request[v1.ForceRollbackRequest]) (*connect.Response[v1.ForceRollbackResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("rollout.v1.CampaignService.ForceRollback is not implemented"))
 }
