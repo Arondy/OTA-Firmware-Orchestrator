@@ -14,7 +14,7 @@ type ListRolloutCampaignsResponse struct {
 func (h *RolloutCampaignHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
 
-	rolloutCampaigns, err := h.svc.List(r.Context())
+	rolloutCampaigns, err := h.campaignSvc.List(r.Context())
 	if err != nil {
 		logger.Errorw("failed to list rollout campaigns", "error", err)
 		handlers.WriteInternalServerError(w, logger)

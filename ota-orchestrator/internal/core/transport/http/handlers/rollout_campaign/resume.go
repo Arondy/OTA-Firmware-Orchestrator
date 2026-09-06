@@ -19,7 +19,7 @@ func (h *RolloutCampaignHandler) Resume(w http.ResponseWriter, r *http.Request) 
 
 	logger = logger.With("id", id)
 
-	campaign, err := h.svc.Resume(r.Context(), id)
+	campaign, err := h.campaignSvc.Resume(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrRolloutCampaignNotFound) {
 			logger.Warnw("nonexistent id was received", "error", err)
