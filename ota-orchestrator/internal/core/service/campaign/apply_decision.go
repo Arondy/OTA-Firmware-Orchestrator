@@ -97,7 +97,7 @@ func (s *RolloutCampaignService) rollbackStage(ctx context.Context, campaignID u
 		return domain.RolloutCampaign{}, err
 	}
 
-	if campaign.Status != domain.RolloutCampaignsStatusRunning {
+	if !(campaign.Status == domain.RolloutCampaignsStatusRunning || campaign.Status == domain.RolloutCampaignsStatusPaused) {
 		return domain.RolloutCampaign{}, fmt.Errorf("%w: can't rollback %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
 	}
 

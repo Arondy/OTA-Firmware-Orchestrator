@@ -148,6 +148,7 @@ func (s *RolloutCampaignService) Pause(ctx context.Context, id uuid.UUID) (domai
 	}
 
 	// нет очистки остального кэша т.к. считаем что кампании не будут "забрасываться"
+	// и нет проблем с ForceRollback, если после отправки запроса на него (когда кэш выставлен), но до обработки, делать Pause
 	s.campaignCache.RemoveRunningCampaigns(ctx, id)
 
 	return pausedCampaign, nil
