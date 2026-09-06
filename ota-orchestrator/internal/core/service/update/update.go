@@ -166,6 +166,10 @@ func (s *UpdateService) Report(ctx context.Context, updateAttempt domain.UpdateA
 		return domain.UpdateAttempt{}, err
 	}
 
+	if campaign.Status == domain.RolloutCampaignsStatusDraft {
+		return domain.UpdateAttempt{}, fmt.Errorf("%w: can't send a report for %s campaign", domain.ErrRolloutCampaignWrongStatus, campaign.Status)
+	}
+
 	hasStage := slices.ContainsFunc(campaign.RolloutStages, func(stage domain.RolloutStage) bool {
 		return stage.ID == updateAttempt.StageID
 	})
