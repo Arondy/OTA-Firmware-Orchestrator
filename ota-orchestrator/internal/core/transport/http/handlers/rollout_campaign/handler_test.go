@@ -20,7 +20,15 @@ import (
 
 func newHandler(t *testing.T) (*rollout_campaign.RolloutCampaignHandler, *mocks.MockRolloutCampaignService) {
 	svc := mocks.NewMockRolloutCampaignService(t)
-	return rollout_campaign.NewRolloutCampaignHandler(svc), svc
+	adminSvc := mocks.NewMockAdminService(t)
+	return rollout_campaign.NewRolloutCampaignHandler(svc, adminSvc), svc
+}
+
+func newRollbackHandler(t *testing.T) (*rollout_campaign.RolloutCampaignHandler, *mocks.MockAdminService) {
+	t.Helper()
+	campaignSvc := mocks.NewMockRolloutCampaignService(t)
+	adminSvc := mocks.NewMockAdminService(t)
+	return rollout_campaign.NewRolloutCampaignHandler(campaignSvc, adminSvc), adminSvc
 }
 
 func req(method, body string) *http.Request {
@@ -327,4 +335,60 @@ func TestResumeCampaign_Success_Returns200(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.Resume(w, withID(req(http.MethodPost, ""), id))
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+// --- Rollback ---
+
+func TestRollbackCampaign_InvalidUUID_Returns400(t *testing.T) {
+	t.Parallel()
+	h, _ := newRollbackHandler(t)
+	r := req(http.MethodPost, "")
+	r.SetPathValue("id", "bad")
+	w := httptest.NewRecorder()
+	h.Rollback(w, r)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestRollbackCampaign_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
+	h, adminSvc := newRollbackHandler(t)
+	id := uuid.New()
+	adminSvc.EXPECT().ForceRollback(mock.Anything, id).Return(domain.ErrRolloutCampaignNotFound)
+
+	w := httptest.NewRecorder()
+	h.Rollback(w, withID(req(http.MethodPost, ""), id))
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestRollbackCampaign_WrongStatus_Returns400(t *testing.T) {
+	t.Parallel()
+	h, adminSvc := newRollbackHandler(t)
+	id := uuid.New()
+	adminSvc.EXPECT().ForceRollback(mock.Anything, id).Return(domain.ErrRolloutCampaignWrongStatus)
+
+	w := httptest.NewRecorder()
+	h.Rollback(w, withID(req(http.MethodPost, ""), id))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestRollbackCampaign_ServiceFails_Returns500(t *testing.T) {
+	t.Parallel()
+	h, adminSvc := newRollbackHandler(t)
+	id := uuid.New()
+	adminSvc.EXPECT().ForceRollback(mock.Anything, id).Return(errors.New("boom"))
+
+	w := httptest.NewRecorder()
+	h.Rollback(w, withID(req(http.MethodPost, ""), id))
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestRollbackCampaign_Success_Returns202(t *testing.T) {
+	t.Parallel()
+	h, adminSvc := newRollbackHandler(t)
+	id := uuid.New()
+	adminSvc.EXPECT().ForceRollback(mock.Anything, id).Return(nil)
+
+	w := httptest.NewRecorder()
+	h.Rollback(w, withID(req(http.MethodPost, ""), id))
+	assert.Equal(t, http.StatusAccepted, w.Code)
 }
