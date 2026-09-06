@@ -17,13 +17,19 @@ type RolloutCampaignService interface {
 	Resume(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 }
 
-type RolloutCampaignHandler struct {
-	svc RolloutCampaignService
+type AdminService interface {
+	ForceRollback(ctx context.Context, campaignID uuid.UUID) error
 }
 
-func NewRolloutCampaignHandler(svc RolloutCampaignService) *RolloutCampaignHandler {
+type RolloutCampaignHandler struct {
+	campaignSvc RolloutCampaignService
+	adminSvc    AdminService
+}
+
+func NewRolloutCampaignHandler(campaignSvc RolloutCampaignService, adminSvc AdminService) *RolloutCampaignHandler {
 	return &RolloutCampaignHandler{
-		svc: svc,
+		campaignSvc: campaignSvc,
+		adminSvc:    adminSvc,
 	}
 }
 

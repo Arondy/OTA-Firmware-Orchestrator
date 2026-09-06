@@ -9,6 +9,7 @@ import (
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/repository/kafka"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/repository/postgres"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/repository/redis"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/admin"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/campaign"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/device"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/firmware"
@@ -72,6 +73,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *zap.SugaredLogger) err
 	updateSvc := update.NewService(deviceRepo, firmwareVersionRepo, rolloutCampaignRepo, updateAttemptRepo, deviceCacheRepo, campaignCacheRepo, checkinsProducer, updateResultsProducer)
 	firmwareVersionSvc := firmware.NewService(firmwareVersionRepo)
 	rolloutCampaignSvc := campaign.NewService(rolloutCampaignRepo, firmwareVersionRepo, appliedDecisionRepo, db.TxManager(), campaignCacheRepo, stageCacheRepo, rolloutControllerClient)
+	adminSvc := admin.NewAdminService(rolloutCampaignRepo, campaignCacheRepo, rolloutControllerClient)
 
 	err = rolloutCampaignSvc.WarmUpCache(ctx, logger)
 	if err != nil {
@@ -94,7 +96,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *zap.SugaredLogger) err
 	healthAPI := healthhandler.NewHealthHandler()
 	deviceAPI := devicehandler.NewDeviceHandler(deviceSvc, updateSvc)
 	firmwareVersionAPI := firmwarehandler.NewFirmwareVersionHandler(firmwareVersionSvc)
-	rolloutCampaignAPI := campaignhandler.NewRolloutCampaignHandler(rolloutCampaignSvc)
+	rolloutCampaignAPI := campaignhandler.NewRolloutCampaignHandler(rolloutCampaignSvc, adminSvc)
 
 	var router http.Handler = core_http.NewRouter(healthAPI, deviceAPI, firmwareVersionAPI, rolloutCampaignAPI)
 	router = middleware.WrapInMiddleware(router, logger)

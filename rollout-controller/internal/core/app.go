@@ -54,9 +54,9 @@ func Run(ctx context.Context, cfg *config.Config, logger *zap.SugaredLogger) err
 	})
 
 	healthHandler := handlers.NewHealthHandler()
-	campaignStatsHandler := handlers.NewCampaignStatsHandler(campaignStatsSvc)
+	campaignHandler := handlers.NewCampaignHandler(campaignStatsSvc, evaluatorSvc)
 
-	router := core_connect.NewRouter(healthHandler, campaignStatsHandler, logger)
+	router := core_connect.NewRouter(healthHandler, campaignHandler, logger)
 	server := core_connect.NewServer(router, cfg.Server, logger.Named("Server"))
 
 	eg.Go(func() error {

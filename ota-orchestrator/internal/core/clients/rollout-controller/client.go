@@ -17,7 +17,7 @@ import (
 
 type Client struct {
 	campaignClient rolloutv1connect.CampaignServiceClient
-	httpClient     http.Client
+	httpClient     *http.Client
 }
 
 func NewClient(config config.RolloutControllerConfig, logger *zap.SugaredLogger) (*Client, error) {
@@ -31,8 +31,12 @@ func NewClient(config config.RolloutControllerConfig, logger *zap.SugaredLogger)
 
 	interceptors := interceptors.NewInterceptorsOption()
 
-	client := rolloutv1connect.NewCampaignServiceClient(httpClient, baseURL, interceptors)
-	return &Client{campaignClient: client}, nil
+	campaignClient := rolloutv1connect.NewCampaignServiceClient(httpClient, baseURL, interceptors)
+
+	return &Client{
+		campaignClient: campaignClient,
+		httpClient:     httpClient,
+	}, nil
 }
 
 func CheckHealth(httpClient *http.Client, baseURL string) error {

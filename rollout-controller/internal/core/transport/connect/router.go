@@ -9,14 +9,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewRouter(healthHandler healthv1connect.HealthServiceHandler, campaignStatsHandler rolloutv1connect.CampaignServiceHandler, logger *zap.SugaredLogger) *http.ServeMux {
+func NewRouter(healthHandler healthv1connect.HealthServiceHandler, campaignHandler rolloutv1connect.CampaignServiceHandler, logger *zap.SugaredLogger) *http.ServeMux {
 	mux := http.NewServeMux()
 	interceptors := interceptors.NewInterceptorsOption(logger)
 
 	path, handler := healthv1connect.NewHealthServiceHandler(healthHandler, interceptors)
 	mux.Handle(path, handler)
 
-	path, handler = rolloutv1connect.NewCampaignServiceHandler(campaignStatsHandler, interceptors)
+	path, handler = rolloutv1connect.NewCampaignServiceHandler(campaignHandler, interceptors)
 	mux.Handle(path, handler)
 
 	return mux

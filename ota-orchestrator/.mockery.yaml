@@ -41,3 +41,9 @@ packages:
   github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/rollout_campaign:
     interfaces:
       RolloutCampaignService: {}
+      AdminService: {}
+  github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/admin:
+    interfaces:
+      CampaignCacheRepo: {}
+      RolloutCampaignRepo: {}
+      RolloutController: {}

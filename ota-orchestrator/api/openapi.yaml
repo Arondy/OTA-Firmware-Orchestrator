@@ -325,6 +325,34 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/v1/campaigns/{id}/rollback:
+    post:
+      tags:
+        - Rollout Campaigns
+      summary: Force rollback a rollout campaign
+      description: >
+        Requests an administrative rollback without mutating Postgres directly.
+        The orchestrator accepts only `running` or `paused` campaigns (for `paused`
+        it first restores `checkin_data` of the active stage from Postgres) and then
+        calls `CampaignService.ForceRollback` on the Rollout Controller. The controller
+        publishes a `rollback` decision with a new `decision_id` to `rollout.decisions`;
+        it is applied by the same consumer and status matrix as the automatic rollback.
+        The `202` response only means the request was accepted - poll
+        `GET /api/v1/campaigns/{id}` for the resulting `rolled_back` status. Repeating
+        the call is safe: a new `decision_id` against an already finished campaign is
+        a no-op on the Postgres side.
+      operationId: rollbackRolloutCampaign
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "202":
+          description: Rollback request accepted, decision is applied asynchronously
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 components:
   parameters:
     Id:

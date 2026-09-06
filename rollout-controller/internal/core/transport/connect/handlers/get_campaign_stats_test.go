@@ -15,10 +15,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func newCampaignHandler(t *testing.T) (*CampaignHandler, *mocks.MockCampaignStatsService, *mocks.MockDecisionsService) {
+	t.Helper()
+	statsSvc := mocks.NewMockCampaignStatsService(t)
+	decisionsSvc := mocks.NewMockDecisionsService(t)
+	return NewCampaignHandler(statsSvc, decisionsSvc), statsSvc, decisionsSvc
+}
+
 func TestGetCampaignStats_InvalidUUID_ReturnsInvalidArgument(t *testing.T) {
 	t.Parallel()
-	svc := mocks.NewMockCampaignStatsService(t)
-	h := NewCampaignStatsHandler(svc)
+	h, _, _ := newCampaignHandler(t)
 
 	req := connect.NewRequest(&rolloutv1.GetCampaignStatsRequest{CampaignId: "not-a-uuid"})
 	_, err := h.GetCampaignStats(context.Background(), req)
@@ -28,8 +34,7 @@ func TestGetCampaignStats_InvalidUUID_ReturnsInvalidArgument(t *testing.T) {
 
 func TestGetCampaignStats_CurrentStageNotFound_ReturnsNotFound(t *testing.T) {
 	t.Parallel()
-	svc := mocks.NewMockCampaignStatsService(t)
-	h := NewCampaignStatsHandler(svc)
+	h, svc, _ := newCampaignHandler(t)
 	id := uuid.New()
 	svc.EXPECT().GetCampaignStats(mock.Anything, id).Return(domain.CampaignStats{}, domain.ErrCurrentStageNotFound)
 
@@ -41,8 +46,7 @@ func TestGetCampaignStats_CurrentStageNotFound_ReturnsNotFound(t *testing.T) {
 
 func TestGetCampaignStats_InternalError_ReturnsInternal(t *testing.T) {
 	t.Parallel()
-	svc := mocks.NewMockCampaignStatsService(t)
-	h := NewCampaignStatsHandler(svc)
+	h, svc, _ := newCampaignHandler(t)
 	id := uuid.New()
 	svc.EXPECT().GetCampaignStats(mock.Anything, id).Return(domain.CampaignStats{}, assertStatsErr())
 
@@ -54,8 +58,7 @@ func TestGetCampaignStats_InternalError_ReturnsInternal(t *testing.T) {
 
 func TestGetCampaignStats_Success_ReturnsStats(t *testing.T) {
 	t.Parallel()
-	svc := mocks.NewMockCampaignStatsService(t)
-	h := NewCampaignStatsHandler(svc)
+	h, svc, _ := newCampaignHandler(t)
 	id := uuid.New()
 	stats := domain.CampaignStats{ActiveStageID: uuid.New(), SuccessRate: 0.5, SampleSize: 2}
 	svc.EXPECT().GetCampaignStats(mock.Anything, id).Return(stats, nil)

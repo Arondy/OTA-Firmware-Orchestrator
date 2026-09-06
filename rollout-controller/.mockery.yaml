@@ -12,3 +12,4 @@ packages:
   github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/transport/connect/handlers:
     interfaces:
       CampaignStatsService: {}
+      DecisionsService: {}

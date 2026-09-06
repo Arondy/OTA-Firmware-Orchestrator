@@ -62,7 +62,7 @@ func (s *EvaluatorService) Run(ctx context.Context) error {
 
 		for _, campaignID := range campaigns {
 			decision, err := s.evaluateDecision(ctx, campaignID)
-			s.logger.Infof("campaign: %s - '%s'", campaignID, decision)
+			s.logger.Debugf("campaign: %s - '%s'", campaignID, decision)
 
 			if err != nil {
 				if !errors.Is(err, domain.ErrNotEnoughSamples) {
@@ -77,7 +77,17 @@ func (s *EvaluatorService) Run(ctx context.Context) error {
 				continue
 			}
 
-			err = s.sendDecisionIfStable(ctx, campaignID, decision)
+			cycles, err := s.campaignRepo.IncrStableCycles(ctx, campaignID)
+			if err != nil {
+				s.logger.Warnw("failed to increment stable cycles", "error", err)
+				continue
+			}
+
+			if cycles < s.requiredStableCycles {
+				continue
+			}
+
+			err = s.SendDecision(ctx, campaignID, decision)
 			if err != nil {
 				s.logger.Warn(err)
 				continue
@@ -114,24 +124,15 @@ func (s *EvaluatorService) updateDecision(ctx context.Context, campaignID uuid.U
 	return nil
 }
 
-func (s *EvaluatorService) sendDecisionIfStable(ctx context.Context, campaignID uuid.UUID, decision domain.DecisionType) error {
-	cycles, err := s.campaignRepo.IncrStableCycles(ctx, campaignID)
+func (s *EvaluatorService) SendDecision(ctx context.Context, campaignID uuid.UUID, decision domain.DecisionType) error {
+	stageID, err := s.campaignRepo.GetCurrentStage(ctx, campaignID)
 	if err != nil {
-		return fmt.Errorf("failed to increment stable cycles: %w", err)
-	}
-
-	if cycles < s.requiredStableCycles {
-		return nil
+		return fmt.Errorf("failed to get current stage: %w", err)
 	}
 
 	id, err := uuid.NewV7()
 	if err != nil {
 		return fmt.Errorf("failed to generate UUID: %w", err)
-	}
-
-	stageID, err := s.campaignRepo.GetCurrentStage(ctx, campaignID)
-	if err != nil {
-		return fmt.Errorf("failed to get current stage: %w", err)
 	}
 
 	event := domain.DecisionEvent{

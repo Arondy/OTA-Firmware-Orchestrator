@@ -57,7 +57,7 @@ func (h *RolloutCampaignHandler) Create(w http.ResponseWriter, r *http.Request) 
 	}
 
 	rolloutCampaign := rolloutCampaignReq.ToDomain()
-	createdRolloutCampaign, err := h.svc.Create(r.Context(), rolloutCampaign)
+	createdRolloutCampaign, err := h.campaignSvc.Create(r.Context(), rolloutCampaign)
 	if errors.Is(err, domain.ErrRolloutStageAlreadyExists) {
 		logger.Warnw("incorrect order indexes for rollout stage", "error", err)
 		handlers.WriteError(w, logger, http.StatusBadRequest, domain.ErrRolloutStageAlreadyExists.Error())

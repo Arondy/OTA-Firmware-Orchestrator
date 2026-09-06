@@ -6,6 +6,7 @@ option go_package = "github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout
 
 service CampaignService {
   rpc GetCampaignStats(GetCampaignStatsRequest) returns (GetCampaignStatsResponse);
+  rpc ForceRollback(ForceRollbackRequest) returns (ForceRollbackResponse);
 }
 
 message GetCampaignStatsRequest {
@@ -17,3 +18,9 @@ message GetCampaignStatsResponse {
   float success_rate = 2;
   int32 sample_size = 3;
 }
+
+message ForceRollbackRequest {
+  string campaign_id = 1;
+}
+
+message ForceRollbackResponse {}

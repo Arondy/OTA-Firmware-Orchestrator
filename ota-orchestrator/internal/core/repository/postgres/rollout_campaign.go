@@ -489,12 +489,12 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 		exec := r.exec(txCtx)
 
 		stageQuery := `
-	SELECT s.order_index, s.status, c.status
-	FROM rollout_stages s
-	JOIN rollout_campaigns c ON c.id = s.campaign_id
-	WHERE s.id = $1 AND s.campaign_id = $2
-	FOR UPDATE
-	`
+		SELECT s.order_index, s.status, c.status
+		FROM rollout_stages s
+		JOIN rollout_campaigns c ON c.id = s.campaign_id
+		WHERE s.id = $1 AND s.campaign_id = $2
+		FOR UPDATE
+		`
 
 		stageRow := exec.QueryRow(txCtx, stageQuery, prevStageID, campaignID)
 
@@ -519,10 +519,10 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 		}
 
 		passedQuery := `
-	UPDATE rollout_stages
-	SET status = 'passed'
-	WHERE id = $1
-	`
+		UPDATE rollout_stages
+		SET status = 'passed'
+		WHERE id = $1
+		`
 
 		_, err = exec.Exec(txCtx, passedQuery, prevStageID)
 		if err != nil {
@@ -530,10 +530,10 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 		}
 
 		activeQuery := `
-	UPDATE rollout_stages
-	SET status = 'active', entered_at = now()
-	WHERE status = 'pending' AND campaign_id = $1 AND order_index = $2
-	`
+		UPDATE rollout_stages
+		SET status = 'active', entered_at = now()
+		WHERE status = 'pending' AND campaign_id = $1 AND order_index = $2
+		`
 
 		ct, err := exec.Exec(txCtx, activeQuery, campaignID, stage.OrderIndex+1)
 		if err != nil {
@@ -541,10 +541,10 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 		}
 		if ct.RowsAffected() == 0 {
 			campaignQuery := `
-		UPDATE rollout_campaigns
-		SET status = 'completed', completed_at = now()
-		WHERE id = $1
-		`
+			UPDATE rollout_campaigns
+			SET status = 'completed', completed_at = now()
+			WHERE id = $1
+			`
 
 			_, err = exec.Exec(txCtx, campaignQuery, campaignID)
 			if err != nil {
@@ -574,12 +574,12 @@ func (r *RolloutCampaignRepo) Rollback(ctx context.Context, campaignID uuid.UUID
 		exec := r.exec(txCtx)
 
 		stageQuery := `
-	SELECT s.status, c.status
-	FROM rollout_stages s
-	JOIN rollout_campaigns c ON c.id = s.campaign_id
-	WHERE s.id = $1 AND s.campaign_id = $2
-	FOR UPDATE
-	`
+		SELECT s.status, c.status
+		FROM rollout_stages s
+		JOIN rollout_campaigns c ON c.id = s.campaign_id
+		WHERE s.id = $1 AND s.campaign_id = $2
+		FOR UPDATE
+		`
 
 		stageRow := exec.QueryRow(txCtx, stageQuery, prevStageID, campaignID)
 
@@ -596,17 +596,17 @@ func (r *RolloutCampaignRepo) Rollback(ctx context.Context, campaignID uuid.UUID
 			return fmt.Errorf("failed to get stage: %w", err)
 		}
 
-		if campaignStatus != domain.RolloutCampaignsStatusRunning {
+		if !(campaignStatus == domain.RolloutCampaignsStatusRunning || campaignStatus == domain.RolloutCampaignsStatusPaused) {
 			return fmt.Errorf("%w: can't rollback %s campaign", domain.ErrRolloutCampaignWrongStatus, campaignStatus)
 		} else if stageStatus != domain.RolloutStagesStatusActive {
 			return fmt.Errorf("%w: can't rollback from %s stage", domain.ErrRolloutStageWrongStatus, stageStatus)
 		}
 
 		failedQuery := `
-	UPDATE rollout_stages
-	SET status = 'failed'
-	WHERE id = $1
-	`
+		UPDATE rollout_stages
+		SET status = 'failed'
+		WHERE id = $1
+		`
 
 		_, err = exec.Exec(txCtx, failedQuery, prevStageID)
 		if err != nil {
@@ -614,10 +614,10 @@ func (r *RolloutCampaignRepo) Rollback(ctx context.Context, campaignID uuid.UUID
 		}
 
 		rollbackQuery := `
-	UPDATE rollout_campaigns
-	SET status = 'rolled_back', completed_at = now()
-	WHERE id = $1
-	`
+		UPDATE rollout_campaigns
+		SET status = 'rolled_back', completed_at = now()
+		WHERE id = $1
+		`
 
 		_, err = exec.Exec(txCtx, rollbackQuery, campaignID)
 		if err != nil {

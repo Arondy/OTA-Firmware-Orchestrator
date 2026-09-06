@@ -65,3 +65,43 @@ Main применяет решение в `TxManager.Do` атомарно в т�
 - Конфиг на koanf читается из `.env` в текущей директории: `go run` запускать из папки сервиса.
 - Graceful shutdown обоих сервисов — `errgroup.WithContext` + `SHUTDOWN_TIMEOUT`.
 - Моки под каталогами вида `*/mocks/` генерирует `mockery` по файлу `.mockery.yaml` командой `task mock` с `GOTOOLCHAIN=go1.26.0`; руками не править.
+
+## Конфигурация
+
+Корневой `.env` - для compose, остальные - для приложений.
+
+| Переменная | Описание |
+|---|---|
+| `POSTGRES_USER`, `POSTGRES_PASSWORD` | креды Postgres для compose и обоих `.env` |
+| `POSTGRES_DB`, `POSTGRES_PORT` | база и порт Postgres |
+| `REDIS_PORT`, `KAFKA_PORT` | порты Redis и Kafka наружу |
+| `KAFKA_TOPIC_PARTITIONS` | число партиций на топик, по умолчанию 3 |
+| `KAFKA_LOG_RETENTION_HOURS` | ретеншн логов Kafka |
+| `KAFKA_UI_PORT` | порт kafka-ui, поднимается профилем `task kafka-ui` |
+| `HTTP_SERVER_HOST`, `HTTP_SERVER_PORT` | адрес main service - `:8080` |
+| `HTTP_SERVER_TIMEOUT` | таймаут graceful shutdown HTTP |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | подключение к Postgres |
+| `DB_SSL_MODE` | SSL-режим, локально `disable` |
+| `DB_MAX_CONNS`, `DB_MIN_CONNS` | размер пула pgx |
+| `DB_MAX_CONN_LIFETIME`, `DB_MAX_CONN_IDLE_TIME` | время жизни соединений |
+| `DB_HEALTH_CHECK_PERIOD` | период health-check пула |
+| `DB_MAX_CONN_LIFETIME_JITTER` | джиттер lifetime |
+| `DB_REQUEST_TIMEOUT` | таймаут одного запроса к БД |
+| `CACHE_HOST`, `CACHE_PORT` | подключение к Redis |
+| `CACHE_DEVICE_CHECKIN_DATA_TTL` | TTL device-hash `checkin_data`, по умолчанию 24h |
+| `CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL` | TTL дедупа `event_id` для контроллера |
+| `BROKER_HOST`, `BROKER_PORT` | подключение к Kafka |
+| `BROKER_BATCH_TIMEOUT` | `BatchTimeout` writer'а |
+| `BROKER_TIMEOUT` | таймаут записи и drain при shutdown |
+| `BROKER_BUFFER_SIZE` | буфер checkin-канала, при переполнении события дропаются |
+| `BROKER_GROUP_ID` | consumer group |
+| `BROKER_MIN_BYTES` | `MinBytes` consumer'а |
+| `ROLLOUT_CONTROLLER_SCHEME` | схема клиента - `http` |
+| `ROLLOUT_CONTROLLER_HOST` | хост контроллера |
+| `ROLLOUT_CONTROLLER_PORT` | порт контроллера - `8090` |
+| `ROLLOUT_CONTROLLER_TIMEOUT` | таймаут `GetCampaignStats` |
+| `SERVER_HOST`, `SERVER_PORT` | адрес контроллера - `:8090` |
+| `SERVER_TIMEOUT` | таймаут graceful shutdown контроллера |
+| `EVALUATOR_FREQUENCY` | период тика evaluator |
+| `EVALUATOR_REQUIRED_STABLE_CYCLES` | стабильных циклов до решения |
+| `SHUTDOWN_TIMEOUT` | graceful shutdown обоих сервисов, 30s |
