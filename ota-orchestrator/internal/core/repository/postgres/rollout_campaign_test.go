@@ -291,8 +291,9 @@ func TestCampaignRollbackWrongCampaignStatus(t *testing.T) {
 	_, err = repo.Pause(context.Background(), c.ID)
 	require.NoError(t, err)
 
-	_, err = repo.Rollback(context.Background(), c.ID, c.RolloutStages[0].ID)
-	require.ErrorIs(t, err, domain.ErrRolloutCampaignWrongStatus)
+	rolled, err := repo.Rollback(context.Background(), c.ID, c.RolloutStages[0].ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.RolloutCampaignsStatusRolledBack, rolled.Status)
 }
 
 func TestAppliedDecision_Idempotency(t *testing.T) {
