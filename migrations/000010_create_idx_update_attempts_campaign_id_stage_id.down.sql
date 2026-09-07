@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_update_attempts_campaign_id_stage_id;
