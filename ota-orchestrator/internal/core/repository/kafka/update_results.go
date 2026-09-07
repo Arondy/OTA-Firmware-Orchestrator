@@ -23,7 +23,7 @@ func NewUpdateResultsProducer(logger *zap.SugaredLogger, config config.BrokerCon
 	addr := kafka.TCP(net.JoinHostPort(config.Host, strconv.Itoa(config.Port)))
 	logger.Debugf("Connecting to UpdateResultsProducer on %s", addr.String())
 
-	if err := Ping(addr.String()); err != nil {
+	if err := Ping(addr.String(), config.Timeout); err != nil {
 		return nil, err
 	}
 
