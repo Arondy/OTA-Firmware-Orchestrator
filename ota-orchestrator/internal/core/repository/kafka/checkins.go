@@ -15,11 +15,13 @@ import (
 )
 
 type CheckinsProducer struct {
-	writer  *kafka.Writer
-	buffer  chan domain.CheckinEvent
-	done    chan struct{}
-	timeout time.Duration
-	logger  *zap.SugaredLogger
+	writer         *kafka.Writer
+	buffer         chan domain.CheckinEvent
+	batch          []kafka.Message
+	batchFlushSize int
+	done           chan struct{}
+	timeout        time.Duration
+	logger         *zap.SugaredLogger
 
 	mu     sync.RWMutex
 	closed bool
@@ -38,14 +40,19 @@ func NewCheckinsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) 
 		Topic:        config.Topic,
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireNone,
+
+		// Для мгновенной отправки, т.к. нет других пишущих в топик горутин
+		BatchTimeout: time.Nanosecond,
 	}
 
 	p := &CheckinsProducer{
-		writer:  writer,
-		buffer:  make(chan domain.CheckinEvent, config.BufferSize),
-		timeout: config.Timeout,
-		done:    make(chan struct{}, 1),
-		logger:  logger,
+		writer:         writer,
+		buffer:         make(chan domain.CheckinEvent, config.BufferSize),
+		batch:          make([]kafka.Message, 0, config.BufferSize),
+		batchFlushSize: config.BufferSize,
+		timeout:        config.Timeout,
+		done:           make(chan struct{}, 1),
+		logger:         logger,
 	}
 
 	go p.run()
@@ -53,26 +60,51 @@ func NewCheckinsProducer(logger *zap.SugaredLogger, config config.BrokerConfig) 
 }
 
 func (p *CheckinsProducer) run() {
-	for event := range p.buffer {
-		value, err := json.Marshal(event)
-		if err != nil {
-			p.logger.Errorw("failed to marshal event", "error", err)
-			continue
-		}
+	ticker := time.Tick(1 * time.Second)
 
-		ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
-		err = p.writer.WriteMessages(ctx, kafka.Message{
-			Key:   event.DeviceID[:],
-			Value: value,
-			Time:  event.Timestamp,
-		})
-		if err != nil {
-			p.logger.Errorw("failed to publish checkin event", "error", err)
-		}
+	for {
+		select {
+		case <-ticker:
+			p.sendBatch()
+		case event, ok := <-p.buffer:
+			if !ok {
+				p.sendBatch()
+				p.done <- struct{}{}
+				return
+			}
 
-		cancel()
+			value, err := json.Marshal(event)
+			if err != nil {
+				p.logger.Errorw("failed to marshal event", "error", err)
+				continue
+			}
+
+			p.batch = append(p.batch, kafka.Message{
+				Key:   event.DeviceID[:],
+				Value: value,
+				Time:  event.Timestamp,
+			})
+
+			if len(p.batch) >= p.batchFlushSize {
+				p.sendBatch()
+			}
+		}
 	}
-	p.done <- struct{}{}
+}
+
+func (p *CheckinsProducer) sendBatch() {
+	if len(p.batch) == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
+	err := p.writer.WriteMessages(ctx, p.batch...)
+	if err != nil {
+		p.logger.Errorw("failed to publish checkin event", "error", err)
+	}
+
+	p.batch = p.batch[:0]
+	cancel()
 }
 
 func (p *CheckinsProducer) Produce(event domain.CheckinEvent) {
