@@ -20,17 +20,18 @@ type UpdateResultsSvc interface {
 }
 
 type UpdateResultsConsumer struct {
-	reader    *kafka.Reader
-	dlqWriter *kafka.Writer
-	svc       UpdateResultsSvc
-	logger    *zap.SugaredLogger
+	reader        *kafka.Reader
+	dlqWriter     *kafka.Writer
+	svc           UpdateResultsSvc
+	logger        *zap.SugaredLogger
+	commitTimeout time.Duration
 }
 
 func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, logger *zap.SugaredLogger) (*UpdateResultsConsumer, error) {
 	addr := net.JoinHostPort(config.Host, strconv.Itoa(config.Port))
 	logger.Debugf("Connecting to UpdateResultsConsumer on %s", addr)
 
-	if err := Ping(addr); err != nil {
+	if err := Ping(addr, config.Timeout); err != nil {
 		return nil, err
 	}
 
@@ -40,7 +41,7 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 		Topic:    config.Topic,
 		MinBytes: config.MinBytes,
 		MaxBytes: 1 << 20,
-		MaxWait:  1 * time.Second,
+		MaxWait:  config.ReaderMaxWait,
 	})
 
 	dlqWriter := &kafka.Writer{
@@ -48,15 +49,16 @@ func NewUpdateResultsConsumer(svc UpdateResultsSvc, config config.BrokerConfig, 
 		Topic:        config.Topic + ".dlq",
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireOne,
-		WriteTimeout: 5 * time.Second,
-		MaxAttempts:  3,
+		WriteTimeout: config.DLQTimeout,
+		MaxAttempts:  config.DLQMaxAttempts,
 	}
 
 	c := &UpdateResultsConsumer{
-		reader:    reader,
-		dlqWriter: dlqWriter,
-		svc:       svc,
-		logger:    logger,
+		reader:        reader,
+		dlqWriter:     dlqWriter,
+		svc:           svc,
+		logger:        logger,
+		commitTimeout: config.CommitTimeout,
 	}
 	return c, nil
 }
@@ -78,7 +80,7 @@ func (c *UpdateResultsConsumer) Run(ctx context.Context) error {
 			logger.Errorw("failed to unmarshal event", "error", err)
 			go c.writeToDLQ(ctx, message, err, false)
 
-			commitCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			commitCtx, cancel := context.WithTimeout(context.Background(), c.commitTimeout)
 			err = c.reader.CommitMessages(commitCtx, message)
 			cancel()
 			if err != nil {
@@ -94,7 +96,7 @@ func (c *UpdateResultsConsumer) Run(ctx context.Context) error {
 		}
 		c.logger.Debugw("updated stage results", "stage_id", event.StageID, "result", event.Result, "updated", updatedCount)
 
-		commitCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		commitCtx, cancel := context.WithTimeout(context.Background(), c.commitTimeout)
 		err = c.reader.CommitMessages(commitCtx, message)
 		cancel()
 		if err != nil {
