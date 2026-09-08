@@ -72,13 +72,17 @@ func newTestConsumer(t *testing.T, svc UpdateResultsSvc) (*UpdateResultsConsumer
 
 	host, port := brokerHostPort()
 	consumer, err := NewUpdateResultsConsumer(svc, config.BrokerConfig{
-		Host:         host,
-		Port:         port,
-		BatchTimeout: 100 * time.Millisecond,
-		Timeout:      10 * time.Second,
-		GroupID:      "integration-consumer-group-" + uuid.New().String(),
-		MinBytes:     1,
-		Topic:        topic,
+		Host:           host,
+		Port:           port,
+		BatchTimeout:   100 * time.Millisecond,
+		Timeout:        10 * time.Second,
+		GroupID:        "integration-consumer-group-" + uuid.New().String(),
+		MinBytes:       1,
+		ReaderMaxWait:  time.Second,
+		CommitTimeout:  2 * time.Second,
+		DLQTimeout:     5 * time.Second,
+		DLQMaxAttempts: 3,
+		Topic:          topic,
 	}, zap.NewNop().Sugar())
 	require.NoError(t, err)
 

@@ -214,6 +214,8 @@ func TestMain(m *testing.M) {
 		Cache: orchestratorconfig.CacheConfig{
 			Host:                 redisHost,
 			Port:                 redisPort,
+			ReadTimeout:          500 * time.Millisecond,
+			WriteTimeout:         500 * time.Millisecond,
 			DeviceCheckinDataTTL: 24 * time.Hour,
 		},
 		Broker: orchestratorconfig.BrokerConfig{
@@ -224,8 +226,12 @@ func TestMain(m *testing.M) {
 			BufferSize:   1024,
 			// Без GroupID kafka-go читает только partition 0, а продюсер
 			// контроллера раскладывает решения по партициям хешем campaign_id.
-			GroupID:  orchestratorGroupID,
-			MinBytes: 1,
+			GroupID:        orchestratorGroupID,
+			MinBytes:       1,
+			ReaderMaxWait:  time.Second,
+			CommitTimeout:  2 * time.Second,
+			DLQTimeout:     5 * time.Second,
+			DLQMaxAttempts: 3,
 		},
 		RolloutController: orchestratorconfig.RolloutControllerConfig{
 			Scheme:  "http",
@@ -316,6 +322,8 @@ func controllerEnv(port int, redisHost string, redisPort int, kafkaHost string, 
 		"SERVER_TIMEOUT=30s",
 		"CACHE_HOST=" + redisHost,
 		fmt.Sprintf("CACHE_PORT=%d", redisPort),
+		"CACHE_READ_TIMEOUT=500ms",
+		"CACHE_WRITE_TIMEOUT=500ms",
 		"CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL=10m",
 		"BROKER_HOST=127.0.0.1",
 		fmt.Sprintf("BROKER_PORT=%d", kafkaPort),
@@ -323,6 +331,10 @@ func controllerEnv(port int, redisHost string, redisPort int, kafkaHost string, 
 		"BROKER_TIMEOUT=10s",
 		"BROKER_GROUP_ID=" + controllerGroupID,
 		"BROKER_MIN_BYTES=1",
+		"BROKER_READER_MAX_WAIT=1s",
+		"BROKER_COMMIT_TIMEOUT=2s",
+		"BROKER_DLQ_TIMEOUT=5s",
+		"BROKER_DLQ_MAX_ATTEMPTS=3",
 		"EVALUATOR_FREQUENCY=1s",
 		"EVALUATOR_REQUIRED_STABLE_CYCLES=3",
 	}

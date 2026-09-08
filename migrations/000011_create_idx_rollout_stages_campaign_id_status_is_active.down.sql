@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_rollout_stages_campaign_id_status_is_active;

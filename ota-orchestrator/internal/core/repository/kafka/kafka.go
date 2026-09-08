@@ -7,11 +7,11 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-func Ping(address string) error {
+func Ping(address string, timeout time.Duration) error {
 	const attempts = 15
 	const pause = time.Second
 	var lastErr error
-	dialer := &kafka.Dialer{Timeout: 5 * time.Second}
+	dialer := &kafka.Dialer{Timeout: timeout}
 
 	for i := range attempts {
 		conn, err := dialer.Dial("tcp", address)

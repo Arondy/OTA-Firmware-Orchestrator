@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
 	"github.com/redis/go-redis/v9"
@@ -18,8 +17,8 @@ func NewRedisClient(ctx context.Context, config config.CacheConfig, logger *zap.
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         addr,
-		ReadTimeout:  500 * time.Millisecond,
-		WriteTimeout: 500 * time.Millisecond,
+		ReadTimeout:  config.ReadTimeout,
+		WriteTimeout: config.WriteTimeout,
 	})
 
 	if err := rdb.Ping(ctx).Err(); err != nil {

@@ -10,4 +10,7 @@
 *.env
 *.dat
 *.db
+*.csv
+*.err
+*.gob
 print_project.py
