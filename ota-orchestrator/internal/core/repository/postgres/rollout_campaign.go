@@ -484,7 +484,7 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
-	var result domain.RolloutCampaign
+	var campaign domain.RolloutCampaign
 	err := r.tm.Do(reqCtx, func(txCtx context.Context) error {
 		exec := r.exec(txCtx)
 
@@ -552,17 +552,16 @@ func (r *RolloutCampaignRepo) AdvanceStage(ctx context.Context, campaignID uuid.
 			}
 		}
 
-		campaign, err := r.Get(txCtx, campaignID)
+		campaign, err = r.Get(txCtx, campaignID)
 		if err != nil {
 			return err
 		}
-		result = campaign
 		return nil
 	})
 	if err != nil {
 		return domain.RolloutCampaign{}, err
 	}
-	return result, nil
+	return campaign, nil
 }
 
 func (r *RolloutCampaignRepo) Rollback(ctx context.Context, campaignID uuid.UUID, prevStageID uuid.UUID) (domain.RolloutCampaign, error) {
