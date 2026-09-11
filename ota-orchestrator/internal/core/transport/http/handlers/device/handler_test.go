@@ -111,21 +111,54 @@ func TestCreateDevice_ServiceFails_Returns500(t *testing.T) {
 func TestListDevices_Success_Returns200(t *testing.T) {
 	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
-	svc.EXPECT().List(mock.Anything).Return([]domain.Device{{ID: uuid.New()}}, nil)
+	svc.EXPECT().List(mock.Anything, domain.DeviceFilters{}).Return([]domain.Device{{ID: uuid.New()}}, nil)
 
 	w := httptest.NewRecorder()
 	h.List(w, newReq(http.MethodGet, ""))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestListDevices_WithFilters_ForwardsFilters(t *testing.T) {
+	t.Parallel()
+	h, svc, _ := newDeviceHandler(t)
+	svc.EXPECT().List(mock.Anything, domain.DeviceFilters{DeviceModel: "model-a", Status: domain.DeviceStatusActive}).Return([]domain.Device{{ID: uuid.New()}}, nil)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?device_model=model-a&status=active"))
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestListDevices_InvalidDeviceModel_Returns400(t *testing.T) {
+	t.Parallel()
+	h, _, _ := newDeviceHandler(t)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?device_model=a"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestListDevices_InvalidStatus_Returns400(t *testing.T) {
+	t.Parallel()
+	h, _, _ := newDeviceHandler(t)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?status=broken"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestListDevices_ServiceFails_Returns500(t *testing.T) {
 	t.Parallel()
 	h, svc, _ := newDeviceHandler(t)
-	svc.EXPECT().List(mock.Anything).Return(nil, assertErr())
+	svc.EXPECT().List(mock.Anything, domain.DeviceFilters{}).Return(nil, assertErr())
 
 	w := httptest.NewRecorder()
 	h.List(w, newReq(http.MethodGet, ""))
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func listReq(query string) *http.Request {
+	req := httptest.NewRequest(http.MethodGet, "/x"+query, nil)
+	return req.WithContext(ctxWithLogger())
 }
 
 // --- Decommission ---

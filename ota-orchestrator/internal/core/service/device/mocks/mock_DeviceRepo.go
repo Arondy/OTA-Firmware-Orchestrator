@@ -172,8 +172,8 @@ func (_c *MockDeviceRepo_Decommission_Call) RunAndReturn(run func(ctx context.Co
 }
 
 // List provides a mock function for the type MockDeviceRepo
-func (_mock *MockDeviceRepo) List(ctx context.Context) ([]domain.Device, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockDeviceRepo) List(ctx context.Context, filters domain.DeviceFilters) ([]domain.Device, error) {
+	ret := _mock.Called(ctx, filters)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -181,18 +181,18 @@ func (_mock *MockDeviceRepo) List(ctx context.Context) ([]domain.Device, error) 
 
 	var r0 []domain.Device
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]domain.Device, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.DeviceFilters) ([]domain.Device, error)); ok {
+		return returnFunc(ctx, filters)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []domain.Device); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.DeviceFilters) []domain.Device); ok {
+		r0 = returnFunc(ctx, filters)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.Device)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, domain.DeviceFilters) error); ok {
+		r1 = returnFunc(ctx, filters)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -206,18 +206,24 @@ type MockDeviceRepo_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockDeviceRepo_Expecter) List(ctx any) *MockDeviceRepo_List_Call {
-	return &MockDeviceRepo_List_Call{Call: _e.mock.On("List", ctx)}
+//   - filters domain.DeviceFilters
+func (_e *MockDeviceRepo_Expecter) List(ctx any, filters any) *MockDeviceRepo_List_Call {
+	return &MockDeviceRepo_List_Call{Call: _e.mock.On("List", ctx, filters)}
 }
 
-func (_c *MockDeviceRepo_List_Call) Run(run func(ctx context.Context)) *MockDeviceRepo_List_Call {
+func (_c *MockDeviceRepo_List_Call) Run(run func(ctx context.Context, filters domain.DeviceFilters)) *MockDeviceRepo_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 domain.DeviceFilters
+		if args[1] != nil {
+			arg1 = args[1].(domain.DeviceFilters)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -228,7 +234,7 @@ func (_c *MockDeviceRepo_List_Call) Return(devices []domain.Device, err error) *
 	return _c
 }
 
-func (_c *MockDeviceRepo_List_Call) RunAndReturn(run func(ctx context.Context) ([]domain.Device, error)) *MockDeviceRepo_List_Call {
+func (_c *MockDeviceRepo_List_Call) RunAndReturn(run func(ctx context.Context, filters domain.DeviceFilters) ([]domain.Device, error)) *MockDeviceRepo_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -31,9 +31,39 @@ func TestFirmwareVersionCreateGetList(t *testing.T) {
 	require.Equal(t, "abc", got.FWChecksum)
 	require.Equal(t, "http://example/fw.bin", got.BinaryUrl)
 
-	list, err := repo.List(context.Background())
+	list, err := repo.List(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, list, 1)
+}
+
+func TestFirmwareVersionListWithDeviceModelFilter(t *testing.T) {
+	resetDB(t)
+	repo := NewFirmwareVersionRepo(testDB)
+	ctx := context.Background()
+
+	_, err := repo.Create(ctx, domain.FirmwareVersion{
+		DeviceModel: "model-a",
+		FWVersion:   "1.0.0",
+		FWChecksum:  "abc",
+		BinaryUrl:   "http://example/fw.bin",
+	})
+	require.NoError(t, err)
+	_, err = repo.Create(ctx, domain.FirmwareVersion{
+		DeviceModel: "model-b",
+		FWVersion:   "1.0.0",
+		FWChecksum:  "def",
+		BinaryUrl:   "http://example/fw2.bin",
+	})
+	require.NoError(t, err)
+
+	list, err := repo.List(ctx, "model-a")
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, "model-a", list[0].DeviceModel)
+
+	list, err = repo.List(ctx, "model-missing")
+	require.NoError(t, err)
+	require.Empty(t, list)
 }
 
 func TestFirmwareVersionDuplicate(t *testing.T) {

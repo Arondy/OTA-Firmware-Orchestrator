@@ -30,10 +30,23 @@ func expectCheckinData(cache *mocks.MockDeviceCacheRepo, data map[uuid.UUID]doma
 func TestList_RepoFails_ReturnsError(t *testing.T) {
 	t.Parallel()
 	repo, cache := newDeviceMocks(t)
-	repo.EXPECT().List(mock.Anything).Return(nil, errors.New("boom"))
+	repo.EXPECT().List(mock.Anything, mock.Anything).Return(nil, errors.New("boom"))
 
-	_, err := newService(repo, cache).List(context.Background())
+	_, err := newService(repo, cache).List(context.Background(), domain.DeviceFilters{})
 	require.Error(t, err)
+}
+
+func TestList_ForwardsFiltersToRepo(t *testing.T) {
+	t.Parallel()
+	repo, cache := newDeviceMocks(t)
+	filters := domain.DeviceFilters{DeviceModel: "model-a", Status: domain.DeviceStatusActive}
+
+	repo.EXPECT().List(mock.Anything, filters).Return([]domain.Device{}, nil)
+	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{}, nil)
+
+	devices, err := newService(repo, cache).List(context.Background(), filters)
+	require.NoError(t, err)
+	require.Empty(t, devices)
 }
 
 func TestList_NoCacheData_ReturnsPostgresValues(t *testing.T) {
@@ -42,10 +55,10 @@ func TestList_NoCacheData_ReturnsPostgresValues(t *testing.T) {
 	id := uuid.New()
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
-	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
+	repo.EXPECT().List(mock.Anything, domain.DeviceFilters{}).Return([]domain.Device{pgDevice}, nil)
 	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{}, nil)
 
-	devices, err := newService(repo, cache).List(context.Background())
+	devices, err := newService(repo, cache).List(context.Background(), domain.DeviceFilters{})
 	require.NoError(t, err)
 	require.Len(t, devices, 1)
 	assert.Equal(t, "1.0.0", devices[0].CurrentVersion)
@@ -60,10 +73,10 @@ func TestList_CacheHasBothFields_OverridesPostgres(t *testing.T) {
 	cachedVersion := "2.0.0"
 	cachedLastSeen := time.Now()
 
-	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
+	repo.EXPECT().List(mock.Anything, domain.DeviceFilters{}).Return([]domain.Device{pgDevice}, nil)
 	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{id: {CurrentVersion: cachedVersion, LastSeen: cachedLastSeen}}, nil)
 
-	devices, err := newService(repo, cache).List(context.Background())
+	devices, err := newService(repo, cache).List(context.Background(), domain.DeviceFilters{})
 	require.NoError(t, err)
 	require.Len(t, devices, 1)
 	assert.Equal(t, cachedVersion, devices[0].CurrentVersion)
@@ -77,10 +90,10 @@ func TestList_CacheHasVersionOnly_OverridesVersion(t *testing.T) {
 	id := uuid.New()
 	pgDevice := domain.Device{ID: id, DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
-	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
+	repo.EXPECT().List(mock.Anything, domain.DeviceFilters{}).Return([]domain.Device{pgDevice}, nil)
 	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{id: {CurrentVersion: "2.0.0"}}, nil)
 
-	devices, err := newService(repo, cache).List(context.Background())
+	devices, err := newService(repo, cache).List(context.Background(), domain.DeviceFilters{})
 	require.NoError(t, err)
 	require.Len(t, devices, 1)
 	assert.Equal(t, "2.0.0", devices[0].CurrentVersion)
@@ -92,10 +105,10 @@ func TestList_CacheMiss_KeepsPostgresValues(t *testing.T) {
 	repo, cache := newDeviceMocks(t)
 	pgDevice := domain.Device{ID: uuid.New(), DeviceModel: "m", CurrentVersion: "1.0.0", LastSeen: nil}
 
-	repo.EXPECT().List(mock.Anything).Return([]domain.Device{pgDevice}, nil)
+	repo.EXPECT().List(mock.Anything, domain.DeviceFilters{}).Return([]domain.Device{pgDevice}, nil)
 	expectCheckinData(cache, map[uuid.UUID]domain.DeviceCheckinData{}, nil)
 
-	devices, err := newService(repo, cache).List(context.Background())
+	devices, err := newService(repo, cache).List(context.Background(), domain.DeviceFilters{})
 	require.NoError(t, err)
 	require.Len(t, devices, 1)
 	assert.Equal(t, "1.0.0", devices[0].CurrentVersion)

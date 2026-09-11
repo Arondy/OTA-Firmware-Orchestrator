@@ -88,21 +88,45 @@ func TestCreateFirmware_ServiceFails_Returns500(t *testing.T) {
 func TestListFirmware_Success_Returns200(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
+	svc.EXPECT().List(mock.Anything, "").Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
 
 	w := httptest.NewRecorder()
 	h.List(w, req(http.MethodGet, ""))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestListFirmware_WithDeviceModel_ForwardsFilter(t *testing.T) {
+	t.Parallel()
+	h, svc := newHandler(t)
+	svc.EXPECT().List(mock.Anything, "model-a").Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?device_model=model-a"))
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestListFirmware_InvalidDeviceModel_Returns400(t *testing.T) {
+	t.Parallel()
+	h, _ := newHandler(t)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?device_model=a"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestListFirmware_ServiceFails_Returns500(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything).Return(nil, assertFwErr())
+	svc.EXPECT().List(mock.Anything, "").Return(nil, assertFwErr())
 
 	w := httptest.NewRecorder()
 	h.List(w, req(http.MethodGet, ""))
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func listReq(query string) *http.Request {
+	r := httptest.NewRequest(http.MethodGet, "/x"+query, nil)
+	return r.WithContext(config.LoggerToContext(r.Context(), zap.NewNop().Sugar()))
 }
 
 func assertFwErr() error {

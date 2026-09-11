@@ -15,11 +15,21 @@ import (
 func TestList_DelegatesToRepo(t *testing.T) {
 	t.Parallel()
 	repo := mocks.NewMockFirmwareVersionRepo(t)
-	repo.EXPECT().List(mock.Anything).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
+	repo.EXPECT().List(mock.Anything, "model-a").Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
 
-	result, err := firmware.NewService(repo).List(context.Background())
+	result, err := firmware.NewService(repo).List(context.Background(), "model-a")
 	require.NoError(t, err)
 	require.Len(t, result, 1)
+}
+
+func TestList_EmptyFilter_DelegatesToRepo(t *testing.T) {
+	t.Parallel()
+	repo := mocks.NewMockFirmwareVersionRepo(t)
+	repo.EXPECT().List(mock.Anything, "").Return([]domain.FirmwareVersion{}, nil)
+
+	result, err := firmware.NewService(repo).List(context.Background(), "")
+	require.NoError(t, err)
+	require.Empty(t, result)
 }
 
 func TestCreate_DelegatesToRepo(t *testing.T) {
