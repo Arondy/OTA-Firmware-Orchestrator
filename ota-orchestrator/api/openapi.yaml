@@ -39,6 +39,21 @@ paths:
         - Devices
       summary: List all devices
       operationId: listDevices
+      parameters:
+        - name: device_model
+          in: query
+          required: false
+          description: Filter by device model
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 64
+        - name: status
+          in: query
+          required: false
+          description: Filter by device status
+          schema:
+            $ref: "#/components/schemas/DeviceStatus"
       responses:
         "200":
           description: List of devices
@@ -46,6 +61,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ListDevicesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalServerError"
     post:
@@ -157,6 +174,15 @@ paths:
         - Firmware
       summary: List all firmware versions
       operationId: listFirmwareVersions
+      parameters:
+        - name: device_model
+          in: query
+          required: false
+          description: Filter by device model
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 64
       responses:
         "200":
           description: List of firmware versions
@@ -164,6 +190,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ListFirmwareVersionsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalServerError"
     post:
