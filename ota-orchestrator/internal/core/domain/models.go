@@ -15,6 +15,11 @@ type Device struct {
 	CreatedAt      time.Time
 }
 
+type DeviceFilters struct {
+	DeviceModel string
+	Status      DeviceStatus
+}
+
 type FirmwareVersion struct {
 	ID          uuid.UUID
 	DeviceModel string

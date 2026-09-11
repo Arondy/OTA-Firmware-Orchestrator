@@ -20,25 +20,36 @@ func NewFirmwareVersionRepo(db *DB) *FirmwareVersionRepo {
 	return &FirmwareVersionRepo{DB: db}
 }
 
-func (r *FirmwareVersionRepo) List(ctx context.Context) ([]domain.FirmwareVersion, error) {
+func (r *FirmwareVersionRepo) List(ctx context.Context, deviceModel string) ([]domain.FirmwareVersion, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
 	exec := r.exec(reqCtx)
 
-	query := `
-	SELECT id, device_model, fw_version, fw_checksum, binary_url, created_at
-	FROM firmware_versions
-	ORDER BY created_at DESC
-	`
+	var rows pgx.Rows
+	var err error
 
-	rows, err := exec.Query(reqCtx, query)
+	if deviceModel == "" {
+		query := `
+		SELECT id, device_model, fw_version, fw_checksum, binary_url, created_at
+		FROM firmware_versions
+		ORDER BY created_at DESC
+		`
+		rows, err = exec.Query(reqCtx, query)
+	} else {
+		query := `
+		SELECT id, device_model, fw_version, fw_checksum, binary_url, created_at
+		FROM firmware_versions WHERE device_model = $1
+		ORDER BY created_at DESC
+		`
+		rows, err = exec.Query(reqCtx, query, deviceModel)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to list firmware versions: %w", err)
 	}
 	defer rows.Close()
 
-	var firmwareVersions []domain.FirmwareVersion
+	firmwareVersions := []domain.FirmwareVersion{}
 	for rows.Next() {
 		var firmwareVersion domain.FirmwareVersion
 		err = rows.Scan(
