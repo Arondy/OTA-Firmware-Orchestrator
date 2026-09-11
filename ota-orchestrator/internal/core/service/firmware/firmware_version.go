@@ -7,7 +7,7 @@ import (
 )
 
 type FirmwareVersionRepo interface {
-	List(ctx context.Context) ([]domain.FirmwareVersion, error)
+	List(ctx context.Context, deviceModel string) ([]domain.FirmwareVersion, error)
 	Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
 }
 
@@ -21,8 +21,8 @@ func NewService(repo FirmwareVersionRepo) *FirmwareVersionService {
 	}
 }
 
-func (s *FirmwareVersionService) List(ctx context.Context) ([]domain.FirmwareVersion, error) {
-	return s.repo.List(ctx)
+func (s *FirmwareVersionService) List(ctx context.Context, deviceModel string) ([]domain.FirmwareVersion, error) {
+	return s.repo.List(ctx, deviceModel)
 }
 
 func (s *FirmwareVersionService) Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error) {
