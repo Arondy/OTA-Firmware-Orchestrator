@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-playground/form/v4"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -64,6 +65,31 @@ func ValidateRequest(w http.ResponseWriter, logger *zap.SugaredLogger, req any) 
 	messages := FormatValidation(valErrs)
 	logger.Warnw("request didn't pass validation", "fields", messages)
 	response := map[string]any{"error": "request didn't pass validation", "fields": messages}
+
+	WriteJSON(w, logger, http.StatusBadRequest, response)
+	return false
+}
+
+func DecodeQueryParams(w http.ResponseWriter, r *http.Request, logger *zap.SugaredLogger, params any) bool {
+	err := Decoder.Decode(params, r.URL.Query())
+	if err == nil {
+		return true
+	}
+
+	decErrs, ok := err.(form.DecodeErrors)
+	if !ok {
+		logger.Errorw("failed to decode query parameters", "error", err)
+		WriteInternalServerError(w, logger)
+		return false
+	}
+
+	keys := make([]string, 0, len(decErrs))
+	for k := range decErrs {
+		keys = append(keys, k)
+	}
+
+	logger.Warnw("invalid request query parameters", "error", err)
+	response := map[string]any{"error": "invalid request query parameters", "params": keys}
 
 	WriteJSON(w, logger, http.StatusBadRequest, response)
 	return false
