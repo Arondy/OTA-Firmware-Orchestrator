@@ -11,10 +11,23 @@ type ListFirmwareVersionsResponse struct {
 	FirmwareVersions []FirmwareVersionResponse `json:"firmware_versions"`
 }
 
+type ListFirmwareVersionsParams struct {
+	DeviceModel string `form:"device_model" validate:"omitempty,min=2,max=64"`
+}
+
 func (h *FirmwareVersionHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
+	params := ListFirmwareVersionsParams{}
 
-	firmwareVersions, err := h.svc.List(r.Context())
+	if !handlers.DecodeQueryParams(w, r, logger, &params) {
+		return
+	}
+
+	if !handlers.ValidateRequest(w, logger, params) {
+		return
+	}
+
+	firmwareVersions, err := h.svc.List(r.Context(), params.DeviceModel)
 	if err != nil {
 		logger.Errorw("failed to list firmware versions", "error", err)
 		handlers.WriteInternalServerError(w, logger)

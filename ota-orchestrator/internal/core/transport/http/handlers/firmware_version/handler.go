@@ -9,7 +9,7 @@ import (
 )
 
 type FirmwareVersionService interface {
-	List(ctx context.Context) ([]domain.FirmwareVersion, error)
+	List(ctx context.Context, deviceModel string) ([]domain.FirmwareVersion, error)
 	Create(ctx context.Context, firmwareVersion domain.FirmwareVersion) (domain.FirmwareVersion, error)
 }
 
