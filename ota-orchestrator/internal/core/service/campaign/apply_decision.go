@@ -15,7 +15,7 @@ func (s *RolloutCampaignService) ApplyDecision(ctx context.Context, decision dom
 	logger = logger.With("decision_id", decision.DecisionID, "previous_stage_id", decision.PreviousStageID)
 
 	isAdvance := decision.DecisionType == domain.DecisionTypeAdvance
-	var committedCampaign *domain.RolloutCampaign
+	var committedCampaign domain.RolloutCampaign
 	var shouldApplyCache bool
 
 	err := s.txManager.Do(ctx, func(txCtx context.Context) error {
@@ -33,22 +33,16 @@ func (s *RolloutCampaignService) ApplyDecision(ctx context.Context, decision dom
 		}
 
 		if isAdvance {
-			campaign, err := s.advanceStage(txCtx, decision.CampaignID, decision.PreviousStageID)
-			if errors.Is(err, domain.ErrRolloutStageWrongStatus) || errors.Is(err, domain.ErrRolloutCampaignWrongStatus) {
-				logger.Debugw("duplicate decision wasn't applied", "error", err)
-				return nil
-			} else if err != nil {
-				return err
-			}
-			committedCampaign = &campaign
+			committedCampaign, err = s.advanceStage(txCtx, decision.CampaignID, decision.PreviousStageID)
 		} else {
-			_, err := s.rollbackStage(txCtx, decision.CampaignID, decision.PreviousStageID)
-			if errors.Is(err, domain.ErrRolloutStageWrongStatus) || errors.Is(err, domain.ErrRolloutCampaignWrongStatus) {
-				logger.Debugw("duplicate decision wasn't applied", "error", err)
-				return nil
-			} else if err != nil {
-				return err
-			}
+			_, err = s.rollbackStage(txCtx, decision.CampaignID, decision.PreviousStageID)
+		}
+
+		if errors.Is(err, domain.ErrRolloutStageWrongStatus) || errors.Is(err, domain.ErrRolloutCampaignWrongStatus) {
+			logger.Debugw("duplicate decision wasn't applied", "error", err)
+			return nil
+		} else if err != nil {
+			return err
 		}
 
 		shouldApplyCache = true
@@ -62,17 +56,9 @@ func (s *RolloutCampaignService) ApplyDecision(ctx context.Context, decision dom
 	}
 
 	if isAdvance {
-		if committedCampaign != nil {
-			s.handleAdvanceCache(ctx, *committedCampaign, decision.PreviousStageID)
-		}
+		s.handleAdvanceCache(ctx, committedCampaign, decision.PreviousStageID)
 	} else {
-		s.campaignCache.RemoveRunningCampaigns(ctx, decision.CampaignID)
-		if err := s.campaignCache.DeleteCheckinData(ctx, decision.CampaignID); err != nil {
-			logger.Warnw("failed to delete checkin data from campaignCache", "error", err)
-		}
-		if err := s.stageCache.DeleteStageStats(ctx, decision.PreviousStageID); err != nil {
-			logger.Warnw("failed to delete stage stats from stageCache", "error", err)
-		}
+		s.deleteCampaignStageCache(ctx, decision.CampaignID, decision.PreviousStageID)
 	}
 
 	return nil
@@ -105,14 +91,10 @@ func (s *RolloutCampaignService) rollbackStage(ctx context.Context, campaignID u
 }
 
 func (s *RolloutCampaignService) handleAdvanceCache(ctx context.Context, campaign domain.RolloutCampaign, prevStageID uuid.UUID) {
+	logger := config.LoggerFromContext(ctx)
+
 	if campaign.Status == domain.RolloutCampaignsStatusCompleted {
-		s.campaignCache.RemoveRunningCampaigns(ctx, campaign.ID)
-		if err := s.stageCache.DeleteStageStats(ctx, prevStageID); err != nil {
-			config.LoggerFromContext(ctx).Warnw("failed to delete stage stats from stageCache", "error", err)
-		}
-		if err := s.campaignCache.DeleteCheckinData(ctx, campaign.ID); err != nil {
-			config.LoggerFromContext(ctx).Warnw("failed to delete checkin data from campaignCache", "error", err)
-		}
+		s.deleteCampaignStageCache(ctx, campaign.ID, prevStageID)
 		return
 	}
 
@@ -127,13 +109,12 @@ func (s *RolloutCampaignService) handleAdvanceCache(ctx context.Context, campaig
 	}
 
 	if !found {
-		logger := config.LoggerFromContext(ctx)
 		logger.Warnw("failed to find active stage to put in campaignCache", "campaign_id", campaign.ID)
 		return
 	}
 
 	if err := s.stageCache.DeleteStageStats(ctx, prevStageID); err != nil {
-		config.LoggerFromContext(ctx).Warnw("failed to delete stage stats from stageCache", "error", err)
+		logger.Warnw("failed to delete stage stats from stageCache", "error", err)
 	}
 	s.setCampaignStageCache(ctx, activeStage)
 }
