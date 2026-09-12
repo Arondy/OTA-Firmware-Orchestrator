@@ -312,8 +312,8 @@ func (_c *MockRolloutCampaignRepo_Get_Call) RunAndReturn(run func(ctx context.Co
 }
 
 // List provides a mock function for the type MockRolloutCampaignRepo
-func (_mock *MockRolloutCampaignRepo) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockRolloutCampaignRepo) List(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error) {
+	ret := _mock.Called(ctx, pagination)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -321,18 +321,18 @@ func (_mock *MockRolloutCampaignRepo) List(ctx context.Context) ([]domain.Rollou
 
 	var r0 []domain.RolloutCampaign
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]domain.RolloutCampaign, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.Pagination) ([]domain.RolloutCampaign, error)); ok {
+		return returnFunc(ctx, pagination)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []domain.RolloutCampaign); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.Pagination) []domain.RolloutCampaign); ok {
+		r0 = returnFunc(ctx, pagination)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.RolloutCampaign)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, domain.Pagination) error); ok {
+		r1 = returnFunc(ctx, pagination)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -346,18 +346,24 @@ type MockRolloutCampaignRepo_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockRolloutCampaignRepo_Expecter) List(ctx any) *MockRolloutCampaignRepo_List_Call {
-	return &MockRolloutCampaignRepo_List_Call{Call: _e.mock.On("List", ctx)}
+//   - pagination domain.Pagination
+func (_e *MockRolloutCampaignRepo_Expecter) List(ctx any, pagination any) *MockRolloutCampaignRepo_List_Call {
+	return &MockRolloutCampaignRepo_List_Call{Call: _e.mock.On("List", ctx, pagination)}
 }
 
-func (_c *MockRolloutCampaignRepo_List_Call) Run(run func(ctx context.Context)) *MockRolloutCampaignRepo_List_Call {
+func (_c *MockRolloutCampaignRepo_List_Call) Run(run func(ctx context.Context, pagination domain.Pagination)) *MockRolloutCampaignRepo_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 domain.Pagination
+		if args[1] != nil {
+			arg1 = args[1].(domain.Pagination)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -368,7 +374,7 @@ func (_c *MockRolloutCampaignRepo_List_Call) Return(rolloutCampaigns []domain.Ro
 	return _c
 }
 
-func (_c *MockRolloutCampaignRepo_List_Call) RunAndReturn(run func(ctx context.Context) ([]domain.RolloutCampaign, error)) *MockRolloutCampaignRepo_List_Call {
+func (_c *MockRolloutCampaignRepo_List_Call) RunAndReturn(run func(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error)) *MockRolloutCampaignRepo_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

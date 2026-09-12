@@ -172,8 +172,8 @@ func (_c *MockRolloutCampaignService_Get_Call) RunAndReturn(run func(ctx context
 }
 
 // List provides a mock function for the type MockRolloutCampaignService
-func (_mock *MockRolloutCampaignService) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockRolloutCampaignService) List(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error) {
+	ret := _mock.Called(ctx, pagination)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -181,18 +181,18 @@ func (_mock *MockRolloutCampaignService) List(ctx context.Context) ([]domain.Rol
 
 	var r0 []domain.RolloutCampaign
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]domain.RolloutCampaign, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.Pagination) ([]domain.RolloutCampaign, error)); ok {
+		return returnFunc(ctx, pagination)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []domain.RolloutCampaign); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, domain.Pagination) []domain.RolloutCampaign); ok {
+		r0 = returnFunc(ctx, pagination)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.RolloutCampaign)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, domain.Pagination) error); ok {
+		r1 = returnFunc(ctx, pagination)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -206,18 +206,24 @@ type MockRolloutCampaignService_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockRolloutCampaignService_Expecter) List(ctx any) *MockRolloutCampaignService_List_Call {
-	return &MockRolloutCampaignService_List_Call{Call: _e.mock.On("List", ctx)}
+//   - pagination domain.Pagination
+func (_e *MockRolloutCampaignService_Expecter) List(ctx any, pagination any) *MockRolloutCampaignService_List_Call {
+	return &MockRolloutCampaignService_List_Call{Call: _e.mock.On("List", ctx, pagination)}
 }
 
-func (_c *MockRolloutCampaignService_List_Call) Run(run func(ctx context.Context)) *MockRolloutCampaignService_List_Call {
+func (_c *MockRolloutCampaignService_List_Call) Run(run func(ctx context.Context, pagination domain.Pagination)) *MockRolloutCampaignService_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 domain.Pagination
+		if args[1] != nil {
+			arg1 = args[1].(domain.Pagination)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -228,7 +234,7 @@ func (_c *MockRolloutCampaignService_List_Call) Return(rolloutCampaigns []domain
 	return _c
 }
 
-func (_c *MockRolloutCampaignService_List_Call) RunAndReturn(run func(ctx context.Context) ([]domain.RolloutCampaign, error)) *MockRolloutCampaignService_List_Call {
+func (_c *MockRolloutCampaignService_List_Call) RunAndReturn(run func(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error)) *MockRolloutCampaignService_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

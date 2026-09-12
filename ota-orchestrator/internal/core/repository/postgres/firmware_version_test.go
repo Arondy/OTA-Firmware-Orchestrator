@@ -31,9 +31,40 @@ func TestFirmwareVersionCreateGetList(t *testing.T) {
 	require.Equal(t, "abc", got.FWChecksum)
 	require.Equal(t, "http://example/fw.bin", got.BinaryUrl)
 
-	list, err := repo.List(context.Background(), "")
+	list, err := repo.List(context.Background(), "", domain.Pagination{})
 	require.NoError(t, err)
 	require.Len(t, list, 1)
+}
+
+func TestFirmwareVersionListWithPagination(t *testing.T) {
+	resetDB(t)
+	repo := NewFirmwareVersionRepo(testDB)
+	ctx := context.Background()
+
+	for _, v := range []string{"1.0.0", "2.0.0", "3.0.0"} {
+		_, err := repo.Create(ctx, domain.FirmwareVersion{
+			DeviceModel: "model-a",
+			FWVersion:   v,
+			FWChecksum:  "abc",
+			BinaryUrl:   "http://example/fw.bin",
+		})
+		require.NoError(t, err)
+	}
+
+	list, err := repo.List(ctx, "", domain.Pagination{Page: 1, Limit: 2})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	require.Equal(t, "3.0.0", list[0].FWVersion)
+	require.Equal(t, "2.0.0", list[1].FWVersion)
+
+	list, err = repo.List(ctx, "", domain.Pagination{Page: 2, Limit: 2})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, "1.0.0", list[0].FWVersion)
+
+	list, err = repo.List(ctx, "", domain.Pagination{Page: 3, Limit: 2})
+	require.NoError(t, err)
+	require.Empty(t, list)
 }
 
 func TestFirmwareVersionListWithDeviceModelFilter(t *testing.T) {
@@ -56,12 +87,12 @@ func TestFirmwareVersionListWithDeviceModelFilter(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	list, err := repo.List(ctx, "model-a")
+	list, err := repo.List(ctx, "model-a", domain.Pagination{})
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	require.Equal(t, "model-a", list[0].DeviceModel)
 
-	list, err = repo.List(ctx, "model-missing")
+	list, err = repo.List(ctx, "model-missing", domain.Pagination{})
 	require.NoError(t, err)
 	require.Empty(t, list)
 }

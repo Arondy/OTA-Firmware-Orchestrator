@@ -88,7 +88,7 @@ func TestCreateFirmware_ServiceFails_Returns500(t *testing.T) {
 func TestListFirmware_Success_Returns200(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything, "").Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
+	svc.EXPECT().List(mock.Anything, "", domain.Pagination{}).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
 
 	w := httptest.NewRecorder()
 	h.List(w, req(http.MethodGet, ""))
@@ -98,10 +98,20 @@ func TestListFirmware_Success_Returns200(t *testing.T) {
 func TestListFirmware_WithDeviceModel_ForwardsFilter(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything, "model-a").Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
+	svc.EXPECT().List(mock.Anything, "model-a", domain.Pagination{}).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
 
 	w := httptest.NewRecorder()
 	h.List(w, listReq("?device_model=model-a"))
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestListFirmware_WithPagination_ForwardsPagination(t *testing.T) {
+	t.Parallel()
+	h, svc := newHandler(t)
+	svc.EXPECT().List(mock.Anything, "", domain.Pagination{Page: 2, Limit: 10}).Return([]domain.FirmwareVersion{{ID: uuid.New()}}, nil)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?page=2&limit=10"))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -114,10 +124,27 @@ func TestListFirmware_InvalidDeviceModel_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+func TestListFirmware_InvalidPagination_Returns400(t *testing.T) {
+	t.Parallel()
+	h, _ := newHandler(t)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?page=-1"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	w = httptest.NewRecorder()
+	h.List(w, listReq("?limit=1000"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	w = httptest.NewRecorder()
+	h.List(w, listReq("?page=abc"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestListFirmware_ServiceFails_Returns500(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything, "").Return(nil, assertFwErr())
+	svc.EXPECT().List(mock.Anything, "", domain.Pagination{}).Return(nil, assertFwErr())
 
 	w := httptest.NewRecorder()
 	h.List(w, req(http.MethodGet, ""))
