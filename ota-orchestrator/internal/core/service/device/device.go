@@ -10,7 +10,7 @@ import (
 )
 
 type DeviceRepo interface {
-	List(ctx context.Context, filters domain.DeviceFilters) ([]domain.Device, error)
+	List(ctx context.Context, filters domain.DeviceFilters, pagination domain.Pagination) ([]domain.Device, error)
 	Create(ctx context.Context, device domain.Device) (domain.Device, error)
 	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
 }
@@ -31,8 +31,8 @@ func NewService(repo DeviceRepo, cache DeviceCacheRepo) *DeviceService {
 	}
 }
 
-func (s *DeviceService) List(ctx context.Context, filters domain.DeviceFilters) ([]domain.Device, error) {
-	devices, err := s.repo.List(ctx, filters)
+func (s *DeviceService) List(ctx context.Context, filters domain.DeviceFilters, pagination domain.Pagination) ([]domain.Device, error) {
+	devices, err := s.repo.List(ctx, filters, pagination)
 	if err != nil {
 		return nil, err
 	}
