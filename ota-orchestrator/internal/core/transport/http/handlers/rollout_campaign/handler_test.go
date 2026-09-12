@@ -41,6 +41,11 @@ func withID(r *http.Request, id uuid.UUID) *http.Request {
 	return r
 }
 
+func listReq(query string) *http.Request {
+	r := httptest.NewRequest(http.MethodGet, "/x"+query, nil)
+	return r.WithContext(config.LoggerToContext(r.Context(), zap.NewNop().Sugar()))
+}
+
 func validCreateBody() string {
 	b, _ := json.Marshal(map[string]any{
 		"firmware_version_id": uuid.New().String(),
@@ -163,17 +168,40 @@ func TestGetCampaign_Success_Returns200WithStagesAndStats(t *testing.T) {
 func TestListCampaigns_Success_Returns200(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything).Return([]domain.RolloutCampaign{{ID: uuid.New()}}, nil)
+	svc.EXPECT().List(mock.Anything, domain.Pagination{}).Return([]domain.RolloutCampaign{{ID: uuid.New()}}, nil)
 
 	w := httptest.NewRecorder()
 	h.List(w, req(http.MethodGet, ""))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestListCampaigns_WithPagination_ForwardsPagination(t *testing.T) {
+	t.Parallel()
+	h, svc := newHandler(t)
+	svc.EXPECT().List(mock.Anything, domain.Pagination{Page: 2, Limit: 10}).Return([]domain.RolloutCampaign{{ID: uuid.New()}}, nil)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?page=2&limit=10"))
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestListCampaigns_InvalidPagination_Returns400(t *testing.T) {
+	t.Parallel()
+	h, _ := newHandler(t)
+
+	w := httptest.NewRecorder()
+	h.List(w, listReq("?page=-1"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	w = httptest.NewRecorder()
+	h.List(w, listReq("?limit=1000"))
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestListCampaigns_ServiceFails_Returns500(t *testing.T) {
 	t.Parallel()
 	h, svc := newHandler(t)
-	svc.EXPECT().List(mock.Anything).Return(nil, errors.New("boom"))
+	svc.EXPECT().List(mock.Anything, domain.Pagination{}).Return(nil, errors.New("boom"))
 
 	w := httptest.NewRecorder()
 	h.List(w, req(http.MethodGet, ""))

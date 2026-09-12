@@ -30,7 +30,7 @@ func TestDeviceCreateGetList(t *testing.T) {
 	require.Equal(t, "model-a", got.DeviceModel)
 	require.Equal(t, "1.0.0", got.CurrentVersion)
 
-	list, err := repo.List(context.Background())
+	list, err := repo.List(context.Background(), domain.DeviceFilters{}, domain.Pagination{})
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	require.Equal(t, created.ID, list[0].ID)
@@ -45,11 +45,72 @@ func TestDevicesAreListedNewestFirst(t *testing.T) {
 	second, err := repo.Create(context.Background(), domain.Device{DeviceModel: "m", CurrentVersion: "2"})
 	require.NoError(t, err)
 
-	list, err := repo.List(context.Background())
+	list, err := repo.List(context.Background(), domain.DeviceFilters{}, domain.Pagination{})
 	require.NoError(t, err)
 	require.Len(t, list, 2)
 	require.Equal(t, second.ID, list[0].ID)
 	require.Equal(t, first.ID, list[1].ID)
+}
+
+func TestDeviceListWithPagination(t *testing.T) {
+	resetDB(t)
+	repo := NewDeviceRepo(testDB)
+	ctx := context.Background()
+
+	first, err := repo.Create(ctx, domain.Device{DeviceModel: "m", CurrentVersion: "1"})
+	require.NoError(t, err)
+	second, err := repo.Create(ctx, domain.Device{DeviceModel: "m", CurrentVersion: "2"})
+	require.NoError(t, err)
+	third, err := repo.Create(ctx, domain.Device{DeviceModel: "m", CurrentVersion: "3"})
+	require.NoError(t, err)
+
+	list, err := repo.List(ctx, domain.DeviceFilters{}, domain.Pagination{Page: 1, Limit: 2})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	require.Equal(t, third.ID, list[0].ID)
+	require.Equal(t, second.ID, list[1].ID)
+
+	list, err = repo.List(ctx, domain.DeviceFilters{}, domain.Pagination{Page: 2, Limit: 2})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, first.ID, list[0].ID)
+
+	list, err = repo.List(ctx, domain.DeviceFilters{}, domain.Pagination{Page: 3, Limit: 2})
+	require.NoError(t, err)
+	require.Empty(t, list)
+}
+
+func TestDeviceListWithFilters(t *testing.T) {
+	resetDB(t)
+	repo := NewDeviceRepo(testDB)
+	ctx := context.Background()
+
+	activeA, err := repo.Create(ctx, domain.Device{DeviceModel: "model-a", CurrentVersion: "1.0.0"})
+	require.NoError(t, err)
+	activeB, err := repo.Create(ctx, domain.Device{DeviceModel: "model-b", CurrentVersion: "1.0.0"})
+	require.NoError(t, err)
+	decommissioned, err := repo.Create(ctx, domain.Device{DeviceModel: "model-a", CurrentVersion: "1.0.0"})
+	require.NoError(t, err)
+	_, err = repo.Decommission(ctx, decommissioned.ID)
+	require.NoError(t, err)
+
+	list, err := repo.List(ctx, domain.DeviceFilters{DeviceModel: "model-a"}, domain.Pagination{})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+
+	list, err = repo.List(ctx, domain.DeviceFilters{Status: domain.DeviceStatusActive}, domain.Pagination{})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	require.ElementsMatch(t, []uuid.UUID{activeA.ID, activeB.ID}, []uuid.UUID{list[0].ID, list[1].ID})
+
+	list, err = repo.List(ctx, domain.DeviceFilters{DeviceModel: "model-a", Status: domain.DeviceStatusActive}, domain.Pagination{})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, activeA.ID, list[0].ID)
+
+	list, err = repo.List(ctx, domain.DeviceFilters{DeviceModel: "model-b", Status: domain.DeviceStatusDecommissioned}, domain.Pagination{})
+	require.NoError(t, err)
+	require.Empty(t, list)
 }
 
 func TestDeviceGetNotFound(t *testing.T) {

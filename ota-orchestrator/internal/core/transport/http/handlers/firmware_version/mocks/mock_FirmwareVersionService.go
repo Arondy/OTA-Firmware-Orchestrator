@@ -105,8 +105,8 @@ func (_c *MockFirmwareVersionService_Create_Call) RunAndReturn(run func(ctx cont
 }
 
 // List provides a mock function for the type MockFirmwareVersionService
-func (_mock *MockFirmwareVersionService) List(ctx context.Context) ([]domain.FirmwareVersion, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockFirmwareVersionService) List(ctx context.Context, deviceModel string, pagination domain.Pagination) ([]domain.FirmwareVersion, error) {
+	ret := _mock.Called(ctx, deviceModel, pagination)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -114,18 +114,18 @@ func (_mock *MockFirmwareVersionService) List(ctx context.Context) ([]domain.Fir
 
 	var r0 []domain.FirmwareVersion
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]domain.FirmwareVersion, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.Pagination) ([]domain.FirmwareVersion, error)); ok {
+		return returnFunc(ctx, deviceModel, pagination)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []domain.FirmwareVersion); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.Pagination) []domain.FirmwareVersion); ok {
+		r0 = returnFunc(ctx, deviceModel, pagination)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.FirmwareVersion)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain.Pagination) error); ok {
+		r1 = returnFunc(ctx, deviceModel, pagination)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -139,18 +139,30 @@ type MockFirmwareVersionService_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockFirmwareVersionService_Expecter) List(ctx any) *MockFirmwareVersionService_List_Call {
-	return &MockFirmwareVersionService_List_Call{Call: _e.mock.On("List", ctx)}
+//   - deviceModel string
+//   - pagination domain.Pagination
+func (_e *MockFirmwareVersionService_Expecter) List(ctx any, deviceModel any, pagination any) *MockFirmwareVersionService_List_Call {
+	return &MockFirmwareVersionService_List_Call{Call: _e.mock.On("List", ctx, deviceModel, pagination)}
 }
 
-func (_c *MockFirmwareVersionService_List_Call) Run(run func(ctx context.Context)) *MockFirmwareVersionService_List_Call {
+func (_c *MockFirmwareVersionService_List_Call) Run(run func(ctx context.Context, deviceModel string, pagination domain.Pagination)) *MockFirmwareVersionService_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 domain.Pagination
+		if args[2] != nil {
+			arg2 = args[2].(domain.Pagination)
+		}
 		run(
 			arg0,
+			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -161,7 +173,7 @@ func (_c *MockFirmwareVersionService_List_Call) Return(firmwareVersions []domain
 	return _c
 }
 
-func (_c *MockFirmwareVersionService_List_Call) RunAndReturn(run func(ctx context.Context) ([]domain.FirmwareVersion, error)) *MockFirmwareVersionService_List_Call {
+func (_c *MockFirmwareVersionService_List_Call) RunAndReturn(run func(ctx context.Context, deviceModel string, pagination domain.Pagination) ([]domain.FirmwareVersion, error)) *MockFirmwareVersionService_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

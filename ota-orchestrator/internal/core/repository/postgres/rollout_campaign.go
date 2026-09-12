@@ -20,7 +20,7 @@ func NewRolloutCampaignRepo(db *DB) *RolloutCampaignRepo {
 	return &RolloutCampaignRepo{DB: db}
 }
 
-func (r *RolloutCampaignRepo) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
+func (r *RolloutCampaignRepo) List(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
@@ -29,10 +29,11 @@ func (r *RolloutCampaignRepo) List(ctx context.Context) ([]domain.RolloutCampaig
 	query := `
 	SELECT id, firmware_version_id, device_model, status, created_at, started_at, completed_at
 	FROM rollout_campaigns
-	ORDER BY created_at DESC
+	ORDER BY created_at DESC, id DESC
 	`
 
-	rows, err := exec.Query(reqCtx, query)
+	query, args := r.addPagination(query, []any{}, pagination)
+	rows, err := exec.Query(reqCtx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list rollout campaigns: %w", err)
 	}
@@ -400,7 +401,7 @@ func (r *RolloutCampaignRepo) ListRunning(ctx context.Context) ([]domain.Rollout
 	SELECT id, firmware_version_id, device_model, status, created_at, started_at, completed_at
 	FROM rollout_campaigns
 	WHERE status = 'running'
-	ORDER BY created_at DESC
+	ORDER BY created_at DESC, id DESC
 	`
 
 	rows, err := exec.Query(reqCtx, query)

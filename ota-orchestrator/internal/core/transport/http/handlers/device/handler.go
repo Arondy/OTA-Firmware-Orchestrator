@@ -9,7 +9,7 @@ import (
 )
 
 type DeviceService interface {
-	List(ctx context.Context) ([]domain.Device, error)
+	List(ctx context.Context, filters domain.DeviceFilters, pagination domain.Pagination) ([]domain.Device, error)
 	Create(ctx context.Context, device domain.Device) (domain.Device, error)
 	Decommission(ctx context.Context, id uuid.UUID) (domain.Device, error)
 }

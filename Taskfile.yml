@@ -30,6 +30,12 @@ tasks:
     cmds:
       - docker compose stop
 
+  build:
+    desc: Build Docker images
+    cmds:
+      - docker build -f ota-orchestrator/Dockerfile -t ota-orchestrator .
+      - docker build -f rollout-controller/Dockerfile -t rollout-controller .
+
   migrate:
     desc: Apply migrations
     cmds:

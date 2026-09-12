@@ -8,10 +8,13 @@ import (
 	"strings"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
+	"github.com/go-playground/form/v4"
 	"github.com/go-playground/validator/v10"
 )
 
 var Validate = validator.New()
+var Decoder = form.NewDecoder()
+var paginationLimit = 100
 
 // https://regex101.com/r/Ly7O1x/3/
 var semverRegex = regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
@@ -19,6 +22,9 @@ var semverRegex = regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\
 func init() {
 	Validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name, _, _ := strings.Cut(fld.Tag.Get("json"), ",")
+		if name == "" {
+			name, _, _ = strings.Cut(fld.Tag.Get("form"), ",")
+		}
 		if name == "-" {
 			return ""
 		}
@@ -27,6 +33,21 @@ func init() {
 	Validate.RegisterValidation("semver", validateSemver)
 	Validate.RegisterValidation("rollout_stages", validateRolloutStages)
 	Validate.RegisterValidation("update_attempt_result", validateUpdateAttemptResult)
+	Validate.RegisterValidation("device_status", validateDeviceStatus)
+	Validate.RegisterValidation("pagination_limit", validatePaginationLimit)
+}
+
+func SetPaginationLimit(limit int) {
+	paginationLimit = limit
+}
+
+func validatePaginationLimit(fl validator.FieldLevel) bool {
+	value, ok := fl.Field().Interface().(int)
+	if !ok {
+		return false
+	}
+
+	return value <= paginationLimit
 }
 
 func validateSemver(fl validator.FieldLevel) bool {
@@ -65,6 +86,12 @@ func validateUpdateAttemptResult(fl validator.FieldLevel) bool {
 	return result.IsValid()
 }
 
+func validateDeviceStatus(fl validator.FieldLevel) bool {
+	deviceStatusString := fl.Field().String()
+	result := domain.DeviceStatus(deviceStatusString)
+	return result.IsValid()
+}
+
 func FormatValidation(valErrs validator.ValidationErrors) map[string]string {
 	messages := make(map[string]string, len(valErrs))
 
@@ -100,6 +127,16 @@ func FormatValidation(valErrs validator.ValidationErrors) map[string]string {
 			}
 
 			messages[field] = fmt.Sprintf("Result must be one of %s", strings.Join(quoted, ", "))
+		case "device_status":
+			results := domain.GetAllValidDeviceStatuses()
+			quoted := make([]string, len(results))
+			for i, r := range results {
+				quoted[i] = fmt.Sprintf("'%s'", r)
+			}
+
+			messages[field] = fmt.Sprintf("Status must be one of %s", strings.Join(quoted, ", "))
+		case "pagination_limit":
+			messages[field] = fmt.Sprintf("Field must be at most %d", paginationLimit)
 		default:
 			messages[field] = "Field is invalid"
 		}

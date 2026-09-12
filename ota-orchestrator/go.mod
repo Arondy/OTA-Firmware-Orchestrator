@@ -7,6 +7,7 @@ require (
 	github.com/Arondy/OTA-Firmware-Orchestrator/api/gen v0.0.1
 	github.com/Arondy/OTA-Firmware-Orchestrator/testutil v0.0.0
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/go-playground/form/v4 v4.3.1
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6

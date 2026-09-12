@@ -47,10 +47,6 @@ func (m *campaignMocks) service() *campaign.RolloutCampaignService {
 	return campaign.NewService(m.campaignRepo, m.firmwareRepo, m.decisionRepo, &stubTxManager{}, m.cache, m.stageCache, m.controller)
 }
 
-func (m *campaignMocks) serviceWithTx(tx campaign.TxManager) *campaign.RolloutCampaignService {
-	return campaign.NewService(m.campaignRepo, m.firmwareRepo, m.decisionRepo, tx, m.cache, m.stageCache, m.controller)
-}
-
 func advanceDecision(campaignID, prevStageID uuid.UUID) domain.DecisionEvent {
 	return domain.DecisionEvent{
 		DecisionID:      uuid.New(),
@@ -677,9 +673,10 @@ func TestList_DelegatesToRepo(t *testing.T) {
 	t.Parallel()
 	m := newCampaignMocks(t)
 	id := uuid.New()
-	m.campaignRepo.EXPECT().List(mock.Anything).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
+	pagination := domain.Pagination{Page: 2, Limit: 10}
+	m.campaignRepo.EXPECT().List(mock.Anything, pagination).Return([]domain.RolloutCampaign{campaignWithStages(id, domain.RolloutCampaignsStatusRunning, nil)}, nil)
 
-	result, err := m.service().List(context.Background())
+	result, err := m.service().List(context.Background(), pagination)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 }

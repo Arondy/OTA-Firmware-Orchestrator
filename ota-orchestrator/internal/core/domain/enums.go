@@ -15,6 +15,10 @@ func (s DeviceStatus) IsValid() bool {
 	return false
 }
 
+func GetAllValidDeviceStatuses() []DeviceStatus {
+	return []DeviceStatus{DeviceStatusActive, DeviceStatusDecommissioned}
+}
+
 type RolloutCampaignsStatus string
 
 const (

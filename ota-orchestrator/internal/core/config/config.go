@@ -46,6 +46,7 @@ type DBConfig struct {
 	HealthCheckPeriod     time.Duration `koanf:"DB_HEALTH_CHECK_PERIOD"`
 	MaxConnLifetimeJitter time.Duration `koanf:"DB_MAX_CONN_LIFETIME_JITTER"`
 	RequestTimeout        time.Duration `koanf:"DB_REQUEST_TIMEOUT" validate:"required"`
+	PaginationLimit       int           `koanf:"DB_PAGINATION_LIMIT" validate:"required,gt=0"`
 }
 
 func (c DBConfig) ConnString() string {

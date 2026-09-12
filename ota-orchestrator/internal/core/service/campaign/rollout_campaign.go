@@ -12,7 +12,7 @@ import (
 )
 
 type RolloutCampaignRepo interface {
-	List(ctx context.Context) ([]domain.RolloutCampaign, error)
+	List(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error)
 	Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error)
 	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
@@ -76,8 +76,8 @@ func NewService(campaignRepo RolloutCampaignRepo, firmwareRepo FirmwareVersionRe
 	}
 }
 
-func (s *RolloutCampaignService) List(ctx context.Context) ([]domain.RolloutCampaign, error) {
-	return s.campaignRepo.List(ctx)
+func (s *RolloutCampaignService) List(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error) {
+	return s.campaignRepo.List(ctx, pagination)
 }
 
 func (s *RolloutCampaignService) Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error) {

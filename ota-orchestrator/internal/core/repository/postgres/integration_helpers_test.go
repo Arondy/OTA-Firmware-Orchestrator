@@ -67,7 +67,7 @@ func TestMain(m *testing.M) {
 		terminateAndFatal("failed to apply migrations: %v", err)
 	}
 
-	testDB = &DB{pool: pool, tm: NewTxManager(pool), requestTimeout: 10 * time.Second}
+	testDB = &DB{pool: pool, tm: NewTxManager(pool), requestTimeout: 10 * time.Second, paginationLimit: 100}
 
 	code := m.Run()
 

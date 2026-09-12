@@ -57,7 +57,7 @@
 
 Evaluator из `service/evaluator` работает по тикеру `EVALUATOR_FREQUENCY`: на каждую кампанию из `running_campaigns` читает `current_stage` как поле `stage_id` hash `checkin_data`, считает `success_rate` через `GetCampaignStats` с MGet счётчиков, а также пороги стадии. Если `sample_size` меньше `min`, возвращает `ErrNotEnoughSamples` и пропускает кампанию. Иначе при `success_rate` не ниже `threshold` решает `advance_stage`, иначе — `rollback`. Стабильность отслеживает сравнением с ключом `campaign:{id}:decision`: при смене решения сбрасывает `stable_cycles`, иначе делает `INCR`; когда число циклов достигает `EVALUATOR_REQUIRED_STABLE_CYCLES`, публикует `DecisionEvent` и чистит оба ключа.
 
-Main применяет решение в `TxManager.Do` атомарно в три шага: проверка `applied_decisions`, затем `Create` и `AdvanceStage` либо `Rollback`, а после коммита обновляет Redis: при `advance` с найденной стадией сдвигает проекцию через удаление кэша старой стадии вызовом `deleteStageCache` и запись новой вызовом `setCampaignStageCache`, а при `advance` без следующей стадии и при `rollback` вызывает `RemoveRunningCampaigns` и чистит кэши.
+Main применяет решение в `TxManager.Do` атомарно в три шага: проверка `applied_decisions`, затем `Create` и `AdvanceStage` либо `Rollback`, а после коммита обновляет Redis: при `advance` с найденной стадией сдвигает проекцию через удаление stats старой стадии и запись новой вызовом `setCampaignStageCache`, а при `advance` без следующей стадии и при `rollback` - общий хелпер `deleteCampaignStageCache` (`RemoveRunningCampaigns` + `DeleteCheckinData` + `DeleteStageStats`, ошибки только warn).
 
 ## Сквозные соглашения
 
@@ -78,6 +78,8 @@ Main применяет решение в `TxManager.Do` атомарно в т�
 | `KAFKA_TOPIC_PARTITIONS` | число партиций на топик, по умолчанию 3 |
 | `KAFKA_LOG_RETENTION_HOURS` | ретеншн логов Kafka |
 | `KAFKA_UI_PORT` | порт kafka-ui, поднимается профилем `task kafka-ui` |
+| `OTA_ORCHESTRATOR_PORT`, `HTTP_SERVER_PORT` | проброс `:8080` контейнера оркестратора наружу: первый - порт хоста, второй - порт контейнера |
+| `ROLLOUT_CONTROLLER_PORT` | порт контроллера в compose - `8090` |
 | `HTTP_SERVER_HOST`, `HTTP_SERVER_PORT` | адрес main service - `:8080` |
 | `HTTP_SERVER_TIMEOUT` | таймаут graceful shutdown HTTP |
 | `DB_HOST`, `DB_PORT`, `DB_NAME` | подключение к Postgres |
@@ -87,6 +89,7 @@ Main применяет решение в `TxManager.Do` атомарно в т�
 | `DB_HEALTH_CHECK_PERIOD` | период health-check пула |
 | `DB_MAX_CONN_LIFETIME_JITTER` | джиттер lifetime |
 | `DB_REQUEST_TIMEOUT` | таймаут одного запроса к БД |
+| `DB_PAGINATION_LIMIT` | дефолт и cap `limit` для всех List-методов; превышение в HTTP - `400`, репозиторий дополнительно клампит |
 | `CACHE_HOST`, `CACHE_PORT` | подключение к Redis |
 | `CACHE_DEVICE_CHECKIN_DATA_TTL` | TTL device-hash `checkin_data`, по умолчанию 24h |
 | `CACHE_CAMPAIGN_EVENT_ID_SEEN_TTL` | TTL дедупа `event_id` для контроллера |

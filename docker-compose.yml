@@ -1,4 +1,69 @@
 services:
+  ota-orchestrator:
+    image: ota-orchestrator:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ota-orchestrator/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rollout-controller:
+        condition: service_healthy
+    env_file:
+      - ./ota-orchestrator/.env
+    environment:
+      HTTP_SERVER_HOST: 0.0.0.0
+      HTTP_SERVER_PORT: ${HTTP_SERVER_PORT:?}
+      ROLLOUT_CONTROLLER_HOST: rollout-controller
+      ROLLOUT_CONTROLLER_PORT: ${ROLLOUT_CONTROLLER_PORT:?}
+      DB_HOST: postgres
+      CACHE_HOST: redis
+      BROKER_HOST: kafka
+      BROKER_PORT: 9092
+      DB_USER: ${POSTGRES_USER:?}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?}
+      DB_NAME: ${POSTGRES_DB:?}
+      DB_PORT: 5432
+    ports:
+      - "${OTA_ORCHESTRATOR_PORT:?}:${HTTP_SERVER_PORT:?}"
+    healthcheck:
+      test: [ "CMD", "/usr/bin/curl", "-f", "http://localhost:${HTTP_SERVER_PORT:?}/healthz" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  rollout-controller:
+    image: rollout-controller:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: rollout-controller/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file:
+      - ./rollout-controller/.env
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: ${ROLLOUT_CONTROLLER_PORT:?}
+      CACHE_HOST: redis
+      BROKER_HOST: kafka
+      BROKER_PORT: 9092
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "-X", "POST", "http://localhost:${ROLLOUT_CONTROLLER_PORT:?}/health.v1.HealthService/CheckHealth", "-H", "Content-Type: application/json", "-d", "{}" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
@@ -9,7 +74,7 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       start_period: 5s
@@ -68,7 +133,7 @@ services:
 
       # Data
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS:-0}
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS:-24}
     ports:
       - "${KAFKA_PORT}:29092"
     volumes:

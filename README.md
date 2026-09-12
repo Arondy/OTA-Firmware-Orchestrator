@@ -59,6 +59,7 @@ curl -X POST http://localhost:8090/health.v1.HealthService/CheckHealth \
 > [!NOTE]
 > Топики Kafka не создаются автоматически, так как выставлен флаг `KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`, и без `task kafka-init` main service не стартует.
 > Конфиг читается из `.env` в текущей директории - запуск только из папки сервиса, `task run-*` уже делает это.
+> `docker compose up -d` поднимает и контейнеры приложений. Отдельная сборка образов приложений возможна через `task build`.
 
 ## Демо
 
@@ -106,6 +107,13 @@ curl -s $BASE/campaigns/$CAMP | \
   python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])' # rolled_back после применения решения
 ```
 
+```bash
+# Фильтры и пагинация списков: devices - по модели и статусу, firmware - по модели; везде - page/limit
+curl -s "$BASE/devices?device_model=esp32-temp&status=active&page=1&limit=10" | python3 -m json.tool
+curl -s "$BASE/firmware?device_model=esp32-temp&limit=5" | python3 -m json.tool
+curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
+```
+
 > [!TIP]
 > `update_available:false` после checkin - чаще всего так задумано: bucket `hash(device_id + campaign_id) % 100` вне `target_percent` стадии, либо устройство уже на целевой версии.
 > `stage_id` из ответа checkin возвращается в report без изменений.
@@ -114,9 +122,9 @@ curl -s $BASE/campaigns/$CAMP | \
 
 Полное ТЗ - в [`Задание/ТЗ.md`](Задание/ТЗ.md), план этапов - в [`Задание/Этапы.md`](Задание/Этапы.md).
 
-- **Устройства** - регистрация, список, вывод из эксплуатации
-- **Реестр прошивок** - semver + sha256 + URL бинарника, защита от дублей пары модель/версия
-- **Кампании со стадиями** - создание с упорядоченными стадиями одним запросом; цикл `draft - running - paused - running - completed`
+- **Устройства** - регистрация, список с фильтром по модели/статусу и пагинацией, вывод из эксплуатации
+- **Реестр прошивок** - semver + sha256 + URL бинарника, защита от дублей пары модель/версия, список с фильтром по модели и пагинацией
+- **Кампании со стадиями** - создание с упорядоченными стадиями одним запросом, список с пагинацией; цикл `draft - running - paused - running - completed`
 - **Checkin на Redis** - активная стадия читается из кэша, событие уходит в Kafka fire-and-forget, ответ не ждёт брокер
 - **Report** - `success`/`failure`/`timeout`, каждый результат с уникальным `event_id` пишется в `update_attempts`
 - **Живые метрики** - `GET /campaigns/{id}` отдаёт `stats` с долей успеха и размером выборки; без контроллера - без `stats`
@@ -156,19 +164,20 @@ curl -s $BASE/campaigns/$CAMP | \
 
 Все маршруты, кроме healthcheck, - с префиксом `/api/v1`.
 Полная спецификация - [`ota-orchestrator/api/openapi.yaml`](ota-orchestrator/api/openapi.yaml).
+Пагинация списков: `page` начинается с 1 и без параметра равен 1, `limit` без параметра равен серверному `DB_PAGINATION_LIMIT`, в `.env.example` это 100, превышать его нельзя - иначе `400`; сортировка везде от новых к старым.
 
 | Метод | Путь | Описание |
 |---|---|---|
 | `GET` | `/healthz` | здоровье main service |
 | `POST` | `/api/v1/devices` | регистрация устройства |
-| `GET` | `/api/v1/devices` | список с `last_seen` из Redis |
+| `GET` | `/api/v1/devices` | список: `?device_model=&status=&page=&limit=`, `last_seen` из Redis |
 | `POST` | `/api/v1/devices/{id}/decommission` | вывод из эксплуатации |
 | `POST` | `/api/v1/devices/{id}/checkin` | проверка обновлений |
 | `POST` | `/api/v1/devices/{id}/report` | результат установки |
 | `POST` | `/api/v1/firmware` | регистрация прошивки |
-| `GET` | `/api/v1/firmware` | список прошивок |
+| `GET` | `/api/v1/firmware` | список: `?device_model=&page=&limit=` |
 | `POST` | `/api/v1/campaigns` | создание кампании со стадиями |
-| `GET` | `/api/v1/campaigns` | список кампаний |
+| `GET` | `/api/v1/campaigns` | список: `?page=&limit=` |
 | `GET` | `/api/v1/campaigns/{id}` | кампания + `stats` контроллера |
 | `POST` | `/api/v1/campaigns/{id}/start` | запуск: перевод `draft - running` |
 | `POST` | `/api/v1/campaigns/{id}/pause` | пауза: перевод `running - paused` |
@@ -236,7 +245,7 @@ curl -s $BASE/campaigns/$CAMP | \
 | 6 | Evaluator, consumer решений в main | Готово |
 | 7 | Ручной откат через ForceRollback | Готово |
 | 8 | Индексация и устойчивость | Готово |
-| 9 | Полный compose-стек и frontend | ... |
+| 9 | Полный compose-стек и frontend | частично: Docker-образы и сервисы приложений в compose, фильтры и пагинация List, frontend не реализован |
 
 ## Ограничения
 
@@ -272,3 +281,5 @@ curl -s $BASE/campaigns/$CAMP | \
   6. Этап 8:
      - изменения в Kafka/Redis для использования новых значений из конфига
      - вставка данных и скрипты для нагрузочного тестирования
+  7. Этап 9:
+     - помощь с Dockerfile и docker-compose.yaml

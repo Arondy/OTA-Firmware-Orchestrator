@@ -6,6 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type Pagination struct {
+	Page  int
+	Limit int
+}
+
 type Device struct {
 	ID             uuid.UUID
 	DeviceModel    string
@@ -13,6 +18,11 @@ type Device struct {
 	Status         DeviceStatus
 	LastSeen       *time.Time
 	CreatedAt      time.Time
+}
+
+type DeviceFilters struct {
+	DeviceModel string
+	Status      DeviceStatus
 }
 
 type FirmwareVersion struct {
