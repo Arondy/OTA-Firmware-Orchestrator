@@ -9,7 +9,7 @@ import (
 )
 
 type RolloutCampaignService interface {
-	List(ctx context.Context) ([]domain.RolloutCampaign, error)
+	List(ctx context.Context, pagination domain.Pagination) ([]domain.RolloutCampaign, error)
 	Get(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)
 	Create(ctx context.Context, campaign domain.RolloutCampaign) (domain.RolloutCampaign, error)
 	Start(ctx context.Context, id uuid.UUID) (domain.RolloutCampaign, error)

@@ -15,6 +15,7 @@ import (
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/firmware"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/service/update"
 	core_http "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers"
 	devicehandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/device"
 	firmwarehandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/firmware_version"
 	healthhandler "github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/transport/http/handlers/health"
@@ -26,6 +27,8 @@ import (
 )
 
 func Run(ctx context.Context, cfg *config.Config, logger *zap.SugaredLogger) error {
+	handlers.SetPaginationLimit(cfg.DB.PaginationLimit)
+
 	db, err := postgres.NewDB(ctx, cfg.DB, logger)
 	if err != nil {
 		return err

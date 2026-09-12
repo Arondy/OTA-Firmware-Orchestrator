@@ -14,6 +14,7 @@ import (
 
 var Validate = validator.New()
 var Decoder = form.NewDecoder()
+var paginationLimit = 100
 
 // https://regex101.com/r/Ly7O1x/3/
 var semverRegex = regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
@@ -33,6 +34,20 @@ func init() {
 	Validate.RegisterValidation("rollout_stages", validateRolloutStages)
 	Validate.RegisterValidation("update_attempt_result", validateUpdateAttemptResult)
 	Validate.RegisterValidation("device_status", validateDeviceStatus)
+	Validate.RegisterValidation("pagination_limit", validatePaginationLimit)
+}
+
+func SetPaginationLimit(limit int) {
+	paginationLimit = limit
+}
+
+func validatePaginationLimit(fl validator.FieldLevel) bool {
+	value, ok := fl.Field().Interface().(int)
+	if !ok {
+		return false
+	}
+
+	return value <= paginationLimit
 }
 
 func validateSemver(fl validator.FieldLevel) bool {
@@ -120,6 +135,8 @@ func FormatValidation(valErrs validator.ValidationErrors) map[string]string {
 			}
 
 			messages[field] = fmt.Sprintf("Status must be one of %s", strings.Join(quoted, ", "))
+		case "pagination_limit":
+			messages[field] = fmt.Sprintf("Field must be at most %d", paginationLimit)
 		default:
 			messages[field] = "Field is invalid"
 		}

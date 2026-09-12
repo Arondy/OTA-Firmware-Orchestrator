@@ -15,9 +15,10 @@ type ListDevicesResponse struct {
 type ListDevicesParams struct {
 	DeviceModel string              `form:"device_model" validate:"omitempty,min=2,max=64"`
 	Status      domain.DeviceStatus `form:"status" validate:"omitempty,device_status"`
+	handlers.PaginationParams
 }
 
-func (p *ListDevicesParams) ToDomain() domain.DeviceFilters {
+func (p ListDevicesParams) ToFilters() domain.DeviceFilters {
 	return domain.DeviceFilters{
 		DeviceModel: p.DeviceModel,
 		Status:      p.Status,
@@ -26,17 +27,13 @@ func (p *ListDevicesParams) ToDomain() domain.DeviceFilters {
 
 func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
+
 	params := ListDevicesParams{}
-
-	if !handlers.DecodeQueryParams(w, r, logger, &params) {
+	if !handlers.DecodeQueryParams(w, r, logger, &params) || !handlers.ValidateRequest(w, logger, params) {
 		return
 	}
 
-	if !handlers.ValidateRequest(w, logger, params) {
-		return
-	}
-
-	devices, err := h.deviceSvc.List(r.Context(), params.ToDomain())
+	devices, err := h.deviceSvc.List(r.Context(), params.ToFilters(), params.PaginationParams.ToDomain())
 	if err != nil {
 		logger.Errorw("failed to list devices", "error", err)
 		handlers.WriteInternalServerError(w, logger)

@@ -13,21 +13,22 @@ type ListFirmwareVersionsResponse struct {
 
 type ListFirmwareVersionsParams struct {
 	DeviceModel string `form:"device_model" validate:"omitempty,min=2,max=64"`
+	handlers.PaginationParams
+}
+
+func (p ListFirmwareVersionsParams) ToFilters() string {
+	return p.DeviceModel
 }
 
 func (h *FirmwareVersionHandler) List(w http.ResponseWriter, r *http.Request) {
 	logger := config.LoggerFromContext(r.Context())
+
 	params := ListFirmwareVersionsParams{}
-
-	if !handlers.DecodeQueryParams(w, r, logger, &params) {
+	if !handlers.DecodeQueryParams(w, r, logger, &params) || !handlers.ValidateRequest(w, logger, params) {
 		return
 	}
 
-	if !handlers.ValidateRequest(w, logger, params) {
-		return
-	}
-
-	firmwareVersions, err := h.svc.List(r.Context(), params.DeviceModel)
+	firmwareVersions, err := h.svc.List(r.Context(), params.ToFilters(), params.PaginationParams.ToDomain())
 	if err != nil {
 		logger.Errorw("failed to list firmware versions", "error", err)
 		handlers.WriteInternalServerError(w, logger)
