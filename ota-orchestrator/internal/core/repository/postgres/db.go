@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/config"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/ota-orchestrator/internal/core/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,9 +20,10 @@ type executor interface {
 }
 
 type DB struct {
-	pool           *pgxpool.Pool
-	tm             *TxManager
-	requestTimeout time.Duration
+	pool            *pgxpool.Pool
+	tm              *TxManager
+	requestTimeout  time.Duration
+	paginationLimit int
 }
 
 func NewDB(ctx context.Context, config config.DBConfig, logger *zap.SugaredLogger) (*DB, error) {
@@ -43,9 +45,10 @@ func NewDB(ctx context.Context, config config.DBConfig, logger *zap.SugaredLogge
 	}
 
 	return &DB{
-		pool:           pool,
-		tm:             NewTxManager(pool),
-		requestTimeout: config.RequestTimeout,
+		pool:            pool,
+		tm:              NewTxManager(pool),
+		requestTimeout:  config.RequestTimeout,
+		paginationLimit: config.PaginationLimit,
 	}, nil
 }
 
@@ -60,6 +63,21 @@ func (d *DB) exec(ctx context.Context) executor {
 
 func (d *DB) TxManager() *TxManager {
 	return d.tm
+}
+
+func (d *DB) addPagination(query string, args []any, pagination domain.Pagination) (string, []any) {
+	if pagination.Limit == 0 || pagination.Limit > d.paginationLimit {
+		pagination.Limit = d.paginationLimit
+	}
+	if pagination.Page == 0 {
+		pagination.Page = 1
+	}
+
+	args = append(args, pagination.Limit)
+	args = append(args, (pagination.Page-1)*pagination.Limit)
+
+	query += fmt.Sprintf("\nLIMIT $%d OFFSET $%d\n", len(args)-1, len(args))
+	return query, args
 }
 
 func (d *DB) Close() {

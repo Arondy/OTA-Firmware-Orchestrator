@@ -18,27 +18,27 @@ func NewDeviceRepo(db *DB) *DeviceRepo {
 	return &DeviceRepo{DB: db}
 }
 
-func (r *DeviceRepo) List(ctx context.Context, filters domain.DeviceFilters) ([]domain.Device, error) {
+func (r *DeviceRepo) List(ctx context.Context, filters domain.DeviceFilters, pagination domain.Pagination) ([]domain.Device, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, r.requestTimeout)
 	defer cancel()
 
 	exec := r.exec(reqCtx)
 
-	var rows pgx.Rows
-	var err error
+	var query string
+	var args []any
 
 	if (filters == domain.DeviceFilters{}) {
-		query := `
+		query = `
 		SELECT id, device_model, current_version, status, last_seen, created_at
 		FROM devices
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC, id DESC
 		`
-		rows, err = exec.Query(reqCtx, query)
 	} else {
-		query, args := r.buildListQueryWithFilters(filters)
-		rows, err = exec.Query(reqCtx, query, args...)
+		query, args = r.buildListQueryWithFilters(filters)
 	}
 
+	query, args = r.addPagination(query, args, pagination)
+	rows, err := exec.Query(reqCtx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list devices: %w", err)
 	}
@@ -92,7 +92,7 @@ func (r *DeviceRepo) buildListQueryWithFilters(filters domain.DeviceFilters) (qu
 		addAnd()
 		fmt.Fprintf(&querySb, "status = $%d", len(args))
 	}
-	querySb.WriteString("\nORDER BY created_at DESC")
+	querySb.WriteString("\nORDER BY created_at DESC, id DESC\n")
 
 	return querySb.String(), args
 }
