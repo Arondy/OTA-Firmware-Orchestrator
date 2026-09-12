@@ -6,6 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type Pagination struct {
+	Page  int
+	Limit int
+}
+
 type Device struct {
 	ID             uuid.UUID
 	DeviceModel    string
