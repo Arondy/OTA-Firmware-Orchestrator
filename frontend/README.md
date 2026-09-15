@@ -1,9 +1,12 @@
 # frontend
 
 Веб-консоль канареечной раскатки прошивок: стадии, метрики и откат в браузере.
-
 > [!NOTE]
 > Это не отдельный проект, а пакет монорепозитория [OTA Firmware Orchestrator](../README.md).
+
+![main page](assets/main-page.png)
+
+В dev проксирует Vite, в контейнере Caddy. Приложение ходит только на относительные пути.
 
 ```mermaid
 flowchart LR
@@ -12,8 +15,6 @@ flowchart LR
     P -->|/controller/*| C[rollout-controller :8090]
     P -->|остальное| S[Статика SPA]
 ```
-
-В dev проксирует Vite, в контейнере Caddy. Приложение ходит только на относительные пути.
 
 ## Содержание
 
