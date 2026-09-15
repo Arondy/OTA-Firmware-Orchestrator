@@ -9,7 +9,7 @@
 
 Пет-проект уровня production-ready: canary-раскатка OTA-прошивок - обновление сначала малой группе, остальным - только при стабильных метриках.
 
-Два Go-сервиса делят ответственность - OTA Orchestrator работает с устройствами и админом, Rollout Controller автоматически двигает раскатку по метрикам.
+Два Go-сервиса делят ответственность - OTA Orchestrator работает с устройствами и админом, Rollout Controller автоматически двигает раскатку по метрикам. Поверх - веб-консоль из `frontend/`: стадии, метрики и откат в браузере, детали в [`frontend/README.md`](frontend/README.md).
 
 ![Архитектура системы](<Задание/Схемы/Общие/Архитектура системы.png>)
 
@@ -24,8 +24,8 @@
 - [API](#api)
 - [Тестирование](#тестирование)
 - [Нагрузочное тестирование](#нагрузочное-тестирование)
-- [Статус](#статус)
 - [Ограничения](#ограничения)
+- [Возможные расширения](#возможные-расширения)
 - [Использование ИИ](#использование-ии)
 
 ## Быстрый старт
@@ -41,11 +41,12 @@ task kafka-init
 task migrate-up
 ```
 
-**2. Запуск** - оба сервиса, каждый в своём терминале:
+**2. Запуск** - оба сервиса и консоль, каждый в своём терминале:
 
 ```bash
 task run-orchestrator
 task run-controller
+task run-frontend # нужен bun; консоль на http://localhost:5173
 ```
 
 **3. Проверка** - оба healthcheck отвечают `OK`:
@@ -63,8 +64,9 @@ curl -X POST http://localhost:8090/health.v1.HealthService/CheckHealth \
 
 ## Демо
 
-Полный canary-цикл: устройство - прошивка - кампания из двух стадий на 10% и 100% - старт - checkin - report - метрики.
-Тела запросов - по `ota-orchestrator/api/openapi.yaml`.
+Полный canary-цикл за пару минут. Тела запросов - по `ota-orchestrator/api/openapi.yaml`.
+
+**1. База** - устройство, прошивка, кампания из двух стадий на 10% и 100%, затем старт:
 
 ```bash
 BASE=http://localhost:8080/api/v1
@@ -88,27 +90,31 @@ curl -s -X POST $BASE/campaigns/$CAMP/start | \
   python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])'
 ```
 
+**2. Цикл обновления** - checkin решает попадание в бакет и выдаёт `stage_id`, report фиксирует результат, чтение кампании показывает живые метрики от контроллера:
+
 ```bash
 CHK=$(curl -s -X POST $BASE/devices/$DEV/checkin -d \
   '{"current_version":"1.0.0"}')
-echo $CHK # {"update_available":true,...} или false вне бакета
+echo $CHK
 STAGE=$(echo $CHK | python3 -c \
   'import sys,json;print(json.load(sys.stdin).get("stage_id") or "")')
 curl -s -X POST $BASE/devices/$DEV/report -d \
   '{"campaign_id":"'$CAMP'","stage_id":"'$STAGE'","result":"success"}'
 curl -s $BASE/campaigns/$CAMP | \
-  python3 -m json.tool # rollout_stages + stats от контроллера
+  python3 -m json.tool
 ```
 
+**3. Принудительный откат** - ответ `202` с пустым телом, итог проверяется опросом статуса до `rolled_back`:
+
 ```bash
-# Принудительный откат running/paused кампании: 202 с пустым телом, итог - опросом статуса
-curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/campaigns/$CAMP/rollback # 202
+curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/campaigns/$CAMP/rollback
 curl -s $BASE/campaigns/$CAMP | \
-  python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])' # rolled_back после применения решения
+  python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])'
 ```
 
+**4. Списки** - фильтры и пагинация: устройства по модели и статусу, прошивки по модели, везде `page`/`limit`:
+
 ```bash
-# Фильтры и пагинация списков: devices - по модели и статусу, firmware - по модели; везде - page/limit
 curl -s "$BASE/devices?device_model=esp32-temp&status=active&page=1&limit=10" | python3 -m json.tool
 curl -s "$BASE/firmware?device_model=esp32-temp&limit=5" | python3 -m json.tool
 curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
@@ -152,6 +158,7 @@ curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
 - **PostgreSQL 18** - устройства, прошивки, кампании, стадии, попытки обновлений, применённые решения
 - **Redis 8** - проекция активной стадии и счётчики; быстрый путь чтения на checkin
 - **Kafka 4** - `device.checkins`, `firmware.update-results`, `rollout.decisions` и DLQ к двум последним топикам
+- **Frontend** - SvelteKit SPA: в dev `:5173` с прокси на оркестратор, в compose статика за Caddy на `:3000`.
 
 Слои main: `transport/http - service - repository`; сборка зависимостей - `internal/core/app.go` в каждом сервисе.
 Детали про миграции, ключи Redis и семантику Kafka - в [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md).
@@ -231,22 +238,6 @@ curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
 | 4 | 2300 | 30ms | 69ms | 0.10% |
 | 5 | 2000 | 22ms | 54ms | 0.06% |
 
-## Статус
-
-Реализованы этапы 1-8.
-
-| Этап | Содержание | Статус |
-|---|---|---|
-| 1 | Каркас, схема БД, CRUD без логики раскатки | Готово |
-| 2 | Checkin/report поверх Postgres | Готово |
-| 3 | Redis как быстрый путь чтения стадии | Готово |
-| 4 | Kafka: события checkin и report | Готово |
-| 5 | Controller: consumer результатов, счётчики | Готово |
-| 6 | Evaluator, consumer решений в main | Готово |
-| 7 | Ручной откат через ForceRollback | Готово |
-| 8 | Индексация и устойчивость | Готово |
-| 9 | Полный compose-стек и frontend | частично: Docker-образы и сервисы приложений в compose, фильтры и пагинация List, frontend не реализован |
-
 ## Ограничения
 
 - Повторный `report` создаёт новую запись в `update_attempts` с новым `event_id`. Если публикация в Kafka не удалась, API вернёт 503, но запись в БД уже сделана.
@@ -254,13 +245,20 @@ curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
 - Одна running-кампания на модель.
 - Откат асинхронный: `POST .../rollback` отвечает `202` с пустым телом и только ставит решение в очередь - Postgres меняется позже тем же consumer, что автоматику. Повторный вызов безопасен: новое решение по уже завершённой кампании станет no-op.
 
+## Возможные расширения
+
+- [ ] mTLS между main service и Rollout Controller
+- [ ] Идемпотентность report по ключу, который генерирует и передаёт само устройство
+- [ ] Отдельный сервис уведомлений на события rollback
+- [ ] Миграция на Kubernetes с масштабированием под нагрузку от количества устройств
+
 ## Использование ИИ
 
 - Составление ТЗ и разбивка на этапы
 - Уточнения по структуре проекта
 - Проверка кода на баги и соответствие ТЗ
 - Генерация сообщений коммитов
-- Написание README (кроме этого раздела), OpenAPI спецификации и тестов
+- Написание README (кроме этого раздела), OpenAPI спецификации, фронтенда и тестов
 - Написание полностью однотипного кода (в случае рефакторинга - по моему образцу):
   1. Этап 1:
      - структуры конфигов с тегами, JSON теги в DTO
@@ -282,4 +280,4 @@ curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
      - изменения в Kafka/Redis для использования новых значений из конфига
      - вставка данных и скрипты для нагрузочного тестирования
   7. Этап 9:
-     - помощь с Dockerfile и docker-compose.yaml
+     - помощь с Caddyfile, Dockerfile и docker-compose.yaml
