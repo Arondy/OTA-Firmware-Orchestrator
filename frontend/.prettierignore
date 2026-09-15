@@ -1,0 +1,12 @@
+build/
+.svelte-kit/
+node_modules/
+bun.lock
+
+# Генерируется из openapi.yaml командой bun run gen:api
+src/lib/api/schema.d.ts
+
+# Конфиги контейнера
+Dockerfile
+Caddyfile
+.env.example

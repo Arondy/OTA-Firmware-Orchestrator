@@ -1,0 +1,11 @@
+# Артефакты сборки и зависимости
+node_modules/
+build/
+.svelte-kit/
+package/
+coverage/
+.vite/
+*.tsbuildinfo
+
+!package.json
+!tsconfig.json

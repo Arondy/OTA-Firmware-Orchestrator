@@ -1,0 +1,80 @@
+{
+	admin off
+	auto_https off
+
+	servers {
+		trusted_proxies {$TRUSTED_PROXIES:static private_ranges}
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+
+	handle /_health {
+		respond "ok" 200
+	}
+
+	@controller path /controller/*
+	handle @controller {
+		uri strip_prefix /controller
+		reverse_proxy {$CONTROLLER_UPSTREAM:rollout-controller:8090}
+	}
+
+	@api path /api/* /healthz
+	handle @api {
+		reverse_proxy {$ORCHESTRATOR_UPSTREAM:ota-orchestrator:8080} {
+			# X-Forwarded-For, X-Forwarded-Proto и X-Forwarded-Host Caddy ставит
+			# сам, дублировать их не нужно (на явный header_up он ругается
+			# предупреждением при старте). Проверено эхо-сервером на месте
+			# апстрима: доходят X-Forwarded-For/Proto/Host, Via и X-Real-IP.
+			header_up X-Real-IP {remote_host}
+			# X-Request-Id проходит насквозь в обе стороны без настроек:
+			# оркестратор читает его, если он есть, а UI показывает в ошибке.
+		}
+	}
+
+	# Хешированные ассеты неизменяемы: год кеширования.
+	@immutable path /_app/immutable/*
+	handle @immutable {
+		header Cache-Control "public, immutable, max-age=31536000"
+		root * /srv
+		file_server
+	}
+
+	# SPA-фолбэк: оболочка и прочие немутируемые файлы не кешируются.
+	# no-cache ставим веткой, а не на /index.html: try_files отдаёт оболочку
+	# на любой маршрут, и матчер по имени файла не увидел бы запрос к /.
+	handle {
+		root * /srv
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Ответы об ошибке (502 при недоступном оркестраторе, 404) Caddy пишет сам,
+	# минуя обычные ветки, поэтому Server снимаем и там: без этого на 502
+	# наружу уходил заголовок Server: Caddy. Тело и статус не меняются.
+	handle_errors {
+		header -Server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		# CSP здесь не дублируем: браузер исполняет пересечение всех политик,
+		# и заголовочная script-src 'self' заблокировала бы инлайн-бутстрап
+		# SvelteKit, на который сборка выдаёт hash в meta-теге index.html.
+		# Политика живёт в meta (default-src 'self'; script-src 'self' + hash;
+		# style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src
+		# 'none'; base-uri 'self'; form-action 'self'), а frame-ancestors,
+		# который в meta не работает, закрыт заголовком X-Frame-Options.
+		-Server
+	}
+}

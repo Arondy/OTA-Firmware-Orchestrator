@@ -1,0 +1,485 @@
+@import "tailwindcss";
+
+/*
+ * Шрифты самоустанавливаются: два семейства, по два подмножества (кириллица и
+ * латина), font-display swap, файлы лежат в static/fonts и preload-ятся в
+ * app.html. Сторонних запросов нет вовсе (§10.3).
+ */
+@font-face {
+	font-family: "Geist Variable";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url("/fonts/geist-cyrillic-wght-normal.woff2") format("woff2-variations");
+	unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+	font-family: "Geist Variable";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url("/fonts/geist-latin-wght-normal.woff2") format("woff2-variations");
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+		U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: "Geist Mono Variable";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url("/fonts/geist-mono-cyrillic-wght-normal.woff2") format("woff2-variations");
+	unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+	font-family: "Geist Mono Variable";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url("/fonts/geist-mono-latin-wght-normal.woff2") format("woff2-variations");
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+		U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Тёмная тема включается классом `.dark` на <html> (00-CONTEXT §8.7). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * ДИЗАЙН-ТОКЕНЫ (00-CONTEXT §8.1).
+ * Сырые значения живут здесь и только здесь: в компонентах не должно быть ни одного
+ * hex-литерала, все утилиты (`bg-bg-base`, `text-fg-secondary`, `border-border-subtle`)
+ * резолвятся через var() благодаря `@theme inline`.
+ *
+ * Контраст на bg-base (WCAG AA, обе темы):
+ *   fg-primary   >= 12:1
+ *   fg-secondary >= 6:1
+ *   fg-muted     >= 4.5:1
+ *   accent-fill + accent-on-fill: в светлой теме >= 9:1; в тёмной заливка
+ *   синяя с белым ink (>= 3:1) - как у кнопок эталонной панели.
+ */
+:root {
+	--bg-base: #f6f7f8;
+	--bg-surface: #ffffff;
+	--bg-raised: #ffffff;
+	--bg-inset: #eef0f2;
+
+	--border-subtle: #e2e5e9;
+	--border-strong: #cbd0d6;
+
+	--fg-primary: #14171a;
+	--fg-secondary: #4c545e;
+	--fg-muted: #626a74;
+
+	--accent-fill: #e0a32e;
+	--accent-on-fill: #1a1508;
+	--accent-text: #7a5a12;
+	--accent-tint: rgba(224, 163, 46, 0.14);
+	--accent-line: rgba(180, 128, 26, 0.45);
+
+	/* Градиент живёт только на бегунке сегментированного переключателя, как в
+	 * эталонной панели: отдельные кнопки заливаются плоским акцентом. */
+	--accent-gradient: linear-gradient(135deg, #f0b752 0%, #d18f18 100%);
+
+	/* Утопленная подложка (трек переключателя): полупрозрачный оверлей поверх
+	 * страницы, а не отдельный оттенок поверхности, иначе трек читается дырой. */
+	--bg-pressed: rgba(20, 23, 26, 0.05);
+	--shadow-raised: 0 4px 12px -4px rgba(16, 24, 40, 0.2);
+
+	--state-success: #177031;
+	--state-danger: #b93a3e;
+	--state-held: #3e6c99;
+	--state-progress: #b0781a;
+	--state-neutral: #626a74;
+
+	--ring: rgba(122, 90, 18, 0.55);
+	--shadow-pop: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.1);
+
+	/* Шрифтовые стеки (§8.3): Geist Variable + Geist Mono Variable, serif запрещён. */
+	--font-sans-stack:
+		"Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--font-mono-stack:
+		"Geist Mono Variable", ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+
+	/* Длительности движения (§8.6). Все переходы в приложении ссылаются на эти
+	 * переменные, поэтому блок prefers-reduced-motion ниже гасит анимацию одним
+	 * присваиванием и без единого !important (§10.9 запрещает !important). */
+	--dur-1: 120ms; /* hover / active */
+	--dur-2: 180ms; /* чипы, переключатели, поповеры */
+	--dur-3: 240ms; /* панели, выезжающее меню */
+	--dur-4: 320ms; /* смена маршрута */
+	--dur-tint: 600ms; /* подсветка только что изменившегося значения */
+	--dur-pulse: 2000ms; /* живой индикатор */
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+	/* Значения по умолчанию для утилит transition-*: одна кривая и одна
+	 * базовая длительность на всё приложение, чтобы в компонентах не
+	 * появлялись магические числа (§10.9). */
+	--default-transition-timing-function: var(--ease-standard);
+	--default-transition-duration: var(--dur-1);
+}
+
+.dark {
+	/* Стальная (steel-blue) палитра эталонной панели vk-poster-ref:
+	 * страница #17212b, карточка #222e3c, всплывающее #2a3a4c,
+	 * утопленное (трек переключателя, поля) #121b24. */
+	--bg-base: #17212b;
+	--bg-surface: #222e3c;
+	--bg-raised: #2a3a4c;
+	--bg-inset: #121b24;
+
+	--border-subtle: rgba(255, 255, 255, 0.08);
+	--border-strong: rgba(255, 255, 255, 0.14);
+
+	--fg-primary: #eef1f5;
+	--fg-secondary: #a3b1c0;
+	--fg-muted: #8a99a8;
+
+	/* Акцент - VK-синий, как в эталоне; на заливке белый ink. */
+	--accent-fill: #2f8bff;
+	--accent-on-fill: #ffffff;
+	--accent-text: #6fb4ff;
+	--accent-tint: rgba(47, 139, 255, 0.14);
+	--accent-line: rgba(47, 139, 255, 0.42);
+
+	--accent-gradient: linear-gradient(135deg, #4aa3ff 0%, #2f7fe6 100%);
+	--bg-pressed: rgba(255, 255, 255, 0.06);
+	--shadow-raised: 0 6px 18px -6px rgba(0, 0, 0, 0.5);
+
+	--state-success: #2fc96a;
+	--state-danger: #f5655b;
+	--state-held: #7aa2c7;
+	/* «Выполняется» остаётся янтарным: акцент ушёл в синий, а «идёт прямо
+	 * сейчас» логичнее читать тёплым сигналом. */
+	--state-progress: #e9b44c;
+	--state-neutral: #8a99a8;
+
+	--ring: rgba(90, 165, 255, 0.6);
+	--shadow-pop: 0 12px 32px -10px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * prefers-reduced-motion (§8.6): всё схлопывается в изменения прозрачности <= 120 мс,
+ * пульсация останавливается. Работает без !important, потому что длительности
+ * приходят из переменных.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.live-pulse,
+	.skeleton-pulse,
+	.indeterminate-slide {
+		animation: none;
+	}
+
+	:root {
+		--dur-1: 0ms;
+		--dur-2: 0ms;
+		--dur-3: 0ms;
+		--dur-tint: 0ms;
+		--dur-pulse: 0ms;
+		/* Смена маршрута остаётся коротким затуханием прозрачности. */
+		--dur-4: 120ms;
+	}
+}
+
+@theme inline {
+	/* Палитра по умолчанию вычищается: это механическая гарантия того, что в
+	 * компонентах физически невозможно взять indigo/violet/rose из таблицы
+	 * Tailwind (запреты §10.2 и §10.9). Остаются только токены ниже плюс
+	 * ключевые слова transparent/current/inherit. */
+	--color-*: initial;
+
+	--color-bg-base: var(--bg-base);
+	--color-bg-surface: var(--bg-surface);
+	--color-bg-raised: var(--bg-raised);
+	--color-bg-inset: var(--bg-inset);
+	--color-bg-pressed: var(--bg-pressed);
+
+	--color-border-subtle: var(--border-subtle);
+	--color-border-strong: var(--border-strong);
+
+	--color-fg-primary: var(--fg-primary);
+	--color-fg-secondary: var(--fg-secondary);
+	--color-fg-muted: var(--fg-muted);
+
+	--color-accent: var(--accent-fill);
+	--color-accent-ink: var(--accent-on-fill);
+	--color-accent-text: var(--accent-text);
+	--color-accent-tint: var(--accent-tint);
+	--color-accent-line: var(--accent-line);
+
+	--color-state-success: var(--state-success);
+	--color-state-danger: var(--state-danger);
+	--color-state-held: var(--state-held);
+	--color-state-progress: var(--state-progress);
+	--color-state-neutral: var(--state-neutral);
+
+	--color-ring: var(--ring);
+
+	--font-sans: var(--font-sans-stack);
+	--font-mono: var(--font-mono-stack);
+
+	--shadow-pop: var(--shadow-pop);
+	--shadow-raised: var(--shadow-raised);
+
+	/* Шкала кеглей (§8.3). Трекинг: -0.01em от 22px, 0 для текста,
+	 * +0.06em для редкого uppercase-микролейбла. */
+	--text-micro: 11px;
+	--text-micro--line-height: 1.45;
+	--text-micro--letter-spacing: 0.06em;
+
+	--text-dense: 12px;
+	--text-dense--line-height: 1.3;
+
+	--text-table: 13px;
+	--text-table--line-height: 1.3;
+
+	--text-ui: 14px;
+	--text-ui--line-height: 1.45;
+
+	--text-lead: 16px;
+	--text-lead--line-height: 1.45;
+
+	--text-panel: 18px;
+	--text-panel--line-height: 1.15;
+
+	--text-page: 22px;
+	--text-page--line-height: 1.15;
+	--text-page--letter-spacing: -0.01em;
+
+	--text-metric: 30px;
+	--text-metric--line-height: 1.15;
+	--text-metric--letter-spacing: -0.01em;
+
+	--text-hero: 44px;
+	--text-hero--line-height: 1.15;
+	--text-hero--letter-spacing: -0.01em;
+
+	/* Шкала радиусов (§8.4): скругление взято у эталонной панели, поэтому
+	 * контролы и панели читаются мягче. Пилюли по-прежнему только у
+	 * статусной точки и сегментированных переключателей. */
+	--radius-chip: 6px;
+	--radius-control: 10px;
+	--radius-panel: 14px;
+	--radius-pop: 18px;
+
+	/* Ширина контента (§6): 1440px, поля 24px на десктопе и 16px на мобильном. */
+	--container-shell: 1440px;
+}
+
+@layer base {
+	/* 4px-сетка (§8.4) совпадает с базовым шагом Tailwind (--spacing: 0.25rem),
+	 * поэтому p-1/p-2/p-3/p-4/p-6/p-8/p-12 = 4/8/12/16/24/32/48 px. */
+
+	html {
+		-webkit-text-size-adjust: 100%;
+	}
+
+	html {
+		/* Ширина контента не зависит от наличия вертикальной прокрутки:
+		   таблицы с фиксированными колонками не «дышат» при коротких списках. */
+		scrollbar-gutter: stable;
+	}
+
+	body {
+		background-color: var(--bg-base);
+		color: var(--fg-primary);
+		font-family: var(--font-sans-stack);
+		font-size: var(--text-ui);
+		line-height: 1.45;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+		min-height: 100dvh;
+	}
+
+	/* Видимый фокус у всего интерактивного (§10.10). */
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	/* Кнопки показывают pointer: префлайт Tailwind ставит им default. */
+	button:not(:disabled) {
+		cursor: pointer;
+	}
+
+	::selection {
+		background-color: var(--accent-tint);
+		color: var(--fg-primary);
+	}
+
+	/* Машинные значения и все числовые колонки набираются моноширинным
+	 * с табличными цифрами (§8.3). */
+	code,
+	kbd,
+	pre,
+	samp {
+		font-family: var(--font-mono-stack);
+		font-variant-numeric: tabular-nums;
+	}
+}
+
+/* Живой индикатор: единственная бесконечная анимация, пульс раз в 2 с (§8.6). */
+@keyframes live-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+
+/* Скелетоны: спокойный пульс 1,2 с, длиннее запрещено (§8.6). */
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.55;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.live-pulse {
+		animation: live-pulse var(--dur-pulse) var(--ease-standard) infinite;
+	}
+
+	.skeleton-pulse {
+		animation: skeleton-pulse 1.2s var(--ease-standard) infinite;
+	}
+}
+
+/* Полоса «API недоступен» появляется одним раскрытием высоты, без рывка макета. */
+@keyframes banner-enter {
+	from {
+		grid-template-rows: 0fr;
+	}
+	to {
+		grid-template-rows: 1fr;
+	}
+}
+
+.banner-enter {
+	animation: banner-enter var(--dur-3) var(--ease-standard);
+}
+
+.banner-enter > * {
+	overflow: hidden;
+}
+
+/* Строки таблиц рисуются лениво: страница не держит в раскладке 100 строк (§7.5). */
+@utility row-vis {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 2.5rem;
+}
+
+/* Градиентная заливка бегунка сегментированного переключателя: направление и
+ * кривая как у акцента эталонной панели. Значение живёт в токене, поэтому тема
+ * меняет его одним присваиванием, а не правкой классов по всему приложению. */
+@utility bg-accent-gradient {
+	background-image: var(--accent-gradient);
+}
+
+@keyframes spin-cw {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Бегущий блик индетерминированного прогресса. */
+@keyframes indeterminate-slide {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(300%);
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.spin {
+		animation: spin-cw 0.9s linear infinite;
+	}
+
+	.indeterminate-slide {
+		animation: indeterminate-slide 1.2s var(--ease-standard) infinite;
+	}
+}
+
+.spinner {
+	width: 0.875rem;
+	height: 0.875rem;
+}
+
+.metric-flash {
+	background-color: var(--accent-tint);
+	transition: background-color var(--dur-tint) var(--ease-standard);
+}
+
+/* Появление оверлеев: длительности из токенов, при reduced motion схлопываются в 0. */
+@keyframes overlay-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes dialog-in {
+	from {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes drawer-in {
+	from {
+		opacity: 0.6;
+		transform: translateX(-100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+.overlay-in {
+	animation: overlay-in var(--dur-2) var(--ease-standard);
+}
+
+.dialog-in {
+	animation: dialog-in var(--dur-2) var(--ease-standard);
+}
+
+.drawer-in {
+	animation: drawer-in var(--dur-3) var(--ease-standard);
+}
+
+/* Тосты svelte-sonner берут цвета из токенов темы, а не из своей палитры. */
+[data-sonner-toaster],
+[data-sonner-toast] {
+	--normal-bg: var(--bg-raised);
+	--normal-border: var(--border-subtle);
+	--normal-text: var(--fg-primary);
+	--success-bg: var(--bg-raised);
+	--success-border: var(--state-success);
+	--success-text: var(--fg-primary);
+	--error-bg: var(--bg-raised);
+	--error-border: var(--state-danger);
+	--error-text: var(--fg-primary);
+	border-radius: var(--radius-pop);
+}
+
+[data-sonner-toast] [data-title] {
+	color: var(--fg-primary);
+}
+
+[data-sonner-toast] [data-description] {
+	color: var(--fg-secondary);
+}
