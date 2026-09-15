@@ -18,7 +18,8 @@ flowchart TB
         end
     end
 
-    FE -- "HTTP API" --> ORCH
+    FE -- "Прокси /api/*, /healthz" --> ORCH
+    FE -- "Прокси /controller/*" --> CTRL
     ORCH -- "Connect-RPC" --> CTRL
 
     ORCH -- "TCP" --> PG

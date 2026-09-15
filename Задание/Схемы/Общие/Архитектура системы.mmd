@@ -1,8 +1,9 @@
 flowchart TB
     DEV["Устройство"]
     ADM["Администратор"]
+    BRW["Frontend"]
 
-    subgraph MAIN["OTA Orchestrator (main service)"]
+    subgraph MAIN["OTA Orchestrator"]
         REST["REST API: Devices, Firmware, Campaigns"]
         CC["Connect-клиент"]
         CONS["Consumer: rollout.decisions"]
@@ -11,7 +12,7 @@ flowchart TB
     end
 
     subgraph CTRL["Rollout Controller"]
-        SRV["Connect-сервер: CampaignService.GetCampaignStats, HealthService.CheckHealth"]
+        SRV["Connect-сервер: CampaignService.GetCampaignStats, CampaignService.ForceRollback, HealthService.CheckHealth"]
         EV["Periodic Evaluator"]
         PD["Producer: rollout.decisions"]
         CU["Consumer: firmware.update-results"]
@@ -23,9 +24,10 @@ flowchart TB
 
     DEV -- "REST" --> REST
     ADM -- "REST" --> REST
+    BRW -- "REST" --> REST
 
-    REST -- "Async (fire-and-forget)" --> PA
-    REST -- "Sync (wait for ack)" --> PS
+    REST -- "Async" --> PA
+    REST -- "Sync" --> PS
     PA --> KF
     PS --> KF
 
@@ -42,5 +44,5 @@ flowchart TB
     EV --> PD
     PD --> KF
 
-    CC -- "Connect-RPC GetCampaignStats (HTTP/JSON)" --> SRV
+    CC -- "Connect-RPC GetCampaignStats" --> SRV
     SRV --> RD
