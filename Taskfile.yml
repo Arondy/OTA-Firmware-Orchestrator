@@ -14,7 +14,6 @@ tasks:
       - ro
     desc: Run orchestrator
     cmds:
-      - docker compose up -d
       - cd ota-orchestrator && go run ./cmd/ota-orchestrator/main.go
 
   run-controller:
@@ -22,8 +21,19 @@ tasks:
       - rc
     desc: Run controller
     cmds:
-      - docker compose up -d
       - cd rollout-controller && go run ./cmd/rollout-controller/main.go
+
+  run-frontend:
+    aliases:
+      - rf
+    desc: Run frontend
+    cmds:
+      - cd frontend && bun install && bun run gen:api && bun --bun vite dev
+
+  run:
+    desc: Run services
+    cmds:
+      - docker compose up -d
 
   stop:
     desc: Stop services
@@ -33,8 +43,9 @@ tasks:
   build:
     desc: Build Docker images
     cmds:
-      - docker build -f ota-orchestrator/Dockerfile -t ota-orchestrator .
-      - docker build -f rollout-controller/Dockerfile -t rollout-controller .
+      - docker build -f ota-orchestrator/Dockerfile -t ota/ota-orchestrator .
+      - docker build -f rollout-controller/Dockerfile -t ota/rollout-controller .
+      - docker build -f frontend/Dockerfile -t ota/frontend .
 
   migrate:
     desc: Apply migrations
