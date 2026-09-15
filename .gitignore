@@ -13,4 +13,5 @@
 *.csv
 *.err
 *.gob
+*.override.yml
 print_project.py

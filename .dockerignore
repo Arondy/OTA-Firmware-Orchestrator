@@ -1,16 +1,21 @@
 **/*_test.go
 **/*.log
 **/*.example
-**/openapi.yaml
+**/*.env
+**/.svelte-kit
+**/Dockerfile
 
+**/.*/
 **/mocks/
+**/node_modules/
+**/build/
+**/docs/
 
 ##
 ## Specific to .dockerignore
 ##
 
 .git/
-Dockerfile
 contrib/
 
 ##
@@ -23,7 +28,6 @@ contrib/
 .#*
 
 # Vendors
-node_modules/
 vendor/
 
 # Binaries for programs and plugins

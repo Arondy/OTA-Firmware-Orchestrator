@@ -1,10 +1,11 @@
 services:
   ota-orchestrator:
-    image: ota-orchestrator:latest
+    image: ota/ota-orchestrator:latest
     restart: unless-stopped
     build:
       context: .
       dockerfile: ota-orchestrator/Dockerfile
+    pull_policy: build
     depends_on:
       postgres:
         condition: service_healthy
@@ -12,38 +13,35 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      rollout-controller:
-        condition: service_healthy
     env_file:
       - ./ota-orchestrator/.env
     environment:
       HTTP_SERVER_HOST: 0.0.0.0
-      HTTP_SERVER_PORT: ${HTTP_SERVER_PORT:?}
+      HTTP_SERVER_PORT: ${OTA_ORCHESTRATOR_PORT:?}
       ROLLOUT_CONTROLLER_HOST: rollout-controller
       ROLLOUT_CONTROLLER_PORT: ${ROLLOUT_CONTROLLER_PORT:?}
       DB_HOST: postgres
-      CACHE_HOST: redis
-      BROKER_HOST: kafka
-      BROKER_PORT: 9092
       DB_USER: ${POSTGRES_USER:?}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?}
       DB_NAME: ${POSTGRES_DB:?}
       DB_PORT: 5432
-    ports:
-      - "${OTA_ORCHESTRATOR_PORT:?}:${HTTP_SERVER_PORT:?}"
+      CACHE_HOST: redis
+      BROKER_HOST: kafka
+      BROKER_PORT: 9092
     healthcheck:
-      test: [ "CMD", "/usr/bin/curl", "-f", "http://localhost:${HTTP_SERVER_PORT:?}/healthz" ]
+      test: [ "CMD", "/usr/bin/curl", "-f", "http://localhost:${OTA_ORCHESTRATOR_PORT:?}/healthz" ]
       start_period: 5s
       interval: 30s
       timeout: 10s
       retries: 5
 
   rollout-controller:
-    image: rollout-controller:latest
+    image: ota/rollout-controller:latest
     restart: unless-stopped
     build:
       context: .
       dockerfile: rollout-controller/Dockerfile
+    pull_policy: build
     depends_on:
       redis:
         condition: service_healthy
@@ -64,6 +62,28 @@ services:
       timeout: 10s
       retries: 5
 
+  frontend:
+    image: ota/frontend:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    pull_policy: build
+    depends_on:
+      ota-orchestrator:
+        condition: service_healthy
+    environment:
+      ORCHESTRATOR_UPSTREAM: ota-orchestrator:${OTA_ORCHESTRATOR_PORT:?}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-static private_ranges}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost/_health" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
@@ -71,8 +91,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       POSTGRES_DB: ${POSTGRES_DB:?}
-    ports:
-      - "${POSTGRES_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -98,8 +116,8 @@ services:
   redis:
     image: redis:8-alpine
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       start_period: 5s
@@ -134,8 +152,6 @@ services:
       # Data
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS:-24}
-    ports:
-      - "${KAFKA_PORT}:29092"
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
@@ -183,4 +199,5 @@ services:
 
 volumes:
   pgdata:
+  redis-data:
   kafka-data:
