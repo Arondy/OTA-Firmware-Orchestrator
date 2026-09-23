@@ -1,4 +1,4 @@
-import type { CampaignStatus, Stage, Stats } from "$lib/api/types";
+import type { Campaign, CampaignListItem, CampaignStatus, Stage, Stats } from "$lib/api/types";
 import { int, percent } from "$lib/format/number";
 
 export interface CampaignRow {
@@ -17,12 +17,24 @@ export interface CampaignRow {
 
 export type AttentionReason = "below-threshold" | "thin-sample" | "paused" | "no-metrics";
 
-export const ATTENTION_ORDER: AttentionReason[] = [
-	"below-threshold",
-	"thin-sample",
-	"paused",
-	"no-metrics",
-];
+export function toCampaignRow(
+	item: CampaignListItem,
+	detail: Campaign | undefined,
+	version: string | undefined,
+): CampaignRow {
+	return {
+		id: item.id,
+		model: item.device_model,
+		version,
+		status: item.status,
+		createdAt: item.created_at,
+		startedAt: item.started_at,
+		completedAt: item.completed_at,
+		stages: detail?.rollout_stages ?? [],
+		stats: detail?.stats,
+		detailLoaded: detail !== undefined,
+	};
+}
 
 export function activeStageOf(row: CampaignRow): Stage | undefined {
 	return row.stages.find((stage) => stage.status === "active");

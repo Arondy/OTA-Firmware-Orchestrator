@@ -30,10 +30,6 @@ export function allowedActions(status: CampaignStatus): CampaignAction[] {
 	return TRANSITIONS[status];
 }
 
-export function canPerform(status: CampaignStatus, action: CampaignAction): boolean {
-	return TRANSITIONS[status].includes(action);
-}
-
 /** Терминальный статус: ручных действий нет и поллинг не нужен. */
 export function isTerminal(status: CampaignStatus): boolean {
 	return status === "completed" || status === "rolled_back";
@@ -110,17 +106,3 @@ export const ROLLBACK_CONFIRM = {
 	confirm: "Откатить",
 	cancel: "Отмена",
 } as const;
-
-/**
- * Текст подтверждения для опасных действий. `confirm` здесь - данные для
- * собственного диалога, а не `window.confirm`: нативные диалоги запрещены (§10.6).
- */
-export function confirmText(
-	action: CampaignAction,
-	title: string,
-): { title: string; body: string } {
-	return {
-		title: `${ACTION_META[action].label}: ${title}`,
-		body: ACTION_META[action].description,
-	};
-}

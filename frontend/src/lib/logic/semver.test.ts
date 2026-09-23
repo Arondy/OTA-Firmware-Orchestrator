@@ -5,7 +5,6 @@ import {
 	isSemver,
 	parseSemver,
 	semverSortKey,
-	sortSemver,
 	tryCompareSemver,
 } from "./semver";
 
@@ -138,27 +137,6 @@ describe("isAtLeast", () => {
 
 	it("не угадывает, когда версию не разобрать", () => {
 		expect(isAtLeast("1.4.2", "latest")).toBeUndefined();
-	});
-});
-
-describe("sortSemver", () => {
-	it("сортирует по возрастанию", () => {
-		expect(sortSemver(["1.10.0", "1.2.0", "1.2.10", "0.9.9"])).toEqual([
-			"0.9.9",
-			"1.2.0",
-			"1.2.10",
-			"1.10.0",
-		]);
-	});
-
-	it("неразобранные строки уходят в конец", () => {
-		expect(sortSemver(["2.0.0", "latest", "1.0.0"])).toEqual(["1.0.0", "2.0.0", "latest"]);
-	});
-
-	it("не меняет исходный массив", () => {
-		const source = ["2.0.0", "1.0.0"];
-		sortSemver(source);
-		expect(source).toEqual(["2.0.0", "1.0.0"]);
 	});
 });
 

@@ -11,7 +11,7 @@
 		type CampaignFilters,
 		type SortSpec,
 	} from "$lib/domain/campaign-filters";
-	import type { CampaignRow } from "$lib/domain/campaign-row";
+	import { toCampaignRow, type CampaignRow } from "$lib/domain/campaign-row";
 	import { campaignActions } from "$lib/state/campaign-actions.svelte";
 	import { campaignCollection } from "$lib/state/campaign-collection.svelte";
 	import { campaignDetails } from "$lib/state/campaign-details.svelte";
@@ -71,21 +71,13 @@
 	});
 
 	const rows = $derived.by<CampaignRow[]>(() =>
-		campaignCollection.rows.map((item) => {
-			const detail = campaignDetails.get(item.id);
-			return {
-				id: item.id,
-				model: item.device_model,
-				version: firmwareIndex.versionLabel(item.firmware_version_id),
-				status: item.status,
-				createdAt: item.created_at,
-				startedAt: item.started_at,
-				completedAt: item.completed_at,
-				stages: detail?.rollout_stages ?? [],
-				stats: detail?.stats,
-				detailLoaded: detail !== undefined,
-			};
-		}),
+		campaignCollection.rows.map((item) =>
+			toCampaignRow(
+				item,
+				campaignDetails.get(item.id),
+				firmwareIndex.versionLabel(item.firmware_version_id),
+			),
+		),
 	);
 
 	const filtered = $derived(filterRows(rows, filters));

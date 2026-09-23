@@ -242,10 +242,8 @@ describe("§10.5, §10.9: адреса и стили", () => {
 
 describe("§10.6: диалоги и уведомления", () => {
 	it("нет нативных alert, confirm и prompt", () => {
-		const offenders = findOffenders(
-			allSources(),
-			(line) =>
-				/(?:window\.|\b)(?:alert|confirm|prompt)\s*\(/.test(line) && !/confirmText\s*\(/.test(line),
+		const offenders = findOffenders(allSources(), (line) =>
+			/(?:window\.|\b)(?:alert|confirm|prompt)\s*\(/.test(line),
 		);
 		expect(offenders).toEqual([]);
 	});

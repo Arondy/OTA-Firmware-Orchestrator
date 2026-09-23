@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { Stage } from "$lib/api/types";
+import type { Campaign, CampaignListItem, Stage } from "$lib/api/types";
 import {
 	attentionReason,
 	attentionText,
 	progressOf,
 	sortActiveRows,
+	toCampaignRow,
 	topModels,
 	type CampaignRow,
 } from "./campaign-row";
@@ -41,6 +42,53 @@ function row(overrides: Partial<CampaignRow> = {}): CampaignRow {
 		...overrides,
 	};
 }
+
+function item(overrides: Partial<CampaignListItem> = {}): CampaignListItem {
+	return {
+		id: "campaign-1",
+		firmware_version_id: "fw-1",
+		device_model: "demo-sensor-v1",
+		status: "running",
+		created_at: "2026-09-12T08:00:00.000Z",
+		started_at: "2026-09-12T09:00:00.000Z",
+		...overrides,
+	};
+}
+
+describe("toCampaignRow", () => {
+	it("переносит поля списка и подпись версии, пока деталь не загружена", () => {
+		expect(toCampaignRow(item(), undefined, "2.0.0")).toEqual({
+			id: "campaign-1",
+			model: "demo-sensor-v1",
+			version: "2.0.0",
+			status: "running",
+			createdAt: "2026-09-12T08:00:00.000Z",
+			startedAt: "2026-09-12T09:00:00.000Z",
+			completedAt: undefined,
+			stages: [],
+			stats: undefined,
+			detailLoaded: false,
+		});
+	});
+
+	it("с загруженной деталью подставляет стадии, метрики и флаг", () => {
+		const detail: Campaign = {
+			...item(),
+			rollout_stages: [stage()],
+			stats: { active_stage_id: "stage-1", success_rate: 0.98, sample_size: 34 },
+		};
+
+		const result = toCampaignRow(item(), detail, undefined);
+		expect(result.stages).toEqual([stage()]);
+		expect(result.stats).toEqual({
+			active_stage_id: "stage-1",
+			success_rate: 0.98,
+			sample_size: 34,
+		});
+		expect(result.detailLoaded).toBe(true);
+		expect(result.version).toBeUndefined();
+	});
+});
 
 describe("attentionReason", () => {
 	it("ниже порога при набранной выборке", () => {

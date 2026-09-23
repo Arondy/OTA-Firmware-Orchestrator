@@ -125,19 +125,6 @@ export function isAtLeast(current: string, target: string): boolean | undefined 
 }
 
 /** Сортировка по возрастанию; неразобранные строки остаются в конце. */
-export function sortSemver(values: string[]): string[] {
-	const parsed: { raw: string; version: SemVer }[] = [];
-	const rest: string[] = [];
-
-	for (const raw of values) {
-		const version = parseSemver(raw);
-		if (version) parsed.push({ raw, version });
-		else rest.push(raw);
-	}
-
-	parsed.sort((a, b) => compareParsed(a.version, b.version));
-	return [...parsed.map((item) => item.raw), ...rest];
-}
 
 /**
  * Ключ сортировки версий строкой: танцуем вокруг танстек-сортировки, которая

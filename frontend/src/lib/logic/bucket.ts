@@ -98,16 +98,3 @@ export function bucketOf(deviceId: string, campaignId: string): number {
 export function isInBucket(bucket: number, targetPercent: number): boolean {
 	return bucket <= targetPercent;
 }
-
-/**
- * Проверка формы UUID без исключения: нужно для форм, где идентификатор
- * вводит человек.
- */
-export function isUuid(value: string): boolean {
-	try {
-		uuidToBytes(value);
-		return true;
-	} catch {
-		return false;
-	}
-}

@@ -5,7 +5,6 @@ import {
 	UNPARSEABLE_DATE_LABEL,
 	absoluteDateTime,
 	absoluteDateTimeTitle,
-	absoluteTime,
 	relativeTime,
 } from "./datetime";
 
@@ -63,10 +62,6 @@ describe("relativeTime", () => {
 });
 
 describe("абсолютные форматы", () => {
-	it("absoluteTime даёт часы и минуты", () => {
-		expect(absoluteTime("2026-09-12T14:32:00.000Z")).toBe("14:32");
-	});
-
 	it("absoluteDateTime соответствует формату из словаря", () => {
 		expect(absoluteDateTime("2026-09-12T14:32:00.000Z")).toBe("12 сен 2026, 14:32");
 	});
@@ -79,7 +74,7 @@ describe("абсолютные форматы", () => {
 
 	it("неразобранная дата подписана честно", () => {
 		expect(absoluteDateTime("мусор")).toBe(UNPARSEABLE_DATE_LABEL);
-		expect(absoluteTime(undefined)).toBe(UNPARSEABLE_DATE_LABEL);
+		expect(absoluteDateTimeTitle(undefined)).toBe(UNPARSEABLE_DATE_LABEL);
 	});
 
 	it("месяцы сокращаются по словарю, без точки", () => {

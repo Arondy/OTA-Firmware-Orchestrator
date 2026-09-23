@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketOf, fnv1a32, isInBucket, isUuid, uuidToBytes } from "./bucket";
+import { bucketOf, fnv1a32, isInBucket, uuidToBytes } from "./bucket";
 
 /**
  * Золотые значения посчитаны независимой реализацией FNV-1a на Python поверх
@@ -106,15 +106,5 @@ describe("isInBucket", () => {
 
 	it("охват 100% пропускает любой бакет", () => {
 		expect(isInBucket(100, 100)).toBe(true);
-	});
-});
-
-describe("isUuid", () => {
-	it("принимает каноническую запись", () => {
-		expect(isUuid(DEVICE_ID)).toBe(true);
-	});
-
-	it("отклоняет произвольную строку", () => {
-		expect(isUuid("demo-sensor-v1")).toBe(false);
 	});
 });

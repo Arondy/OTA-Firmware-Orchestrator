@@ -119,22 +119,6 @@ export const DEVICE_STATUS: Record<DeviceStatus, StatusMeta> = {
 	decommissioned: { label: "выведено из эксплуатации", tone: "neutral", icon: XCircleIcon },
 };
 
-export function campaignStatusMeta(status: CampaignStatus): StatusMeta {
-	return CAMPAIGN_STATUS[status];
-}
-
-export function stageStatusMeta(status: StageStatus): StatusMeta {
-	return STAGE_STATUS[status];
-}
-
-export function attemptResultMeta(result: AttemptResult): StatusMeta {
-	return ATTEMPT_RESULT[result];
-}
-
-export function deviceStatusMeta(status: DeviceStatus): StatusMeta {
-	return DEVICE_STATUS[status];
-}
-
 /*
  * Связность устройства - производный сигнал, а не новый оттенок (§8.2).
  *

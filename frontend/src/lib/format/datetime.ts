@@ -47,13 +47,6 @@ function parseDate(iso: string | undefined): Date | undefined {
 	return new Date(time);
 }
 
-/** `14:32` в локальной зоне браузера. */
-export function absoluteTime(iso: string | undefined): string {
-	const date = parseDate(iso);
-	if (!date) return UNPARSEABLE_DATE_LABEL;
-	return timeFormatter.format(date);
-}
-
 /** `12 сен 2026, 14:32` - формат из словаря §9, без точки после месяца и без «г.». */
 export function absoluteDateTime(iso: string | undefined): string {
 	const date = parseDate(iso);

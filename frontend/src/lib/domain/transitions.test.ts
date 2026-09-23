@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CampaignStatus } from "$lib/api/types";
-import {
-	ACTION_META,
-	allowedActions,
-	canPerform,
-	confirmText,
-	isLive,
-	isTerminal,
-} from "./transitions";
+import { ACTION_META, allowedActions, isLive, isTerminal } from "./transitions";
 
 const ALL_STATUSES: CampaignStatus[] = ["draft", "running", "paused", "completed", "rolled_back"];
 
@@ -33,24 +26,6 @@ describe("allowedActions", () => {
 		for (const status of ALL_STATUSES) {
 			expect(Array.isArray(allowedActions(status))).toBe(true);
 		}
-	});
-});
-
-describe("canPerform", () => {
-	it("согласована с allowedActions", () => {
-		for (const status of ALL_STATUSES) {
-			for (const action of ["start", "pause", "resume", "rollback"] as const) {
-				expect(canPerform(status, action)).toBe(allowedActions(status).includes(action));
-			}
-		}
-	});
-
-	it("не даёт запустить уже выполняющуюся кампанию", () => {
-		expect(canPerform("running", "start")).toBe(false);
-	});
-
-	it("не даёт откатить черновик", () => {
-		expect(canPerform("draft", "rollback")).toBe(false);
 	});
 });
 
@@ -108,13 +83,5 @@ describe("ACTION_META", () => {
 
 	it("подпись ожидания отката говорит, что статус изменится позже", () => {
 		expect(ACTION_META.rollback.pendingLabel).toBe("Откат запрошен");
-	});
-});
-
-describe("confirmText", () => {
-	it("собирает заголовок с названием кампании", () => {
-		const text = confirmText("rollback", "demo-sensor-v1 1.4.2");
-		expect(text.title).toBe("Откатить: demo-sensor-v1 1.4.2");
-		expect(text.body.length).toBeGreaterThan(0);
 	});
 });

@@ -1,14 +1,15 @@
 <script lang="ts">
 	import RocketIcon from "phosphor-svelte/lib/RocketIcon";
 	import { listRolloutCampaigns } from "$lib/api/endpoints";
-	import type { CampaignStatus } from "$lib/api/types";
 	import {
 		attentionReason,
 		hasRecentChange,
 		sortActiveRows,
+		toCampaignRow,
 		type AttentionReason,
 		type CampaignRow,
 	} from "$lib/domain/campaign-row";
+	import { isLive } from "$lib/domain/transitions";
 	import { campaignActions } from "$lib/state/campaign-actions.svelte";
 	import { campaignDetails } from "$lib/state/campaign-details.svelte";
 	import { firmwareIndex } from "$lib/state/firmware-index.svelte";
@@ -53,21 +54,13 @@
 	);
 
 	const rows = $derived.by<CampaignRow[]>(() =>
-		(list.data?.rollout_campaigns ?? []).map((item) => {
-			const detail = campaignDetails.get(item.id);
-			return {
-				id: item.id,
-				model: item.device_model,
-				version: firmwareIndex.versionLabel(item.firmware_version_id),
-				status: item.status,
-				createdAt: item.created_at,
-				startedAt: item.started_at,
-				completedAt: item.completed_at,
-				stages: detail?.rollout_stages ?? [],
-				stats: detail?.stats,
-				detailLoaded: detail !== undefined,
-			};
-		}),
+		(list.data?.rollout_campaigns ?? []).map((item) =>
+			toCampaignRow(
+				item,
+				campaignDetails.get(item.id),
+				firmwareIndex.versionLabel(item.firmware_version_id),
+			),
+		),
 	);
 
 	const activeRows = $derived(sortActiveRows(rows.filter((row) => isLive(row.status))));
@@ -85,10 +78,6 @@
 		}
 		return items;
 	});
-
-	function isLive(status: CampaignStatus): boolean {
-		return status === "running" || status === "paused";
-	}
 
 	async function refreshAll(): Promise<void> {
 		await list.refresh();

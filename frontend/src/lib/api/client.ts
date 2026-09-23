@@ -32,7 +32,7 @@ interface RawResponse {
 }
 
 /** Пустой фильтр не должен уезжать на сервер как `?status=`: сервер вернёт 400. */
-export function buildQuery(query: Query | undefined): string {
+function buildQuery(query: Query | undefined): string {
 	if (!query) return "";
 
 	const params = new URLSearchParams();
