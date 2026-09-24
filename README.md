@@ -7,6 +7,8 @@
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3-6BA539?logo=swagger)](ota-orchestrator/api/openapi.yaml)
 [![Connect RPC](https://img.shields.io/badge/Connect%20RPC-1.20-77E1FF?logo=grpc)](https://connectrpc.com/)
 
+[![CI](https://github.com/Arondy/OTA-Firmware-Orchestrator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Arondy/OTA-Firmware-Orchestrator/actions/workflows/ci.yml)
+
 Пет-проект уровня production-ready: canary-раскатка OTA-прошивок - обновление сначала малой группе, остальным - только при стабильных метриках.
 
 Два Go-сервиса делят ответственность - OTA Orchestrator работает с устройствами и админом, Rollout Controller автоматически двигает раскатку по метрикам. Поверх - веб-консоль из `frontend/`: стадии, метрики и откат в браузере, детали в [`frontend/README.md`](frontend/README.md).
