@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	rolloutv1 "github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout/v1"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/rollout/v1/rolloutv1connect"
 	"github.com/Arondy/OTA-Firmware-Orchestrator/rollout-controller/internal/core/domain"
 	"github.com/google/uuid"
 )
@@ -19,6 +20,8 @@ type DecisionsService interface {
 }
 
 type CampaignHandler struct {
+	rolloutv1connect.UnimplementedCampaignServiceHandler
+
 	statsSvc     CampaignStatsService
 	decisionsSvc DecisionsService
 }

@@ -5,9 +5,12 @@ import (
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/health/v1"
+	"github.com/Arondy/OTA-Firmware-Orchestrator/api/gen/health/v1/healthv1connect"
 )
 
-type HealthHandler struct{}
+type HealthHandler struct {
+	healthv1connect.UnimplementedHealthServiceHandler
+}
 
 func NewHealthHandler() *HealthHandler {
 	return &HealthHandler{}
