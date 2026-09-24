@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [ota-orchestrator, rollout-controller]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache: true
+
+      - run: go vet ./...
+        working-directory: ${{ matrix.module }}
+
+      - run: go test -race ./...
+        working-directory: ${{ matrix.module }}
+
+  test-frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run gen:api && git diff --exit-code -- src/lib/api/schema.d.ts
+
+      - run: bun run check
+
+      - run: bun run lint
+
+      - run: bun run test
+
+  test-integration-and-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [test-unit]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ota-orchestrator/go.mod
+          cache: true
+
+      - run: go test -tags integration ./...
+        working-directory: ota-orchestrator
+
+      - run: go test -tags integration ./...
+        working-directory: rollout-controller
+
+      - run: go test -tags e2e ./tests/e2e
+        working-directory: ota-orchestrator
+
+  docker:
+    needs: [test-unit, test-frontend, test-integration-and-e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: ota-orchestrator/Dockerfile
+            image: ota/ota-orchestrator
+          - dockerfile: rollout-controller/Dockerfile
+            image: ota/rollout-controller
+          - dockerfile: frontend/Dockerfile
+            image: ota/frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: ${{ matrix.image }}:ci

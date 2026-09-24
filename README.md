@@ -281,3 +281,5 @@ curl -s "$BASE/campaigns?page=1&limit=10" | python3 -m json.tool
      - вставка данных и скрипты для нагрузочного тестирования
   7. Этап 9:
      - помощь с Caddyfile, Dockerfile и docker-compose.yaml
+  8. Доп. этап:
+     - настройка CI по образцу
