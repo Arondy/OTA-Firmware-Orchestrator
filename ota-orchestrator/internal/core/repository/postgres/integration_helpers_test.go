@@ -33,6 +33,9 @@ func terminateAndFatal(format string, args ...any) {
 }
 
 func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" && os.Getenv("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE") == "" {
+		os.Setenv("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
+	}
 	ctx := context.Background()
 
 	container, err := tcpostgres.Run(ctx,

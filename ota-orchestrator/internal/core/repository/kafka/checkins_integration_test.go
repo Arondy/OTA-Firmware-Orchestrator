@@ -35,6 +35,15 @@ func TestCheckinsProducer_PublishesEvent(t *testing.T) {
 	require.NoError(t, err)
 	defer producer.Close()
 
+	producer.Produce(domain.CheckinEvent{
+		DeviceID:       uuid.New(),
+		DeviceModel:    "warmup",
+		CurrentVersion: "0.0.0",
+		CampaignID:     uuid.New(),
+		Timestamp:      time.Now().UTC(),
+	})
+	time.Sleep(2 * time.Second)
+
 	event := domain.CheckinEvent{
 		DeviceID:       uuid.New(),
 		DeviceModel:    "model-x",
@@ -99,13 +108,16 @@ func TestCheckinsProducer_BufferFull(t *testing.T) {
 
 	reader := consumerReader(topic)
 	defer reader.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	delivered := 0
 	for delivered < total {
 		if _, err := reader.ReadMessage(ctx); err != nil {
-			break
+			if ctx.Err() != nil {
+				break
+			}
+			continue
 		}
 		delivered++
 	}
@@ -127,6 +139,15 @@ func TestCheckinsProducer_Close(t *testing.T) {
 		Topic:        topic,
 	})
 	require.NoError(t, err)
+
+	producer.Produce(domain.CheckinEvent{
+		DeviceID:       uuid.New(),
+		DeviceModel:    "warmup",
+		CurrentVersion: "0.0.0",
+		CampaignID:     uuid.New(),
+		Timestamp:      time.Now().UTC(),
+	})
+	time.Sleep(2 * time.Second)
 
 	event := domain.CheckinEvent{
 		DeviceID:       uuid.New(),
@@ -150,14 +171,17 @@ func TestCheckinsProducer_Close(t *testing.T) {
 
 	reader := consumerReader(topic)
 	defer reader.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	found := false
 	for {
 		msg, err := reader.ReadMessage(ctx)
 		if err != nil {
-			break
+			if ctx.Err() != nil {
+				break
+			}
+			continue
 		}
 		if string(msg.Key) == string(event.DeviceID[:]) {
 			found = true

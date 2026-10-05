@@ -120,6 +120,9 @@ type reportResp struct {
 }
 
 func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" && os.Getenv("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE") == "" {
+		os.Setenv("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancelAll = cancel
 

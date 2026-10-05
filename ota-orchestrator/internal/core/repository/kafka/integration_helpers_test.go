@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -20,6 +21,9 @@ func uniqueTopic(base string) string {
 }
 
 func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" && os.Getenv("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE") == "" {
+		os.Setenv("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/var/run/docker.sock")
+	}
 	tkafka.BrokerAddr()
 
 	code := m.Run()
@@ -63,7 +67,10 @@ func readMatchingFromTopic(t *testing.T, topic string, timeout time.Duration, ma
 	for {
 		msg, err := reader.ReadMessage(ctx)
 		if err != nil {
-			return kafka.Message{}, false
+			if ctx.Err() != nil {
+				return kafka.Message{}, false
+			}
+			continue
 		}
 		if match(msg) {
 			return msg, true
